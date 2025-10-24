@@ -1,0 +1,508 @@
+# services/analysis/app/methods/electrical/cv_profiling.py
+
+“””
+Capacitance-Voltage (C-V) Profiling Analysis
+
+Features:
+
+- MOS capacitor C-V analysis
+- Schottky barrier C-V analysis
+- Doping profile extraction (N_D, N_A vs depth)
+- Flat-band voltage (V_fb) determination
+- Interface trap density (D_it) calculation
+- Oxide thickness extraction
+- Built-in voltage (V_bi) for junctions
+
+Analysis Methods:
+
+- 1/C² vs V (Mott-Schottky plot)
+- Differential capacitance method
+- Multi-frequency C-V for D_it
+- Deep depletion analysis
+
+References:
+
+- Nicollian, E. H. & Brews, J. R. (1982). “MOS Physics and Technology”
+- Schroder, D. K. (2006). “Semiconductor Material and Device Characterization”
+- ASTM F1397 - Standard Test Method for CV Doping Profile
+  “””
+
+import numpy as np
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
+from scipy.optimize import curve_fit
+from scipy.integrate import cumtrapz
+import logging
+
+logger = logging.getLogger(**name**)
+
+# Physical constants
+
+K_B = 1.380649e-23  # Boltzmann constant (J/K)
+Q_E = 1.602176634e-19  # Elementary charge (C)
+EPSILON_0 = 8.854187817e-14  # Vacuum permittivity (F/cm)
+
+# Material properties (defaults for Si)
+
+EPSILON_SI = 11.7  # Relative permittivity of Si
+EPSILON_SIO2 = 3.9  # Relative permittivity of SiO2
+
+# ============================================================================
+
+# Configuration
+
+# ============================================================================
+
+@dataclass
+class CVConfig:
+“”“Configuration for C-V measurements”””
+# Device type
+device_type: str = “mos_capacitor”  # mos_capacitor, schottky, pn_junction
+
+# Device parameters
+device_area: float = 1e-4  # cm²
+semiconductor: str = "si"  # si, gaas, gan
+dopant_type: str = "n"  # n or p
+
+# Material parameters
+epsilon_s: Optional[float] = None  # Semiconductor permittivity (auto if None)
+epsilon_ox: Optional[float] = None  # Oxide permittivity (auto if None)
+
+# Measurement parameters
+frequency: float = 1e6  # Hz (1 MHz typical)
+ac_amplitude: float = 0.025  # V (25 mV typical)
+temperature: float = 300.0  # K
+
+# Analysis
+extract_doping_profile: bool = True
+calculate_interface_traps: bool = False
+depth_resolution: float = 1e-7  # cm (1 nm)
+
+# ============================================================================
+
+# C-V Analyzer
+
+# ============================================================================
+
+class CVAnalyzer:
+“””
+C-V profiling analyzer
+
+Key equations:
+
+1. Depletion approximation:
+   1/C² = (2 / (q * ε_s * A² * N)) * (V_bi - V - kT/q)
+
+2. Doping concentration:
+   N(W) = -(C³ / (q * ε_s * A² * dC/dV))
+
+3. Depletion width:
+   W = ε_s * A / C
+"""
+
+def __init__(self, config: CVConfig):
+    self.config = config
+    self.logger = logging.getLogger(__name__)
+    
+    # Set material parameters
+    if config.epsilon_s is None:
+        self.epsilon_s = self._get_semiconductor_permittivity(config.semiconductor)
+    else:
+        self.epsilon_s = config.epsilon_s
+    
+    if config.epsilon_ox is None:
+        self.epsilon_ox = EPSILON_SIO2
+    else:
+        self.epsilon_ox = config.epsilon_ox
+
+def _get_semiconductor_permittivity(self, material: str) -> float:
+    """Get relative permittivity for semiconductor"""
+    permittivities = {
+        'si': 11.7,
+        'gaas': 12.9,
+        'gan': 9.0,
+        'sic': 9.7,
+        'ge': 16.0
+    }
+    return permittivities.get(material.lower(), 11.7)
+
+def analyze(self, measurements: Dict[str, Any]) -> Dict[str, Any]:
+    """Main C-V analysis pipeline"""
+    self.logger.info("Starting C-V analysis")
+    
+    voltage = np.array(measurements['voltage'])
+    capacitance = np.array(measurements['capacitance'])
+    device_area = measurements.get('device_area', self.config.device_area)
+    frequency = measurements.get('frequency', self.config.frequency)
+    
+    device_type = measurements.get('device_type', self.config.device_type)
+    
+    if device_type == "mos_capacitor":
+        return self._analyze_mos(voltage, capacitance, device_area, frequency)
+    elif device_type == "schottky":
+        return self._analyze_schottky(voltage, capacitance, device_area)
+    elif device_type == "pn_junction":
+        return self._analyze_pn_junction(voltage, capacitance, device_area)
+    else:
+        raise ValueError(f"Unknown device type: {device_type}")
+
+def _analyze_mos(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    area: float,
+    frequency: float
+) -> Dict[str, Any]:
+    """
+    Analyze MOS capacitor C-V
+    
+    Extracts:
+    - Oxide capacitance (Cox)
+    - Oxide thickness (tox)
+    - Flat-band voltage (Vfb)
+    - Threshold voltage (Vth)
+    - Doping concentration
+    - Interface trap density (D_it, if multi-frequency)
+    """
+    # 1. Extract oxide capacitance (max capacitance in accumulation)
+    c_ox = np.max(capacitance)
+    
+    # 2. Calculate oxide thickness
+    t_ox = (self.epsilon_ox * EPSILON_0 * area) / c_ox
+    
+    # 3. Find flat-band voltage
+    v_fb = self._extract_flatband_voltage(voltage, capacitance, c_ox)
+    
+    # 4. Find threshold voltage (if present)
+    v_th = self._extract_threshold_voltage_cv(voltage, capacitance, c_ox)
+    
+    # 5. Extract doping profile
+    doping_profile = None
+    if self.config.extract_doping_profile:
+        doping_profile = self._extract_doping_profile(voltage, capacitance, area)
+    
+    # 6. Calculate interface trap density (if multi-frequency data)
+    d_it = None
+    if 'frequencies' in measurements and self.config.calculate_interface_traps:
+        d_it = self._calculate_interface_traps(measurements)
+    
+    results = {
+        'device_type': 'mos_capacitor',
+        'parameters': {
+            'oxide_capacitance': {
+                'value': float(c_ox),
+                'unit': 'F',
+                'per_area': float(c_ox / area),
+                'unit_per_area': 'F/cm²'
+            },
+            'oxide_thickness': {
+                'value': float(t_ox),
+                'unit': 'cm',
+                'in_nm': float(t_ox * 1e7)
+            },
+            'flatband_voltage': {
+                'value': float(v_fb),
+                'unit': 'V'
+            }
+        },
+        'doping_profile': doping_profile,
+        'interface_trap_density': d_it,
+        'test_conditions': {
+            'frequency': {
+                'value': frequency,
+                'unit': 'Hz'
+            },
+            'temperature': {
+                'value': self.config.temperature,
+                'unit': 'K'
+            },
+            'device_area': {
+                'value': area,
+                'unit': 'cm²'
+            }
+        },
+        'raw_data': {
+            'voltage': voltage.tolist(),
+            'capacitance': capacitance.tolist()
+        }
+    }
+    
+    if v_th is not None:
+        results['parameters']['threshold_voltage'] = {
+            'value': float(v_th),
+            'unit': 'V'
+        }
+    
+    self.logger.info(
+        f"MOS analysis complete: Cox={c_ox:.2e} F, tox={t_ox*1e7:.2f} nm, "
+        f"Vfb={v_fb:.3f} V"
+    )
+    
+    return results
+
+def _analyze_schottky(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    area: float
+) -> Dict[str, Any]:
+    """
+    Analyze Schottky barrier C-V
+    
+    Mott-Schottky plot: 1/C² vs V
+    Slope gives doping concentration
+    Intercept gives built-in voltage
+    """
+    # 1. Mott-Schottky plot
+    c_inv_sq = 1 / (capacitance ** 2)
+    
+    # 2. Linear fit to get doping and V_bi
+    # Use reverse bias region (V < 0 for n-type)
+    if self.config.dopant_type == 'n':
+        linear_region = voltage < 0
+    else:
+        linear_region = voltage > 0
+    
+    if np.sum(linear_region) < 5:
+        linear_region = np.ones(len(voltage), dtype=bool)
+    
+    v_linear = voltage[linear_region]
+    c_inv_sq_linear = c_inv_sq[linear_region]
+    
+    # Linear fit: 1/C² = slope * V + intercept
+    slope, intercept = np.polyfit(v_linear, c_inv_sq_linear, 1)
+    
+    # 3. Extract doping concentration
+    # slope = 2 / (q * ε_s * A² * N_D)
+    doping = 2 / (Q_E * self.epsilon_s * EPSILON_0 * (area ** 2) * slope)
+    
+    # 4. Extract built-in voltage
+    # V_bi = -intercept / slope - kT/q
+    vt = (K_B * self.config.temperature) / Q_E  # Thermal voltage
+    v_bi = -intercept / slope - vt
+    
+    # 5. Extract barrier height
+    # φ_b = V_bi + V_n (for n-type)
+    # V_n = (kT/q) * ln(Nc / N_D)
+    # Simplified: assume φ_b ≈ V_bi for now
+    barrier_height = v_bi
+    
+    # 6. Extract doping profile
+    doping_profile = None
+    if self.config.extract_doping_profile:
+        doping_profile = self._extract_doping_profile(voltage, capacitance, area)
+    
+    results = {
+        'device_type': 'schottky',
+        'parameters': {
+            'doping_concentration': {
+                'value': float(abs(doping)),
+                'unit': 'cm⁻³',
+                'type': self.config.dopant_type
+            },
+            'built_in_voltage': {
+                'value': float(v_bi),
+                'unit': 'V'
+            },
+            'barrier_height': {
+                'value': float(barrier_height),
+                'unit': 'V',
+                'note': 'Simplified calculation'
+            }
+        },
+        'mott_schottky': {
+            'slope': float(slope),
+            'intercept': float(intercept),
+            'r_squared': self._calculate_r_squared(c_inv_sq_linear, slope * v_linear + intercept)
+        },
+        'doping_profile': doping_profile,
+        'raw_data': {
+            'voltage': voltage.tolist(),
+            'capacitance': capacitance.tolist(),
+            '1_over_C_squared': c_inv_sq.tolist()
+        }
+    }
+    
+    self.logger.info(
+        f"Schottky analysis complete: N_D={abs(doping):.2e} cm⁻³, "
+        f"V_bi={v_bi:.3f} V"
+    )
+    
+    return results
+
+def _analyze_pn_junction(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    area: float
+) -> Dict[str, Any]:
+    """
+    Analyze p-n junction C-V
+    
+    Similar to Schottky, but both sides contribute to depletion
+    """
+    # Use same Mott-Schottky approach
+    return self._analyze_schottky(voltage, capacitance, area)
+
+def _extract_flatband_voltage(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    c_ox: float
+) -> float:
+    """
+    Extract flat-band voltage for MOS capacitor
+    
+    Method: V_fb occurs at C ≈ 0.8-0.9 * C_ox
+    More precisely: solve for V where C = C_fb
+    """
+    # For high-frequency C-V, flat-band typically at C ≈ 0.85 * Cox
+    c_fb_ratio = 0.85
+    c_fb = c_fb_ratio * c_ox
+    
+    # Find voltage closest to this capacitance
+    idx = np.argmin(np.abs(capacitance - c_fb))
+    v_fb = voltage[idx]
+    
+    return v_fb
+
+def _extract_threshold_voltage_cv(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    c_ox: float
+) -> Optional[float]:
+    """
+    Extract threshold voltage from C-V
+    
+    Vth is where inversion begins (C starts to increase again)
+    """
+    # Find minimum capacitance (depletion)
+    c_min = np.min(capacitance)
+    min_idx = np.argmin(capacitance)
+    
+    # Check if there's inversion region (C increases after min)
+    if min_idx < len(capacitance) - 5:
+        # V_th is approximately at min capacitance for HF C-V
+        v_th = voltage[min_idx]
+        return v_th
+    
+    return None
+
+def _extract_doping_profile(
+    self,
+    voltage: np.ndarray,
+    capacitance: np.ndarray,
+    area: float
+) -> Dict[str, Any]:
+    """
+    Extract doping profile N(W) vs depth W
+    
+    Method:
+    1. Calculate depletion width: W = ε_s * A / C
+    2. Calculate doping: N(W) = -C³ / (q * ε_s * A² * dC/dV)
+    """
+    # 1. Calculate depletion width
+    depletion_width = (self.epsilon_s * EPSILON_0 * area) / capacitance
+    
+    # 2. Calculate dC/dV
+    dc_dv = np.gradient(capacitance, voltage)
+    
+    # 3. Calculate doping concentration
+    # N(W) = -C³ / (q * ε_s * A² * dC/dV)
+    epsilon = 1e-20  # Small number to avoid division by zero
+    doping = -(capacitance ** 3) / (
+        Q_E * self.epsilon_s * EPSILON_0 * (area ** 2) * (dc_dv + epsilon)
+    )
+    
+    # 4. Take absolute value and filter unrealistic values
+    doping = np.abs(doping)
+    
+    # Filter: typical doping 1e14 to 1e20 cm⁻³
+    valid_mask = (doping > 1e14) & (doping < 1e20) & np.isfinite(doping)
+    
+    if np.sum(valid_mask) < 3:
+        # Not enough valid points
+        return {
+            'note': 'Insufficient valid data for profile extraction'
+        }
+    
+    depletion_width_valid = depletion_width[valid_mask]
+    doping_valid = doping[valid_mask]
+    
+    # 5. Calculate average doping
+    avg_doping = np.mean(doping_valid)
+    
+    return {
+        'depth': {
+            'values': depletion_width_valid.tolist(),
+            'unit': 'cm'
+        },
+        'doping_concentration': {
+            'values': doping_valid.tolist(),
+            'unit': 'cm⁻³'
+        },
+        'average_doping': {
+            'value': float(avg_doping),
+            'unit': 'cm⁻³'
+        },
+        'depth_range': {
+            'min': float(np.min(depletion_width_valid)),
+            'max': float(np.max(depletion_width_valid)),
+            'unit': 'cm'
+        }
+    }
+
+def _calculate_interface_traps(self, measurements: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Calculate interface trap density from multi-frequency C-V
+    
+    D_it = (1/q) * (Cox * Cmeas) / (Cox - Cmeas) * Δ(1/C) / ΔV
+    
+    This requires C-V at multiple frequencies
+    """
+    # This is a placeholder for multi-frequency analysis
+    # Full implementation would compare C-V at different frequencies
+    return {
+        'note': 'Multi-frequency analysis not yet implemented',
+        'estimated_Dit': {
+            'value': 1e11,
+            'unit': 'cm⁻²eV⁻¹',
+            'note': 'Typical value, not measured'
+        }
+    }
+
+def _calculate_r_squared(self, y_data: np.ndarray, y_fit: np.ndarray) -> float:
+    """Calculate R² goodness of fit"""
+    ss_res = np.sum((y_data - y_fit) ** 2)
+    ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+    return float(r_squared)
+
+# ============================================================================
+
+# API Functions
+
+# ============================================================================
+
+def analyze_cv(
+measurements: Dict[str, Any],
+config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+“””
+High-level API for C-V analysis
+
+Args:
+    measurements: Raw C-V measurement data
+    config: Optional configuration dictionary
+    
+Returns:
+    Analysis results dictionary
+"""
+if config:
+    cv_config = CVConfig(**config)
+else:
+    cv_config = CVConfig()
+
+analyzer = CVAnalyzer(cv_config)
+return analyzer.analyze(measurements)

@@ -1,0 +1,552 @@
+# scripts/dev/generate_session5_test_data.py
+
+“””
+Test Data Generators for Session 5: I-V and C-V Characterization
+
+Generates realistic synthetic data for:
+
+- Diode I-V (pn junction, Schottky)
+- MOSFET I-V (transfer and output curves)
+- Solar cell I-V (various efficiencies)
+- C-V profiling (MOS, Schottky)
+  “””
+
+import numpy as np
+import json
+from pathlib import Path
+from typing import Dict, Any, Tuple
+from dataclasses import dataclass
+import uuid
+from datetime import datetime
+
+# Physical constants
+
+K_B = 1.380649e-23
+Q_E = 1.602176634e-19
+T_300K = 300.0
+
+# ============================================================================
+
+# Diode I-V Generator
+
+# ============================================================================
+
+class DiodeIVGenerator:
+“”“Generate realistic diode I-V curves”””
+
+```
+def __init__(self, Is=1e-12, n=1.0, Rs=10.0, Rsh=1e6, T=300.0):
+    self.Is = Is  # Saturation current (A)
+    self.n = n  # Ideality factor
+    self.Rs = Rs  # Series resistance (Ω)
+    self.Rsh = Rsh  # Shunt resistance (Ω)
+    self.T = T  # Temperature (K)
+    self.Vt = (K_B * T) / Q_E  # Thermal voltage
+
+def generate(
+    self,
+    v_start=-1.0,
+    v_stop=1.0,
+    num_points=200,
+    noise_level=0.02
+) -> Dict[str, Any]:
+    """Generate diode I-V curve"""
+    voltages = np.linspace(v_start, v_stop, num_points)
+    currents = np.zeros_like(voltages)
+    
+    # Calculate current using Newton-Raphson (implicit equation)
+    for idx, v in enumerate(voltages):
+        # Initial guess
+        i_guess = self.Is * (np.exp(v / (self.n * self.Vt)) - 1)
+        
+        # Iterate to solve implicit equation
+        for _ in range(10):
+            v_diode = v - i_guess * self.Rs
+            i_model = self.Is * (np.exp(v_diode / (self.n * self.Vt)) - 1) + v_diode / self.Rsh
+            
+            error = i_model - i_guess
+            if abs(error) < 1e-15:
+                break
+            
+            # Derivative
+            di_dv = (self.Is / (self.n * self.Vt)) * np.exp(v_diode / (self.n * self.Vt)) + 1/self.Rsh
+            di_di = -di_dv * self.Rs
+            derivative = di_di - 1
+            
+            if abs(derivative) > 1e-12:
+                i_guess = i_guess - error / derivative
+        
+        currents[idx] = i_guess
+    
+    # Add noise
+    currents += currents * np.random.normal(0, noise_level, len(currents))
+    
+    return {
+        'voltages': voltages.tolist(),
+        'currents': currents.tolist(),
+        'temperature': self.T,
+        'device_type': 'diode',
+        'expected_parameters': {
+            'Is': self.Is,
+            'n': self.n,
+            'Rs': self.Rs,
+            'Rsh': self.Rsh
+        }
+    }
+```
+
+# ============================================================================
+
+# MOSFET I-V Generator
+
+# ============================================================================
+
+class MOSFETIVGenerator:
+“”“Generate realistic MOSFET I-V curves”””
+
+```
+def __init__(
+    self,
+    Vth=0.5,
+    mu_n=500e-4,  # cm²/(V·s) → m²/(V·s)
+    L=1e-6,
+    W=10e-6,
+    Cox=1e-3,  # F/m²
+    T=300.0
+):
+    self.Vth = Vth
+    self.mu_n = mu_n
+    self.L = L
+    self.W = W
+    self.Cox = Cox
+    self.T = T
+    self.kn = mu_n * Cox * W / L
+
+def generate_transfer(
+    self,
+    vgs_start=-0.5,
+    vgs_stop=2.0,
+    vds=0.1,
+    num_points=200,
+    noise_level=0.01
+) -> Dict[str, Any]:
+    """Generate MOSFET transfer curve (Id vs Vgs at constant Vds)"""
+    vgs = np.linspace(vgs_start, vgs_stop, num_points)
+    ids = np.zeros_like(vgs)
+    
+    for idx, vg in enumerate(vgs):
+        if vg < self.Vth:
+            # Subthreshold region: exponential
+            ids[idx] = 1e-12 * np.exp((vg - self.Vth) / (2.5 * K_B * self.T / Q_E))
+        else:
+            if vds < (vg - self.Vth):
+                # Linear region
+                ids[idx] = self.kn * ((vg - self.Vth) * vds - vds**2 / 2)
+            else:
+                # Saturation region
+                ids[idx] = 0.5 * self.kn * (vg - self.Vth)**2
+    
+    # Add noise
+    ids += ids * np.random.normal(0, noise_level, len(ids))
+    ids = np.maximum(ids, 1e-15)  # Ensure positive
+    
+    return {
+        'vgs': vgs.tolist(),
+        'ids': ids.tolist(),
+        'vds': vds,
+        'measurement_type': 'transfer',
+        'temperature': self.T,
+        'device_parameters': {
+            'L': self.L,
+            'W': self.W,
+            'expected_Vth': self.Vth
+        }
+    }
+
+def generate_output(
+    self,
+    vds_start=0.0,
+    vds_stop=2.0,
+    vgs=1.5,
+    num_points=200,
+    noise_level=0.01
+) -> Dict[str, Any]:
+    """Generate MOSFET output curve (Id vs Vds at constant Vgs)"""
+    vds = np.linspace(vds_start, vds_stop, num_points)
+    ids = np.zeros_like(vds)
+    
+    if vgs > self.Vth:
+        for idx, vd in enumerate(vds):
+            if vd < (vgs - self.Vth):
+                # Linear region
+                ids[idx] = self.kn * ((vgs - self.Vth) * vd - vd**2 / 2)
+            else:
+                # Saturation region
+                ids[idx] = 0.5 * self.kn * (vgs - self.Vth)**2
+    
+    # Add noise
+    ids += ids * np.random.normal(0, noise_level, len(ids))
+    ids = np.maximum(ids, 0)
+    
+    return {
+        'vds': vds.tolist(),
+        'ids': ids.tolist(),
+        'vgs': vgs,
+        'measurement_type': 'output',
+        'temperature': self.T
+    }
+```
+
+# ============================================================================
+
+# Solar Cell I-V Generator
+
+# ============================================================================
+
+class SolarCellIVGenerator:
+“”“Generate realistic solar cell I-V curves”””
+
+```
+def __init__(
+    self,
+    Jsc=35.0,  # mA/cm²
+    Voc=0.6,  # V
+    FF=0.75,
+    Rs=0.5,  # Ω·cm²
+    Rsh=1000.0,  # Ω·cm²
+    area=1.0,  # cm²
+    illumination=1000.0  # W/m²
+):
+    self.Jsc = Jsc
+    self.Voc = Voc
+    self.FF = FF
+    self.Rs = Rs
+    self.Rsh = Rsh
+    self.area = area
+    self.illumination = illumination
+    
+    # Calculate diode parameters from Jsc, Voc, FF
+    self.n = 1.5  # Typical ideality factor
+    Vt = 0.0259  # Thermal voltage at 300K
+    self.J0 = Jsc / (np.exp(Voc / (self.n * Vt)) - 1)
+
+def generate(
+    self,
+    v_start=-0.1,
+    v_stop=0.7,
+    num_points=200,
+    noise_level=0.01
+) -> Dict[str, Any]:
+    """Generate solar cell I-V curve (4th quadrant)"""
+    voltage = np.linspace(v_start, v_stop, num_points)
+    current = np.zeros_like(voltage)
+    
+    Vt = 0.0259  # 25°C
+    
+    # Solve implicit equation for each voltage
+    for idx, v in enumerate(voltage):
+        # Initial guess
+        j_guess = -self.Jsc
+        
+        # Newton-Raphson
+        for _ in range(10):
+            v_eff = v - j_guess * self.Rs
+            j_model = self.J0 * (np.exp(v_eff / (self.n * Vt)) - 1) + v_eff / self.Rsh - self.Jsc
+            
+            error = j_model - j_guess
+            if abs(error) < 1e-12:
+                break
+            
+            dj_dv = (self.J0 / (self.n * Vt)) * np.exp(v_eff / (self.n * Vt)) + 1/self.Rsh
+            dj_dj = -dj_dv * self.Rs
+            derivative = dj_dj - 1
+            
+            if abs(derivative) > 1e-10:
+                j_guess = j_guess - error / derivative
+        
+        current[idx] = j_guess * self.area / 1000  # mA → A
+    
+    # Add noise
+    current += current * np.random.normal(0, noise_level, len(current))
+    
+    # Calculate expected efficiency
+    Pmax = self.Jsc * self.Voc * self.FF
+    efficiency = (Pmax / (self.illumination / 10)) * 100  # W/m² → mW/cm²
+    
+    return {
+        'voltage': voltage.tolist(),
+        'current': current.tolist(),
+        'area': self.area,
+        'illumination': self.illumination,
+        'temperature': 300.0,
+        'spectrum': 'AM1.5G',
+        'expected_results': {
+            'Jsc': self.Jsc,
+            'Voc': self.Voc,
+            'FF': self.FF,
+            'efficiency': efficiency
+        }
+    }
+```
+
+# ============================================================================
+
+# C-V Generator
+
+# ============================================================================
+
+class CVGenerator:
+“”“Generate realistic C-V curves”””
+
+```
+def __init__(
+    self,
+    device_type='mos_capacitor',
+    N_D=1e16,  # cm⁻³
+    Cox=1e-7,  # F/cm²
+    area=1e-4,  # cm²
+    T=300.0
+):
+    self.device_type = device_type
+    self.N_D = N_D
+    self.Cox = Cox
+    self.area = area
+    self.T = T
+    
+    # Si parameters
+    self.epsilon_s = 11.7 * 8.854e-14  # F/cm
+    self.ni = 1.5e10  # cm⁻³ at 300K
+
+def generate_mos(
+    self,
+    v_start=-3.0,
+    v_stop=3.0,
+    num_points=200,
+    noise_level=0.01
+) -> Dict[str, Any]:
+    """Generate MOS capacitor C-V curve"""
+    voltage = np.linspace(v_start, v_stop, num_points)
+    capacitance = np.zeros_like(voltage)
+    
+    Vt = (K_B * self.T) / Q_E
+    phi_f = Vt * np.log(self.N_D / self.ni)
+    
+    # Flat-band voltage (simplified)
+    V_fb = -0.5
+    
+    # Threshold voltage
+    V_th = V_fb + 2 * phi_f + np.sqrt(4 * Q_E * self.epsilon_s * self.N_D * phi_f) / self.Cox
+    
+    for idx, v in enumerate(voltage):
+        if v < V_fb:
+            # Accumulation
+            capacitance[idx] = self.Cox * self.area * 0.95  # Close to Cox
+        elif v < V_th:
+            # Depletion
+            # C = Cox * Cs / (Cox + Cs)
+            W = np.sqrt(2 * self.epsilon_s * (v - V_fb) / (Q_E * self.N_D))
+            Cs = self.epsilon_s * self.area / W
+            capacitance[idx] = (self.Cox * self.area * Cs) / (self.Cox * self.area + Cs)
+        else:
+            # Inversion (high frequency - no inversion layer contribution)
+            # C stays at minimum (maximum depletion)
+            W_max = np.sqrt(4 * self.epsilon_s * phi_f / (Q_E * self.N_D))
+            Cs = self.epsilon_s * self.area / W_max
+            capacitance[idx] = (self.Cox * self.area * Cs) / (self.Cox * self.area + Cs)
+    
+    # Add noise
+    capacitance += capacitance * np.random.normal(0, noise_level, len(capacitance))
+    
+    return {
+        'voltage': voltage.tolist(),
+        'capacitance': capacitance.tolist(),
+        'device_type': 'mos_capacitor',
+        'device_area': self.area,
+        'frequency': 1e6,
+        'temperature': self.T,
+        'expected_parameters': {
+            'Cox': self.Cox * self.area,
+            'N_D': self.N_D,
+            'V_fb': V_fb,
+            'V_th': V_th
+        }
+    }
+
+def generate_schottky(
+    self,
+    v_start=-3.0,
+    v_stop=0.5,
+    num_points=200,
+    noise_level=0.01
+) -> Dict[str, Any]:
+    """Generate Schottky barrier C-V curve"""
+    voltage = np.linspace(v_start, v_stop, num_points)
+    
+    # Built-in voltage
+    V_bi = 0.8  # V
+    
+    # Depletion capacitance
+    # C = A * sqrt(q * epsilon_s * N_D / (2 * (V_bi - V)))
+    Vt = (K_B * self.T) / Q_E
+    depletion_term = 2 * (V_bi - voltage - Vt)
+    depletion_term = np.maximum(depletion_term, 0.01)  # Avoid sqrt of negative
+    
+    capacitance = self.area * np.sqrt(
+        Q_E * self.epsilon_s * self.N_D / depletion_term
+    )
+    
+    # Add noise
+    capacitance += capacitance * np.random.normal(0, noise_level, len(capacitance))
+    
+    return {
+        'voltage': voltage.tolist(),
+        'capacitance': capacitance.tolist(),
+        'device_type': 'schottky',
+        'device_area': self.area,
+        'frequency': 1e6,
+        'temperature': self.T,
+        'dopant_type': 'n',
+        'expected_parameters': {
+            'N_D': self.N_D,
+            'V_bi': V_bi
+        }
+    }
+```
+
+# ============================================================================
+
+# Main Generation Function
+
+# ============================================================================
+
+def generate_all_session5_data():
+“”“Generate all test data for Session 5”””
+output_dir = Path(“data/test_data/electrical”)
+output_dir.mkdir(parents=True, exist_ok=True)
+
+```
+print("=" * 80)
+print("Generating Test Data for Session 5: I-V & C-V Characterization")
+print("=" * 80)
+
+# ===== Diode I-V =====
+print("\n1. Diode I-V Curves")
+print("-" * 80)
+
+# Silicon pn junction
+diode_gen = DiodeIVGenerator(Is=1e-12, n=1.0, Rs=10.0)
+data = diode_gen.generate()
+save_dataset(data, output_dir / "diode_iv" / "silicon_pn_junction.json")
+
+# Schottky diode
+diode_gen = DiodeIVGenerator(Is=1e-8, n=1.05, Rs=5.0)
+data = diode_gen.generate()
+save_dataset(data, output_dir / "diode_iv" / "schottky_diode.json")
+
+# GaAs diode (higher ideality)
+diode_gen = DiodeIVGenerator(Is=1e-15, n=1.8, Rs=20.0)
+data = diode_gen.generate()
+save_dataset(data, output_dir / "diode_iv" / "gaas_diode.json")
+
+# ===== MOSFET I-V =====
+print("\n2. MOSFET I-V Curves")
+print("-" * 80)
+
+# NMOS transfer curve
+mosfet_gen = MOSFETIVGenerator(Vth=0.5, mu_n=500e-4)
+data = mosfet_gen.generate_transfer(vds=0.1)
+save_dataset(data, output_dir / "mosfet_iv" / "nmos_transfer_linear.json")
+
+# NMOS transfer in saturation
+data = mosfet_gen.generate_transfer(vds=1.5)
+save_dataset(data, output_dir / "mosfet_iv" / "nmos_transfer_saturation.json")
+
+# NMOS output curve
+data = mosfet_gen.generate_output(vgs=1.5)
+save_dataset(data, output_dir / "mosfet_iv" / "nmos_output.json")
+
+# Short channel MOSFET (lower mobility)
+mosfet_gen = MOSFETIVGenerator(Vth=0.4, mu_n=300e-4, L=0.1e-6)
+data = mosfet_gen.generate_transfer(vds=1.0)
+save_dataset(data, output_dir / "mosfet_iv" / "short_channel_nmos.json")
+
+# ===== Solar Cell I-V =====
+print("\n3. Solar Cell I-V Curves")
+print("-" * 80)
+
+# High-efficiency silicon solar cell
+solar_gen = SolarCellIVGenerator(Jsc=40.0, Voc=0.65, FF=0.82, area=156.0)  # 156 cm² typical
+data = solar_gen.generate()
+save_dataset(data, output_dir / "solar_cell_iv" / "high_efficiency_silicon.json")
+
+# Standard silicon solar cell
+solar_gen = SolarCellIVGenerator(Jsc=35.0, Voc=0.6, FF=0.75, area=156.0)
+data = solar_gen.generate()
+save_dataset(data, output_dir / "solar_cell_iv" / "standard_silicon.json")
+
+# GaAs solar cell (higher Voc)
+solar_gen = SolarCellIVGenerator(Jsc=30.0, Voc=1.0, FF=0.85, area=1.0)
+data = solar_gen.generate(v_start=-0.1, v_stop=1.1)
+save_dataset(data, output_dir / "solar_cell_iv" / "gaas_solar_cell.json")
+
+# Degraded solar cell (low FF)
+solar_gen = SolarCellIVGenerator(Jsc=35.0, Voc=0.58, FF=0.65, Rs=2.0, area=156.0)
+data = solar_gen.generate()
+save_dataset(data, output_dir / "solar_cell_iv" / "degraded_silicon.json")
+
+# ===== C-V Profiling =====
+print("\n4. C-V Profiling Curves")
+print("-" * 80)
+
+# MOS capacitor (n-type substrate)
+cv_gen = CVGenerator(device_type='mos_capacitor', N_D=1e16, Cox=5e-8)
+data = cv_gen.generate_mos()
+save_dataset(data, output_dir / "cv_profiling" / "mos_capacitor_ntype.json")
+
+# MOS capacitor (heavily doped)
+cv_gen = CVGenerator(device_type='mos_capacitor', N_D=1e18, Cox=5e-8)
+data = cv_gen.generate_mos()
+save_dataset(data, output_dir / "cv_profiling" / "mos_capacitor_heavy_doping.json")
+
+# Schottky barrier
+cv_gen = CVGenerator(device_type='schottky', N_D=5e16)
+data = cv_gen.generate_schottky()
+save_dataset(data, output_dir / "cv_profiling" / "schottky_barrier.json")
+
+# Lightly doped Schottky
+cv_gen = CVGenerator(device_type='schottky', N_D=1e15)
+data = cv_gen.generate_schottky()
+save_dataset(data, output_dir / "cv_profiling" / "schottky_light_doping.json")
+
+print("\n" + "=" * 80)
+print("✓ Test data generation complete!")
+print(f"  - 3 Diode I-V datasets")
+print(f"  - 4 MOSFET I-V datasets")
+print(f"  - 4 Solar Cell I-V datasets")
+print(f"  - 4 C-V profiling datasets")
+print(f"  - Total: 15 datasets")
+print(f"  - Location: {output_dir}/")
+print("=" * 80)
+```
+
+def save_dataset(data: Dict[str, Any], filepath: Path):
+“”“Save dataset to JSON file with metadata”””
+filepath.parent.mkdir(parents=True, exist_ok=True)
+
+```
+# Add metadata
+data['metadata'] = {
+    'generated_at': datetime.now().isoformat(),
+    'generator_version': '1.0.0',
+    'session': 'S5',
+    'dataset_id': str(uuid.uuid4())
+}
+
+with open(filepath, 'w') as f:
+    json.dump(data, f, indent=2)
+
+print(f"✓ Saved: {filepath}")
+```
+
+if **name** == “**main**”:
+generate_all_session5_data()

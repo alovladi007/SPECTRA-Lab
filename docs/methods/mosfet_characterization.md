@@ -1,0 +1,828 @@
+import React, { useState } from ‘react’;
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from ‘@/components/ui/card’;
+import { Button } from ‘@/components/ui/button’;
+import { Input } from ‘@/components/ui/input’;
+import { Label } from ‘@/components/ui/label’;
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ‘@/components/ui/select’;
+import { Tabs, TabsContent, TabsList, TabsTrigger } from ‘@/components/ui/tabs’;
+import { Badge } from ‘@/components/ui/badge’;
+import { Alert, AlertDescription } from ‘@/components/ui/alert’;
+import { Switch } from ‘@/components/ui/switch’;
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from ‘recharts’;
+import { PlayCircle, Download, Zap, CheckCircle, AlertCircle, TrendingUp, Settings, Info, Cpu } from ‘lucide-react’;
+
+const MOSFETCharacterization = () => {
+const [deviceType, setDeviceType] = useState(‘n-mos’);
+const [measurementType, setMeasurementType] = useState(‘transfer’);
+const [isRunning, setIsRunning] = useState(false);
+const [results, setResults] = useState(null);
+const [showAdvanced, setShowAdvanced] = useState(false);
+
+const [config, setConfig] = useState({
+// Device geometry
+width: 10, // μm
+length: 1, // μm
+tox: 10, // nm
+
+// Measurement settings
+vgs_start: -1,
+vgs_stop: 3,
+vgs_step: 0.02,
+vds_transfer: 0.1, // V for transfer curve
+
+vds_start: 0,
+vds_stop: 5,
+vds_step: 0.05,
+vgs_array: [0.5, 1.0, 1.5, 2.0, 2.5], // V for output curves
+
+// Advanced
+compliance: 0.1, // A
+sweep_rate: 100, // mV/s
+temperature: 300, // K
+num_averages: 1,
+
+});
+
+// Generate mock transfer curve data
+const generateTransferData = () => {
+const points = [];
+const vth = deviceType === ‘n-mos’ ? 0.5 : -0.5;
+const kp = 0.001; // Process transconductance
+const lambda = 0.05; // Channel length modulation
+const vds = config.vds_transfer;
+
+for (let i = 0; i <= 200; i++) {
+  const vgs = config.vgs_start + (config.vgs_stop - config.vgs_start) * (i / 200);
+  let ids;
+  
+  if (deviceType === 'n-mos') {
+    // n-MOS
+    if (vgs < vth) {
+      // Subthreshold
+      ids = 1e-12 * Math.exp((vgs - vth) / 0.065);
+    } else if (vgs - vth < vds) {
+      // Saturation
+      ids = 0.5 * kp * (config.width / config.length) * Math.pow(vgs - vth, 2) * (1 + lambda * vds);
+    } else {
+      // Linear
+      ids = kp * (config.width / config.length) * ((vgs - vth) * vds - 0.5 * vds * vds);
+    }
+  } else {
+    // p-MOS (inverted)
+    if (vgs > vth) {
+      ids = -1e-12 * Math.exp((vth - vgs) / 0.065);
+    } else if (vth - vgs < Math.abs(vds)) {
+      ids = -0.5 * kp * (config.width / config.length) * Math.pow(vth - vgs, 2) * (1 + lambda * Math.abs(vds));
+    } else {
+      ids = -kp * (config.width / config.length) * ((vth - vgs) * Math.abs(vds) - 0.5 * vds * vds);
+    }
+  }
+  
+  points.push({
+    vgs: parseFloat(vgs.toFixed(4)),
+    ids: parseFloat(Math.abs(ids).toFixed(10)),
+    log_ids: Math.log10(Math.max(1e-14, Math.abs(ids)))
+  });
+}
+
+return points;
+
+};
+
+// Generate mock output curve data
+const generateOutputData = () => {
+const curves = [];
+const vth = deviceType === ‘n-mos’ ? 0.5 : -0.5;
+const kp = 0.001;
+const lambda = 0.05;
+
+config.vgs_array.forEach(vgs => {
+  for (let i = 0; i <= 100; i++) {
+    const vds = config.vds_start + (config.vds_stop - config.vds_start) * (i / 100);
+    let ids;
+    
+    if (deviceType === 'n-mos') {
+      if (vgs < vth) {
+        ids = 0;
+      } else if (vds < vgs - vth) {
+        // Linear
+        ids = kp * (config.width / config.length) * ((vgs - vth) * vds - 0.5 * vds * vds);
+      } else {
+        // Saturation
+        ids = 0.5 * kp * (config.width / config.length) * Math.pow(vgs - vth, 2) * (1 + lambda * vds);
+      }
+    } else {
+      // p-MOS
+      if (vgs > vth) {
+        ids = 0;
+      } else if (Math.abs(vds) < Math.abs(vth - vgs)) {
+        ids = kp * (config.width / config.length) * ((vth - vgs) * Math.abs(vds) - 0.5 * vds * vds);
+      } else {
+        ids = 0.5 * kp * (config.width / config.length) * Math.pow(vth - vgs, 2) * (1 + lambda * Math.abs(vds));
+      }
+    }
+    
+    curves.push({
+      vds: parseFloat(vds.toFixed(4)),
+      ids: parseFloat(Math.abs(ids).toFixed(10)),
+      vgs: vgs
+    });
+  }
+});
+
+return curves;
+
+};
+
+const transferData = results?.transfer || generateTransferData();
+const outputData = results?.output || generateOutputData();
+
+const calculateResults = () => {
+const data = generateTransferData();
+
+// Find threshold voltage (linear extrapolation method)
+const linearRegion = data.filter(p => p.ids > 1e-9 && p.ids < 1e-4);
+let vth = deviceType === 'n-mos' ? 0.5 : -0.5; // Approximate
+
+// Find max transconductance
+let gm_max = 0;
+let gm_max_vgs = 0;
+for (let i = 1; i < data.length - 1; i++) {
+  const gm = (data[i+1].ids - data[i-1].ids) / (data[i+1].vgs - data[i-1].vgs);
+  if (gm > gm_max) {
+    gm_max = gm;
+    gm_max_vgs = data[i].vgs;
+  }
+}
+
+// Subthreshold slope
+const subthreshold = data.filter(p => p.ids > 1e-12 && p.ids < 1e-9);
+let ss = 80; // mV/dec (typical)
+
+// Ion/Ioff ratio
+const ion = Math.max(...data.map(p => p.ids));
+const ioff = Math.min(...data.filter(p => p.ids > 0).map(p => p.ids));
+const ion_ioff = ion / ioff;
+
+// Mobility (approximate)
+const cox = 3.45e-7; // F/cm² for 10nm SiO2
+const mobility = gm_max * config.length * 1e-4 / (cox * config.width * 1e-4 * config.vds_transfer);
+
+// Quality score
+const vth_score = Math.abs(vth) < 1.0 ? 30 : 20;
+const ss_score = ss < 100 ? 25 : 15;
+const ion_ioff_score = Math.log10(ion_ioff) > 6 ? 25 : 15;
+const gm_score = gm_max > 1e-3 ? 20 : 10;
+const quality_score = vth_score + ss_score + ion_ioff_score + gm_score;
+
+return {
+  threshold_voltage: { value: vth, unit: 'V', method: 'linear_extrapolation' },
+  transconductance_max: { value: gm_max, vgs: gm_max_vgs, unit: 'S' },
+  subthreshold_slope: { value: ss, unit: 'mV/dec' },
+  ion_ioff_ratio: { value: ion_ioff, log: Math.log10(ion_ioff) },
+  mobility: { value: mobility, unit: 'cm²/V·s' },
+  on_resistance: { value: config.vds_transfer / ion, unit: 'Ω' },
+  quality_score: Math.round(quality_score),
+  device_type: deviceType,
+  geometry: {
+    width: config.width,
+    length: config.length,
+    tox: config.tox
+  }
+};
+
+};
+
+const handleRunMeasurement = async () => {
+setIsRunning(true);
+
+await new Promise(resolve => setTimeout(resolve, 2500));
+
+const calculatedResults = calculateResults();
+
+setResults({
+  ...calculatedResults,
+  transfer: generateTransferData(),
+  output: generateOutputData(),
+  timestamp: new Date().toISOString()
+});
+
+setIsRunning(false);
+
+};
+
+const handleExportData = () => {
+if (!results) return;
+
+const exportData = {
+  metadata: {
+    device_type: deviceType,
+    measurement_type: measurementType,
+    timestamp: results.timestamp,
+    ...config
+  },
+  results: results,
+  curves: {
+    transfer: results.transfer,
+    output: results.output
+  }
+};
+
+const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `mosfet_${deviceType}_${Date.now()}.json`;
+a.click();
+
+};
+
+return (
+<div className="w-full max-w-[1600px] mx-auto p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 min-h-screen">
+{/* Header */}
+<div className="bg-white rounded-lg shadow-md p-6">
+<div className="flex justify-between items-start">
+<div>
+<h1 className="text-4xl font-bold flex items-center gap-3 text-gray-800">
+<Cpu className="h-10 w-10 text-purple-600" />
+MOSFET I-V Characterization
+</h1>
+<p className="text-gray-600 mt-2">Transfer & Output Characteristics Analysis</p>
+</div>
+<div className="flex gap-2 items-center">
+<Badge variant=“outline” className={`text-lg px-4 py-2 ${deviceType === 'n-mos' ? 'bg-blue-500' : 'bg-pink-500'} text-white border-none`}>
+{deviceType === ‘n-mos’ ? ‘n-MOS’ : ‘p-MOS’}
+</Badge>
+<Badge variant="outline" className="text-lg px-4 py-2 bg-gray-100">
+W/L = {(config.width / config.length).toFixed(1)}
+</Badge>
+<Badge variant="outline" className="text-lg px-4 py-2 bg-gray-100">
+t<sub>ox</sub> = {config.tox} nm
+</Badge>
+</div>
+</div>
+</div>
+
+  {/* Main Content */}
+  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    
+    {/* Configuration Panel */}
+    <Card className="lg:col-span-1 shadow-md">
+      <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Configuration
+        </CardTitle>
+        <CardDescription>Device parameters & measurement setup</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        
+        {/* Device Type */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Cpu className="h-4 w-4" />
+            Device Type
+          </Label>
+          <Select value={deviceType} onValueChange={setDeviceType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="n-mos">n-channel MOSFET</SelectItem>
+              <SelectItem value="p-mos">p-channel MOSFET</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Measurement Type */}
+        <div className="space-y-2">
+          <Label>Measurement Type</Label>
+          <Select value={measurementType} onValueChange={setMeasurementType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="transfer">Transfer (I<sub>d</sub>-V<sub>gs</sub>)</SelectItem>
+              <SelectItem value="output">Output (I<sub>d</sub>-V<sub>ds</sub>)</SelectItem>
+              <SelectItem value="both">Both</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Geometry Section */}
+        <div className="space-y-3 p-3 bg-blue-50 rounded border">
+          <div className="font-semibold text-sm text-gray-700">Device Geometry</div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Channel Width (μm)</Label>
+            <Input 
+              type="number" 
+              value={config.width}
+              onChange={(e) => setConfig({...config, width: parseFloat(e.target.value)})}
+              className="text-sm"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Channel Length (μm)</Label>
+            <Input 
+              type="number" 
+              value={config.length}
+              onChange={(e) => setConfig({...config, length: parseFloat(e.target.value)})}
+              className="text-sm"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-xs">Oxide Thickness (nm)</Label>
+            <Input 
+              type="number" 
+              value={config.tox}
+              onChange={(e) => setConfig({...config, tox: parseFloat(e.target.value)})}
+              className="text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Transfer Curve Settings */}
+        {(measurementType === 'transfer' || measurementType === 'both') && (
+          <div className="space-y-3 p-3 bg-green-50 rounded border">
+            <div className="font-semibold text-sm text-gray-700">Transfer Curve</div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs">V<sub>ds</sub> (constant, V)</Label>
+              <Input 
+                type="number" 
+                value={config.vds_transfer}
+                onChange={(e) => setConfig({...config, vds_transfer: parseFloat(e.target.value)})}
+                className="text-sm"
+                step="0.1"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label className="text-xs">V<sub>gs</sub> Start (V)</Label>
+                <Input 
+                  type="number" 
+                  value={config.vgs_start}
+                  onChange={(e) => setConfig({...config, vgs_start: parseFloat(e.target.value)})}
+                  className="text-sm"
+                  step="0.5"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">V<sub>gs</sub> Stop (V)</Label>
+                <Input 
+                  type="number" 
+                  value={config.vgs_stop}
+                  onChange={(e) => setConfig({...config, vgs_stop: parseFloat(e.target.value)})}
+                  className="text-sm"
+                  step="0.5"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Output Curve Settings */}
+        {(measurementType === 'output' || measurementType === 'both') && (
+          <div className="space-y-3 p-3 bg-yellow-50 rounded border">
+            <div className="font-semibold text-sm text-gray-700">Output Curves</div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs">V<sub>gs</sub> Values (V)</Label>
+              <Input 
+                type="text" 
+                value={config.vgs_array.join(', ')}
+                onChange={(e) => setConfig({...config, vgs_array: e.target.value.split(',').map(v => parseFloat(v.trim()))})}
+                placeholder="0.5, 1.0, 1.5, 2.0"
+                className="text-sm"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label className="text-xs">V<sub>ds</sub> Stop (V)</Label>
+                <Input 
+                  type="number" 
+                  value={config.vds_stop}
+                  onChange={(e) => setConfig({...config, vds_stop: parseFloat(e.target.value)})}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advanced Options */}
+        <div className="flex items-center space-x-2 pt-2 border-t">
+          <Switch
+            checked={showAdvanced}
+            onCheckedChange={setShowAdvanced}
+            id="advanced-mode"
+          />
+          <Label htmlFor="advanced-mode" className="cursor-pointer text-sm">Advanced</Label>
+        </div>
+
+        {showAdvanced && (
+          <div className="space-y-3 p-3 bg-gray-50 rounded border">
+            <div className="space-y-2">
+              <Label className="text-xs">Compliance (A)</Label>
+              <Input 
+                type="number" 
+                value={config.compliance}
+                onChange={(e) => setConfig({...config, compliance: parseFloat(e.target.value)})}
+                className="text-sm"
+                step="0.01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Temperature (K)</Label>
+              <Input 
+                type="number" 
+                value={config.temperature}
+                onChange={(e) => setConfig({...config, temperature: parseFloat(e.target.value)})}
+                className="text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-2 pt-4">
+          <Button 
+            onClick={handleRunMeasurement}
+            disabled={isRunning}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700"
+            size="lg"
+          >
+            {isRunning ? (
+              <>
+                <Zap className="h-5 w-5 mr-2 animate-pulse" />
+                Measuring...
+              </>
+            ) : (
+              <>
+                <PlayCircle className="h-5 w-5 mr-2" />
+                Start Measurement
+              </>
+            )}
+          </Button>
+
+          {results && (
+            <Button 
+              onClick={handleExportData}
+              variant="outline"
+              className="w-full"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Results & Plots */}
+    <Card className="lg:col-span-3 shadow-md">
+      <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+        <CardTitle>
+          {!results ? 'Measurement Preview' : `Results - Quality Score: ${results.quality_score}/100`}
+        </CardTitle>
+        <CardDescription>
+          {!results ? 'Configure and start measurement' : 'I-V Characteristics and Parameter Extraction'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">
+        {!results ? (
+          <div className="h-96 flex items-center justify-center text-gray-400 bg-gray-50 rounded-lg border-2 border-dashed">
+            <div className="text-center">
+              <Cpu className="h-20 w-20 mx-auto mb-4 opacity-30" />
+              <p className="text-lg font-medium">No measurement data yet</p>
+              <p className="text-sm mt-2">Configure device and click "Start Measurement"</p>
+            </div>
+          </div>
+        ) : (
+          <Tabs defaultValue="transfer" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="transfer">Transfer Curve</TabsTrigger>
+              <TabsTrigger value="output">Output Curves</TabsTrigger>
+              <TabsTrigger value="parameters">Parameters</TabsTrigger>
+            </TabsList>
+
+            {/* Transfer Curve Tab */}
+            <TabsContent value="transfer" className="space-y-6">
+              <div className="space-y-4">
+                {/* Linear Scale */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm text-gray-700">Transfer Characteristics (Linear Scale)</h3>
+                  <div className="h-80 bg-white p-4 rounded border">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={transferData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis 
+                          dataKey="vgs" 
+                          label={{ value: 'Vgs (V)', position: 'insideBottom', offset: -5 }}
+                          stroke="#666"
+                        />
+                        <YAxis 
+                          label={{ value: 'Ids (A)', angle: -90, position: 'insideLeft' }}
+                          stroke="#8b5cf6"
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #ccc' }}
+                          formatter={(value) => [value.toExponential(3), 'Ids (A)']}
+                        />
+                        <Legend />
+                        <ReferenceLine 
+                          x={results.threshold_voltage.value} 
+                          stroke="#f59e0b" 
+                          strokeDasharray="3 3"
+                          label={{ value: 'Vth', position: 'top', fill: '#f59e0b', fontSize: 12 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="ids" 
+                          stroke="#8b5cf6" 
+                          strokeWidth={2}
+                          dot={false}
+                          name="Drain Current"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Log Scale */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm text-gray-700">Transfer Characteristics (Log Scale)</h3>
+                  <div className="h-80 bg-white p-4 rounded border">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={transferData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis 
+                          dataKey="vgs" 
+                          label={{ value: 'Vgs (V)', position: 'insideBottom', offset: -5 }}
+                        />
+                        <YAxis 
+                          label={{ value: 'log10(Ids)', angle: -90, position: 'insideLeft' }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [value.toFixed(2), 'log10(Ids)']}
+                        />
+                        <Legend />
+                        <ReferenceLine 
+                          x={results.threshold_voltage.value} 
+                          stroke="#f59e0b" 
+                          strokeDasharray="3 3"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="log_ids" 
+                          stroke="#6366f1" 
+                          strokeWidth={2}
+                          dot={false}
+                          name="log(Ids)"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Metrics Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="border-orange-200 bg-orange-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">V<sub>th</sub></div>
+                    <div className="text-2xl font-bold text-orange-700">{results.threshold_voltage.value.toFixed(3)} V</div>
+                    <div className="text-xs text-gray-600 mt-1">Threshold Voltage</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-purple-200 bg-purple-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">g<sub>m,max</sub></div>
+                    <div className="text-2xl font-bold text-purple-700">{(results.transconductance_max.value * 1000).toFixed(2)} mS</div>
+                    <div className="text-xs text-gray-600 mt-1">@ V<sub>gs</sub>={results.transconductance_max.vgs.toFixed(2)}V</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">SS</div>
+                    <div className="text-2xl font-bold text-blue-700">{results.subthreshold_slope.value.toFixed(1)}</div>
+                    <div className="text-xs text-gray-600 mt-1">mV/decade</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-green-200 bg-green-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">I<sub>on</sub>/I<sub>off</sub></div>
+                    <div className="text-2xl font-bold text-green-700">10<sup>{results.ion_ioff_ratio.log.toFixed(1)}</sup></div>
+                    <div className="text-xs text-gray-600 mt-1">Current Ratio</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Output Curves Tab */}
+            <TabsContent value="output" className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm text-gray-700">Output Characteristics (I<sub>d</sub>-V<sub>ds</sub>)</h3>
+                <div className="h-96 bg-white p-4 rounded border">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={outputData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis 
+                        dataKey="vds" 
+                        label={{ value: 'Vds (V)', position: 'insideBottom', offset: -5 }}
+                      />
+                      <YAxis 
+                        label={{ value: 'Ids (A)', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip 
+                        formatter={(value, name, props) => [
+                          value.toExponential(3),
+                          `Vgs = ${props.payload.vgs}V`
+                        ]}
+                      />
+                      <Legend />
+                      {config.vgs_array.map((vgs, idx) => {
+                        const colors = ['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#14b8a6'];
+                        return (
+                          <Line 
+                            key={vgs}
+                            type="monotone" 
+                            dataKey="ids"
+                            data={outputData.filter(p => p.vgs === vgs)}
+                            stroke={colors[idx % colors.length]}
+                            strokeWidth={2}
+                            dot={false}
+                            name={`Vgs = ${vgs}V`}
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="border-indigo-200 bg-indigo-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">Mobility (μ)</div>
+                    <div className="text-2xl font-bold text-indigo-700">{results.mobility.value.toFixed(1)}</div>
+                    <div className="text-xs text-gray-600 mt-1">cm²/V·s</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-cyan-200 bg-cyan-50">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-gray-600 mb-1">R<sub>on</sub></div>
+                    <div className="text-2xl font-bold text-cyan-700">{results.on_resistance.value.toFixed(2)}</div>
+                    <div className="text-xs text-gray-600 mt-1">Ω</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Parameters Tab */}
+            <TabsContent value="parameters" className="space-y-6">
+              {/* Quality Score */}
+              <Alert className={
+                results.quality_score >= 80 ? 'border-green-200 bg-green-50' :
+                results.quality_score >= 60 ? 'border-yellow-200 bg-yellow-50' :
+                'border-red-200 bg-red-50'
+              }>
+                <TrendingUp className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-lg">Quality Score: {results.quality_score}/100</span>
+                    {results.quality_score >= 80 ? (
+                      <Badge className="bg-green-600 text-white">Excellent</Badge>
+                    ) : results.quality_score >= 60 ? (
+                      <Badge className="bg-yellow-600 text-white">Good</Badge>
+                    ) : (
+                      <Badge className="bg-red-600 text-white">Needs Review</Badge>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Parameters Table */}
+              <div className="bg-white rounded-lg border overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b">
+                  <h3 className="font-semibold text-gray-800">Extracted Parameters</h3>
+                </div>
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Parameter</th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Value</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    <tr className="hover:bg-gray-50 bg-orange-50">
+                      <td className="px-4 py-3 text-sm font-semibold">Threshold Voltage (V<sub>th</sub>)</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-semibold">{results.threshold_voltage.value.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-sm">V</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">Extraction Method</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono" colSpan="2">Linear Extrapolation</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50 bg-purple-50">
+                      <td className="px-4 py-3 text-sm font-semibold">Max Transconductance (g<sub>m,max</sub>)</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-semibold">{(results.transconductance_max.value * 1000).toFixed(3)}</td>
+                      <td className="px-4 py-3 text-sm">mS</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">At V<sub>gs</sub></td>
+                      <td className="px-4 py-3 text-sm text-right font-mono">{results.transconductance_max.vgs.toFixed(3)}</td>
+                      <td className="px-4 py-3 text-sm">V</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50 bg-blue-50">
+                      <td className="px-4 py-3 text-sm font-semibold">Subthreshold Slope (SS)</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-semibold">{results.subthreshold_slope.value.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm">mV/dec</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50 bg-green-50">
+                      <td className="px-4 py-3 text-sm font-semibold">I<sub>on</sub>/I<sub>off</sub> Ratio</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-semibold">{results.ion_ioff_ratio.value.toExponential(2)}</td>
+                      <td className="px-4 py-3 text-sm">-</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50 bg-indigo-50">
+                      <td className="px-4 py-3 text-sm font-semibold">Carrier Mobility (μ)</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-semibold">{results.mobility.value.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm">cm²/V·s</td>
+                    </tr>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">On-Resistance (R<sub>on</sub>)</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono">{results.on_resistance.value.toFixed(3)}</td>
+                      <td className="px-4 py-3 text-sm">Ω</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Device Geometry */}
+              <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Device Geometry
+                </h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Width (W):</span>
+                    <span className="ml-2 font-mono font-semibold">{results.geometry.width} μm</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Length (L):</span>
+                    <span className="ml-2 font-mono font-semibold">{results.geometry.length} μm</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">W/L Ratio:</span>
+                    <span className="ml-2 font-mono font-semibold">{(results.geometry.width / results.geometry.length).toFixed(1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Oxide (t<sub>ox</sub>):</span>
+                    <span className="ml-2 font-mono font-semibold">{results.geometry.tox} nm</span>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+
+  {/* Status Messages */}
+  {isRunning && (
+    <Alert className="bg-purple-50 border-purple-200">
+      <Zap className="h-4 w-4 animate-pulse text-purple-600" />
+      <AlertDescription className="text-purple-900">
+        <span className="font-semibold">Measurement in progress...</span>
+        <span className="ml-2">Sweeping gate voltage and recording drain current</span>
+      </AlertDescription>
+    </Alert>
+  )}
+
+  {results && !isRunning && (
+    <Alert className="bg-green-50 border-green-200">
+      <CheckCircle className="h-4 w-4 text-green-600" />
+      <AlertDescription className="text-green-900">
+        <span className="font-semibold">Measurement completed successfully!</span>
+        <span className="ml-2">Quality: {results.quality_score}/100 | {new Date(results.timestamp).toLocaleString()}</span>
+      </AlertDescription>
+    </Alert>
+  )}
+</div>
+
+);
+};
+
+export default MOSFETCharacterization;
