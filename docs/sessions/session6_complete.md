@@ -72,7 +72,6 @@
 ## 🚀 Deployment Instructions
 
 ### Prerequisites
-```bash
 # Verify system requirements
 - Python 3.11+
 - Node.js 20+
@@ -80,10 +79,8 @@
 - PostgreSQL 15+
 - 8GB RAM minimum
 - 50GB storage
-```
 
 ### Step 1: Deploy Backend Modules
-```bash
 # Navigate to project root
 cd semiconductorlab
 
@@ -101,10 +98,8 @@ alembic upgrade head
 
 # Restart analysis service
 docker-compose restart analysis
-```
 
 ### Step 2: Deploy Frontend Components
-```bash
 # Copy UI components
 cp session6_ui_components_complete.tsx \
    apps/web/src/components/electrical/
@@ -118,20 +113,16 @@ npm run build
 
 # Restart web service
 docker-compose restart web
-```
 
 ### Step 3: Generate Test Data
-```bash
 # Generate all Session 6 test data
 python generate_session6_test_data.py
 
 # Verify generation
 ls -la data/test_data/electrical_advanced/
 # Should see 10 JSON files
-```
 
 ### Step 4: Run Tests
-```bash
 # Run integration tests
 pytest test_session6_complete_workflows.py -v
 
@@ -140,10 +131,8 @@ pytest test_session6_complete_workflows.py::TestPerformanceRequirements -v
 
 # Generate coverage report
 pytest test_session6_complete_workflows.py --cov --cov-report=html
-```
 
 ### Step 5: Deploy to Staging
-```bash
 # Build Docker images
 docker build -t semiconductorlab/analysis:session6 -f services/analysis/Dockerfile .
 docker build -t semiconductorlab/web:session6 -f apps/web/Dockerfile .
@@ -158,10 +147,8 @@ kubectl apply -f k8s/session6-deployment.yaml
 # Verify deployment
 kubectl get pods -n semiconductorlab
 kubectl logs -n semiconductorlab deployment/analysis
-```
 
 ### Step 6: Validation
-```bash
 # Health check
 curl http://localhost:8000/health
 
@@ -179,7 +166,6 @@ curl -X POST http://localhost:8000/api/v1/electrical/ebic/analyze \
 curl -X POST http://localhost:8000/api/v1/electrical/pcd/analyze \
   -H "Content-Type: application/json" \
   -d @data/test_data/electrical_advanced/pcd/transient_low_injection.json
-```
 
 ---
 
@@ -204,11 +190,9 @@ curl -X POST http://localhost:8000/api/v1/electrical/pcd/analyze \
 ## 🔄 Integration with Previous Sessions
 
 ### Data Flow
-```
 Session 4 (Hall) → Carrier concentration → Session 6 (DLTS) → Trap density
 Session 5 (I-V) → Device quality → Session 6 (EBIC) → Defect location
 Session 5 (Solar) → Efficiency → Session 6 (PCD) → Lifetime limiting factors
-```
 
 ### Cross-Validation
 - DLTS trap concentration validates Hall measurements
@@ -262,7 +246,6 @@ Session 5 (Solar) → Efficiency → Session 6 (PCD) → Lifetime limiting facto
 - Thin film interference models
 
 **Preparation:**
-```bash
 # Review optical physics
 docs/theory/optical_spectroscopy.md
 
@@ -274,7 +257,6 @@ docs/instruments/ftir_integration.md
 - Si wafers (reference)
 - GaN films (direct bandgap)
 - Polymer films (FTIR features)
-```
 
 ---
 

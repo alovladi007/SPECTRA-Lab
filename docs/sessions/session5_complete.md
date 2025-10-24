@@ -38,7 +38,6 @@
 
 **File:** `apps/web/src/app/(dashboard)/electrical/mosfet/page.tsx`
 
-```typescript
 // Key Features Needed:
 // 1. Configuration Panel
 //    - Device type (n-MOS/p-MOS)
@@ -75,11 +74,9 @@ const MOSFETCharacterization = () => {
   // - Results + plots (right, 3 columns)
   // - Tabs for different views
 };
-```
 
 **Backend Integration:**
 
-```bash
 # API Endpoint
 POST /api/v1/electrical/mosfet/analyze-transfer
 POST /api/v1/electrical/mosfet/analyze-output
@@ -102,7 +99,6 @@ POST /api/v1/electrical/mosfet/analyze-output
   "ion_ioff_ratio": {...},
   "quality_score": int
 }
-```
 
 -----
 
@@ -110,7 +106,6 @@ POST /api/v1/electrical/mosfet/analyze-output
 
 **File:** `apps/web/src/app/(dashboard)/electrical/cv-profiling/page.tsx`
 
-```typescript
 // Key Features Needed:
 // 1. Configuration
 //    - Device type (MOS Capacitor/Schottky Diode)
@@ -137,16 +132,13 @@ const CVProfiling = () => {
   // 2. 1/C² vs V (Mott-Schottky)
   // 3. Doping profile N(x) vs depth
 };
-```
 
 **Backend Integration:**
 
-```bash
 POST /api/v1/electrical/cv-profiling/analyze-mos
 POST /api/v1/electrical/cv-profiling/analyze-schottky
 
 # Handles all C-V analysis and doping extraction
-```
 
 -----
 
@@ -154,7 +146,6 @@ POST /api/v1/electrical/cv-profiling/analyze-schottky
 
 **File:** `apps/web/src/app/(dashboard)/electrical/bjt/page.tsx`
 
-```typescript
 // Simpler interface - two main views:
 // 1. Gummel Plot (Ic, Ib vs Vbe)
 // 2. Output Characteristics (Ic vs Vce)
@@ -169,7 +160,6 @@ const BJTCharacterization = () => {
   // - Ideality factors
   // - Saturation region detection
 };
-```
 
 -----
 
@@ -177,7 +167,6 @@ const BJTCharacterization = () => {
 
 **File:** `services/analysis/tests/integration/test_session5_workflows.py`
 
-```python
 """
 Session 5 Integration Tests - End-to-End Workflows
 
@@ -249,15 +238,12 @@ class TestReporting:
         # Verify PDF structure
         # Check file size reasonable
         pass
-```
 
 **Run Tests:**
 
-```bash
 pytest services/analysis/tests/integration/test_session5_workflows.py -v --cov
 
 # Expected: All tests pass, >90% coverage
-```
 
 -----
 
@@ -267,7 +253,6 @@ pytest services/analysis/tests/integration/test_session5_workflows.py -v --cov
 
 **File:** `docs/methods/electrical/mosfet_iv.md`
 
-```markdown
 # MOSFET I-V Characterization
 
 ## Overview
@@ -340,7 +325,6 @@ parameters for device modeling and quality control.
 3. IEEE Standard 1620-2008
 
 ## Platform Usage
-```bash
 # Navigate to MOSFET module
 Dashboard → Electrical → MOSFET Characterization
 
@@ -355,14 +339,11 @@ Start Measurement
 # View results
 Vth, gm_max, μ, Ion/Ioff
 Export data or generate report
-```
 
-```
 ### 2. Solar Cell Testing Guide
 
 **File:** `docs/methods/electrical/solar_cell_iv.md`
 
-```markdown
 # Solar Cell I-V Characterization
 
 ## Overview
@@ -444,7 +425,6 @@ Efficiency decreases ~-0.4%/°C
 3. Green et al., "Solar Cell Efficiency Tables"
 
 ## Platform Usage
-```bash
 # Navigate to Solar Cell module
 Dashboard → Electrical → Solar Cell Characterization
 
@@ -461,14 +441,11 @@ Start Measurement → Wait for I-V sweep
 Efficiency, FF, Isc, Voc
 Compare to record efficiency
 Export or generate PDF report
-```
 
-```
 ### 3. C-V Profiling Guide
 
 **File:** `docs/methods/electrical/cv_profiling.md`
 
-```markdown
 # C-V Profiling
 
 ## Overview
@@ -524,7 +501,6 @@ Platform extracts:
 **Solution:** Characterize at multiple frequencies
 
 ## Platform Usage
-```bash
 # Navigate to C-V module
 Dashboard → Electrical → C-V Profiling
 
@@ -540,9 +516,7 @@ Start Measurement
 # View results
 C-V curve, Mott-Schottky plot, doping profile
 Export data
-```
 
-```
 ---
 
 ## 📋 API Documentation Updates (1 hour)
@@ -551,7 +525,6 @@ Export data
 
 Add these endpoint definitions:
 
-```yaml
 paths:
   /api/v1/electrical/mosfet/analyze-transfer:
     post:
@@ -684,7 +657,6 @@ components:
           type: object
         quality_score:
           type: integer
-```
 
 -----
 
@@ -692,7 +664,6 @@ components:
 
 ### Generate All Test Data
 
-```bash
 python scripts/dev/generate_session5_test_data.py
 
 # Output:
@@ -701,11 +672,9 @@ python scripts/dev/generate_session5_test_data.py
 # ✓ Generated 4 C-V datasets
 # ✓ Generated 4 BJT datasets
 # ✓ Total: 17 complete test datasets
-```
 
 ### Run Complete Test Suite
 
-```bash
 # Unit tests
 pytest services/analysis/tests/test_mosfet_analysis.py -v
 pytest services/analysis/tests/test_solar_cell.py -v
@@ -719,18 +688,15 @@ pytest services/analysis/tests/integration/test_session5_workflows.py -v
 make test-coverage
 
 # Expected: >90% coverage, all tests pass
-```
 
 ### Start Development Environment
 
-```bash
 make dev-up
 
 # Access:
 # - Web UI: http://localhost:3000
 # - API Docs: http://localhost:8000/docs
 # - Grafana: http://localhost:3001
-```
 
 -----
 

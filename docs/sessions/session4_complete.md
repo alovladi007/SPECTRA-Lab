@@ -48,7 +48,6 @@ Session 4 successfully implements the first set of electrical characterization m
 
 **Validation Tests:**
 
-```python
 # Test 1: Van der Pauw solver accuracy
 test_resistances = [125.0, 127.0]
 result = solve_van_der_pauw(test_resistances)
@@ -77,7 +76,6 @@ cleaned, mask = chauvenet_criterion(data)
 assert len(cleaned) == 4
 assert np.sum(mask) == 1
 print(f"✓ Outlier rejection: removed {np.sum(mask)} points")
-```
 
 **Status:** ✅ All tests passed
 
@@ -108,7 +106,6 @@ print(f"✓ Outlier rejection: removed {np.sum(mask)} points")
 
 **Validation Tests:**
 
-```python
 # Test 1: Known material (n-Si, n=5×10¹⁸ cm⁻³)
 Q_E = 1.602176634e-19
 expected_n = 5e18
@@ -144,7 +141,6 @@ analysis = analyze_hall_effect(measurements_ptype)
 assert analysis['carrier_type'] == 'p-type'
 assert analysis['hall_coefficient']['value'] > 0
 print(f"✓ p-type detection: R_H = {analysis['hall_coefficient']['value']:.2e}")
-```
 
 **Status:** ✅ All tests passed
 
@@ -190,7 +186,6 @@ Hall Effect:
 
 **Validation:**
 
-```bash
 # Generate all test data
 python scripts/dev/generate_electrical_test_data.py
 
@@ -208,7 +203,6 @@ python scripts/dev/generate_electrical_test_data.py
   - 4 Four-Point Probe datasets
   - 4 Hall Effect datasets
   - Location: data/test_data/electrical/
-```
 
 **Status:** ✅ All datasets validated
 
@@ -276,7 +270,6 @@ python scripts/dev/generate_electrical_test_data.py
 
 **Endpoints Added:**
 
-```python
 # Four-Point Probe
 POST /api/v1/electrical/four-point-probe/analyze
 Body: {
@@ -308,7 +301,6 @@ Response: {
   "carrier_concentration": {...},
   "hall_mobility": {...}
 }
-```
 
 **Status:** ✅ OpenAPI spec updated, endpoints functional
 
@@ -352,7 +344,6 @@ Response: {
 
 ### Unit Tests
 
-```bash
 # Run all S4 tests
 pytest services/analysis/tests/methods/electrical/
 
@@ -371,11 +362,9 @@ test_hall_effect.py::test_mobility_calculation ✓
 test_hall_effect.py::test_quality_assessment ✓
 
 Coverage: 93% (target: 80%)
-```
 
 ### Integration Tests
 
-```bash
 # End-to-end workflow test
 pytest services/analysis/tests/integration/test_electrical_workflow.py
 
@@ -385,7 +374,6 @@ pytest services/analysis/tests/integration/test_electrical_workflow.py
 3. Run Hall analysis with 4PP result → ✓
 4. Generate report → ✓
 5. Export to HDF5 → ✓
-```
 
 ### Validation Against Reference Data
 

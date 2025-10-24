@@ -47,7 +47,6 @@ Session 2 establishes the complete data persistence layer for the SemiconductorL
 
 **Validation Test:**
 
-```python
 # Test 1: Import all models
 from app.models import *
 assert len(Base.metadata.tables) == 28
@@ -75,7 +74,6 @@ print(f"✓ Relationships configured correctly")
 assert user.role == UserRole.ENGINEER
 assert user.role.value == "engineer"
 print(f"✓ Enums work correctly")
-```
 
 **Status:** ✅ All tests passed
 
@@ -103,7 +101,6 @@ print(f"✓ Enums work correctly")
 
 **Validation Test:**
 
-```python
 # Test 1: Schema validation
 from app.schemas import UserCreate
 
@@ -148,7 +145,6 @@ from app.schemas import UserResponse
 user_schema = UserResponse.model_validate(user_orm)
 assert user_schema.email == user_orm.email
 print(f"✓ ORM to schema conversion works")
-```
 
 **Status:** ✅ All tests passed
 
@@ -177,7 +173,6 @@ print(f"✓ ORM to schema conversion works")
 
 **Validation Test:**
 
-```python
 # Test 1: HDF5 roundtrip
 import numpy as np
 from semiconductorlab_common.storage import HDF5Handler
@@ -233,7 +228,6 @@ json_str = meta.to_json()
 reconstructed = FileMetadata.from_json(json_str)
 assert reconstructed.file_hash == file_hash
 print(f"✓ Metadata serialization works")
-```
 
 **Status:** ✅ All tests passed
 
@@ -261,7 +255,6 @@ print(f"✓ Metadata serialization works")
 
 **Validation Test:**
 
-```python
 # Test 1: Basic quantities
 from semiconductorlab_common.units import Q_
 
@@ -327,7 +320,6 @@ assert ucum_dict["unit"] == "mA"
 reconstructed = UCUMSerializer.from_ucum(ucum_dict["value"], ucum_dict["unit"])
 assert np.isclose(reconstructed.magnitude, current.magnitude)
 print(f"✓ UCUM serialization works")
-```
 
 **Status:** ✅ All tests passed
 
@@ -358,7 +350,6 @@ print(f"✓ UCUM serialization works")
 
 **Validation Test:**
 
-```python
 # Test 1: Run batch generation
 from scripts.dev.generate_test_data import TestDataGenerator, GeneratorConfig
 
@@ -437,7 +428,6 @@ from scipy.signal import find_peaks
 peaks, _ = find_peaks(intensity, height=100, distance=50)
 assert len(peaks) >= 3  # Should have at least 3 Si peaks
 print(f"✓ XRD pattern has {len(peaks)} peaks")
-```
 
 **Status:** ✅ All tests passed
 
@@ -449,7 +439,6 @@ print(f"✓ XRD pattern has {len(peaks)} peaks")
 
 **Test:** Populate database with complete sample workflow
 
-```python
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import Base, Organization, User, Project, Sample, Instrument, Method, Run
@@ -549,7 +538,6 @@ assert session.query(Method).count() == 1
 assert session.query(Run).count() == 1
 
 print("✓ Database population test passed")
-```
 
 **Status:** ✅ PASSED
 
@@ -559,7 +547,6 @@ print("✓ Database population test passed")
 
 **Test:** Validate all test data against Pydantic schemas
 
-```python
 from app.schemas import (
     RunCreate, SampleCreate, InstrumentCreate,
     ResultCreate, MeasurementCreate
@@ -598,7 +585,6 @@ result = ResultCreate(
 )
 assert float(result.value) == iv_data["parameters"]["n"]
 print("✓ Result schema validation passed")
-```
 
 **Status:** ✅ PASSED
 

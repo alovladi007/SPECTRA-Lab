@@ -55,7 +55,6 @@
 
 ### Level 1: System Context Diagram
 
-```mermaid
 graph TB
     subgraph "Lab Environment"
         LabTech[Lab Technician<br/>Runs experiments]
@@ -98,7 +97,6 @@ graph TB
     SemiconductorLab -->|Connects to| OtherInst
 
     style SemiconductorLab fill:#4A90E2,stroke:#2E5C8A,color:#fff
-```
 
 **Key Interactions:**
 
@@ -110,7 +108,6 @@ graph TB
 
 ### Level 2: Container Diagram
 
-```mermaid
 graph TB
     subgraph "User Devices"
         Browser[Web Browser<br/>Chrome, Firefox, Safari]
@@ -217,7 +214,6 @@ graph TB
     style ReportService fill:#4CAF50,stroke:#2E7D32,color:#fff
     style PostgresDB fill:#336791,stroke:#1A3A52,color:#fff
     style MessageBus fill:#FF6B6B,stroke:#C92A2A,color:#fff
-```
 
 **Container Descriptions:**
 
@@ -243,7 +239,6 @@ graph TB
 
 ### Level 3: Component Diagram (Instrument Service)
 
-```mermaid
 graph TB
     subgraph "Instrument Service"
         API[API Controller<br/>FastAPI routes]
@@ -313,7 +308,6 @@ graph TB
     style InstrMgr fill:#FFD93D,stroke:#F39C12,color:#000
     style DriverMgr fill:#FFD93D,stroke:#F39C12,color:#000
     style DataValidator fill:#A8E6CF,stroke:#56C596,color:#000
-```
 
 **Component Responsibilities:**
 
@@ -404,7 +398,6 @@ graph TB
 
 **Directory Structure:**
 
-```
 apps/web/
 ├── app/                    # Next.js app router
 │   ├── (auth)/            # Auth pages (login, register)
@@ -426,7 +419,6 @@ apps/web/
 ├── hooks/              # Custom React hooks
 ├── stores/             # Zustand stores
 └── types/              # TypeScript types
-```
 
 **Key Patterns:**
 
@@ -442,7 +434,6 @@ apps/web/
 
 **Directory Structure:**
 
-```
 services/
 ├── auth/              # Authentication service
 │   ├── main.py       # FastAPI app
@@ -477,7 +468,6 @@ services/
 └── notifications/   # Notification service
     ├── main.py
     └── channels/    # Email, Slack, webhook handlers
-```
 
 **Common Patterns:**
 
@@ -493,7 +483,6 @@ services/
 
 ### Example: Running an I-V Sweep
 
-```mermaid
 sequenceDiagram
     actor User
     participant WebApp
@@ -543,7 +532,6 @@ sequenceDiagram
 
     Message Bus-->>WebApp (SSE): Notify analysis done
     WebApp (SSE)->>User: Show extracted parameters
-```
 
 **Key Points:**
 
@@ -564,7 +552,6 @@ sequenceDiagram
 
 ### Authentication Flow (OAuth2/OIDC)
 
-```mermaid
 sequenceDiagram
     actor User
     participant Browser
@@ -590,7 +577,6 @@ sequenceDiagram
     API Gateway->>Backend Services: Forward request (+ user context)
     Backend Services-->>API Gateway: Response
     API Gateway-->>Browser: Response
-```
 
 **Key Security Features:**
 
@@ -642,7 +628,6 @@ sequenceDiagram
 
 ### Development Environment
 
-```yaml
 # docker-compose.yml (simplified)
 services:
   web:
@@ -700,21 +685,17 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports: ["3001:3000"]
-```
 
 **One-Command Startup:**
 
-```bash
 make dev-up   # Starts all services
 make dev-down # Stops and removes containers
 make dev-logs # Tail logs
-```
 
 -----
 
 ### Production Environment (Kubernetes)
 
-```mermaid
 graph TB
     subgraph "Kubernetes Cluster"
         subgraph "Ingress"
@@ -794,7 +775,6 @@ graph TB
     style IngressCtrl fill:#FF6B6B,stroke:#C92A2A,color:#fff
     style PostgresStateful fill:#336791,stroke:#1A3A52,color:#fff
     style NATSStateful fill:#27AAE1,stroke:#1A6FA1,color:#fff
-```
 
 **Key Features:**
 
@@ -808,7 +788,6 @@ graph TB
 
 **Helm Chart Structure:**
 
-```
 helm/semiconductorlab/
 ├── Chart.yaml
 ├── values.yaml              # Default values
@@ -825,11 +804,9 @@ helm/semiconductorlab/
 │   ├── pvc.yaml            # Persistent Volume Claims
 │   └── ...
 └── charts/                 # Sub-charts (optional)
-```
 
 **Deployment Commands:**
 
-```bash
 # Install or upgrade
 helm upgrade --install semiconductorlab ./helm/semiconductorlab \
   --namespace lab --create-namespace \
@@ -841,7 +818,6 @@ helm rollback semiconductorlab 1 --namespace lab
 # View status
 helm status semiconductorlab --namespace lab
 kubectl get pods -n lab
-```
 
 -----
 

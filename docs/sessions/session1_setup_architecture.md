@@ -128,7 +128,6 @@ Session 1 establishes the foundation for the SemiconductorLab platform. All deli
 
 **Validation Test:**
 
-```bash
 # Test 1: Clone and setup
 git clone https://github.com/org/semiconductorlab.git
 cd semiconductorlab
@@ -146,7 +145,6 @@ curl -I http://localhost:3000
 # Test 4: API health check
 curl http://localhost:8000/health
 # Result: ✅ {"status": "healthy"}
-```
 
 **Validation Notes:**
 
@@ -180,7 +178,6 @@ curl http://localhost:8000/health
 
 **Validation Test:**
 
-```bash
 # Test 1: Validate spec
 npx @apidevtools/swagger-cli validate docs/api/openapi.yaml
 # Result: ✅ openapi.yaml is valid
@@ -193,7 +190,6 @@ grep "  /:
 # Test 3: Generate client
 npx openapi-generator-cli generate -i docs/api/openapi.yaml -g typescript-axios -o /tmp/client
 # Result: ✅ Client generated successfully
-```
 
 **Validation Notes:**
 
@@ -225,7 +221,6 @@ npx openapi-generator-cli generate -i docs/api/openapi.yaml -g typescript-axios 
 
 **Validation Test:**
 
-```sql
 -- Test 1: Run migration
 psql -U postgres -d semiconductorlab_dev < db/migrations/001_initial_schema.sql
 -- Result: ✅ All statements executed successfully
@@ -248,7 +243,6 @@ INSERT INTO projects (organization_id, name, owner_id) VALUES (...);
 DELETE FROM organizations WHERE slug = 'test-org';
 SELECT COUNT(*) FROM projects WHERE organization_id = ...;
 -- Result: ✅ 0 (cascade delete worked)
-```
 
 **Validation Notes:**
 
@@ -280,7 +274,6 @@ SELECT COUNT(*) FROM projects WHERE organization_id = ...;
 
 **Validation Test:**
 
-```bash
 # Test 1: Build
 cd apps/web && npm run build
 # Result: ✅ Build completed in 18s
@@ -301,7 +294,6 @@ npm run dev
 # Test 5: TypeScript checks
 npm run type-check
 # Result: ✅ No type errors
-```
 
 **Validation Notes:**
 
@@ -333,7 +325,6 @@ npm run type-check
 
 **Validation Test:**
 
-```bash
 # Test 1: Run example
 cd services/instruments/app/simulators
 python base_simulator.py
@@ -357,7 +348,6 @@ python base_simulator.py
 # Test 4: Breakdown behavior
 # Sweep from 0V to -10V
 # Result: ✅ Current exponentially increases at V < Vbr
-```
 
 **Validation Notes:**
 
@@ -379,7 +369,6 @@ python base_simulator.py
 
 **Test Scenario:** Simulate a complete I-V measurement workflow
 
-```bash
 # 1. Start services
 make dev-up
 
@@ -431,7 +420,6 @@ curl http://localhost:8000/api/v1/runs/{run_id}/stream
 # 6. Download results
 curl http://localhost:8000/api/v1/runs/{run_id}/data?format=csv -o iv_data.csv
 # Result: ✅ CSV file downloaded with 100 data points
-```
 
 **Status:** ✅ PASSED
 
@@ -441,7 +429,6 @@ curl http://localhost:8000/api/v1/runs/{run_id}/data?format=csv -o iv_data.csv
 
 **Test:** GitHub Actions CI workflow
 
-```yaml
 name: CI
 on: [push, pull_request]
 jobs:
@@ -459,7 +446,6 @@ jobs:
         run: make test
       - name: Tear down
         run: docker-compose -f infra/docker/docker-compose.yml down
-```
 
 **Result:** ✅ CI pipeline green on `main` branch
 
@@ -523,7 +509,6 @@ jobs:
 
 ### Quick Start
 
-```bash
 # Clone repo
 git clone https://github.com/org/semiconductorlab.git
 cd semiconductorlab
@@ -534,11 +519,9 @@ make dev-up
 # Access UI: http://localhost:3000
 # Access API docs: http://localhost:8000/docs
 # Access Grafana: http://localhost:3001 (admin/admin)
-```
 
 ### Development Commands
 
-```bash
 make dev-down          # Stop services
 make dev-logs          # Tail logs
 make dev-reset         # Reset database and start fresh
@@ -548,15 +531,12 @@ make test              # Run all tests
 make lint              # Lint all code
 make format            # Format all code
 make build             # Build Docker images
-```
 
 ### Cleanup
 
-```bash
 make clean             # Clean build artifacts
 make dev-down          # Stop containers
 docker system prune -a # Remove unused Docker resources
-```
 
 -----
 

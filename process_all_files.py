@@ -27,6 +27,7 @@ FILE_MAPPINGS = {
     # Test data generators
     'Electrical_test_data_generators': 'scripts/dev/generate_electrical_test_data.py',
     'Test_data_generation_': 'scripts/generate_test_data.py',
+    'Session_5_test_data_generators': 'scripts/dev/generate_session5_test_data.py',
 
     # Analysis modules - Electrical
     '4_point_probe_analysis_': 'services/analysis/app/methods/electrical/four_point_probe.py',
@@ -46,12 +47,30 @@ FILE_MAPPINGS = {
     'Solar_Cell_Charachterization_UI': 'apps/web/src/app/(dashboard)/electrical/solar-cell/page.tsx',
     'C-V_Profiling_Interface': 'apps/web/src/app/(dashboard)/electrical/cv-profiling/page.tsx',
 
+    # Integration Tests
+    'Complete_Integration_Test_Suite_for_Session_5__Electrical_II': 'tests/integration/test_session5_electrical_workflows.py',
+    'Complete_Integration_Test_Suite_for_Session_6__Electrical_III': 'tests/integration/test_session6_electrical_workflows.py',
+    'S3_complete_Test_Suite_': 'tests/unit/test_core_infrastructure.py',
+
+    # Utilities
+    'Unit_handling_system_': 'packages/common/semiconductorlab_common/units.py',
+    'Object_storage_': 'src/backend/services/storage.py',
+
     # Documentation
     'Session_1__Program_setup_and_Architecture_': 'docs/sessions/session1_setup_architecture.md',
     'Session_1_an_2_complete_': 'docs/sessions/sessions_1_2_complete.md',
     'Session_4_electrical_1_complete_': 'docs/sessions/session4_complete.md',
     'Session_5__Electrical_II_-_Complete_Implementation_Guide': 'docs/sessions/session5_complete.md',
     'Session_6__Electrical_III_-_Complete_Implementation_Package': 'docs/sessions/session6_complete.md',
+    'Session_5_Method_playbooks': 'docs/methods/session5_playbooks.md',
+    'Requirement_Documents_': 'docs/REQUIREMENTS.md',
+    'Lab_technician_training_guide_': 'docs/guides/technician_training.md',
+    'Semiconductor_lab_-_Repository_Structure_': 'docs/REPOSITORY_STRUCTURE.md',
+
+    # Deployment Scripts
+    'Complete_Deployment_Script_': 'scripts/deploy_complete.sh',
+    'Production_deployment_script_': 'scripts/deploy_production.sh',
+    'SemiconductorLab_Platform_-_Master_Deployment_Script': 'scripts/deploy_master.sh',
 
     # Configuration
     'Docker_Compose_': 'infra/docker/docker-compose.yml',
@@ -64,14 +83,14 @@ FILE_MAPPINGS = {
 }
 
 def clean_python_content(content: str) -> str:
-    """Clean Python file content by removing markdown artifacts"""
+    """Clean file content by removing markdown artifacts"""
     lines = content.split('\n')
     cleaned_lines = []
     skip_next = False
 
     for line in lines:
         # Skip markdown code block markers
-        if line.strip() in ['```', '```python', '```py']:
+        if line.strip() in ['```', '```python', '```py', '```bash', '```sh', '```typescript', '```tsx', '```yaml', '```sql']:
             continue
 
         # Remove leading triple backticks with content
@@ -91,7 +110,7 @@ def process_file(source_path: Path, dest_path: Path):
         content = f.read()
 
     # Clean content based on file type
-    if dest_path.suffix in ['.py', '.tsx', '.ts']:
+    if dest_path.suffix in ['.py', '.tsx', '.ts', '.sh', '.md', '.yaml', '.yml']:
         content = clean_python_content(content)
 
     # Ensure destination directory exists
