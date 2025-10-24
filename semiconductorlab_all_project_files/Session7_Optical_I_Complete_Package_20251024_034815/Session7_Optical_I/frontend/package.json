@@ -1,0 +1,10 @@
+{
+  "name": "session7-optical-frontend",
+  "version": "1.0.0",
+  "dependencies": {
+    "recharts": "^2.8.0",
+    "plotly.js": "^2.26.0",
+    "d3": "^7.8.0",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
