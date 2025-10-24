@@ -1,0 +1,700 @@
+# ============================================================================
+
+# Production Deployment Package
+
+# Complete scripts for deploying SemiconductorLab to production
+
+# ============================================================================
+
+-----
+
+# File 1: docker-compose.prod.yml
+
+# Production-grade Docker Compose configuration
+
+version: ‘3.8’
+
+services:
+
+# ===== Frontend =====
+
+web:
+image: semiconductorlab/web:${VERSION:-latest}
+build:
+context: ./apps/web
+dockerfile: Dockerfile.prod
+args:
+NODE_ENV: production
+ports:
+- “80:3000”
+- “443:3000”
+environment:
+- NODE_ENV=production
+- NEXT_PUBLIC_API_URL=https://api.semiconductorlab.com
+- NEXT_TELEMETRY_DISABLED=1
+depends_on:
+- api-gateway
+restart: unless-stopped
+healthcheck:
+test: [“CMD”, “curl”, “-f”, “http://localhost:3000/api/health”]
+interval: 30s
+timeout: 10s
+retries: 3
+deploy:
+replicas: 2
+resources:
+limits:
+cpus: ‘1.0’
+memory: 1G
+reservations:
+cpus: ‘0.5’
+memory: 512M
+
+# ===== API Gateway =====
+
+api-gateway:
+image: semiconductorlab/api-gateway:${VERSION:-latest}
+build:
+context: ./services/api-gateway
+dockerfile: Dockerfile.prod
+ports:
+- “8000:8000”
+environment:
+- DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/semiconductorlab
+- REDIS_URL=redis://redis:6379/0
+- JWT_SECRET=${JWT_SECRET}
+- CORS_ORIGINS=https://semiconductorlab.com,https://www.semiconductorlab.com
+- LOG_LEVEL=INFO
+depends_on:
+- postgres
+- redis
+restart: unless-stopped
+healthcheck:
+test: [“CMD”, “curl”, “-f”, “http://localhost:8000/health”]
+interval: 30s
+timeout: 10s
+retries: 3
+deploy:
+replicas: 2
+resources:
+limits:
+cpus: ‘2.0’
+memory: 2G
+
+# ===== Instruments Service =====
+
+instruments:
+image: semiconductorlab/instruments:${VERSION:-latest}
+build:
+context: ./services/instruments
+dockerfile: Dockerfile.prod
+ports:
+- “8001:8000”
+environment:
+- DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/semiconductorlab
+- REDIS_URL=redis://redis:6379/1
+- NATS_URL=nats://nats:4222
+- S3_ENDPOINT=${S3_ENDPOINT}
+- S3_ACCESS_KEY=${S3_ACCESS_KEY}
+- S3_SECRET_KEY=${S3_SECRET_KEY}
+- LOG_LEVEL=INFO
+depends_on:
+- postgres
+- redis
+- nats
+- minio
+restart: unless-stopped
+devices:
+- “/dev/usbtmc0:/dev/usbtmc0”  # USBTMC devices
+privileged: true  # Required for instrument access
+deploy:
+replicas: 1  # Single instance for instrument control
+resources:
+limits:
+cpus: ‘1.0’
+memory: 1G
+
+# ===== Analysis Service =====
+
+analysis:
+image: semiconductorlab/analysis:${VERSION:-latest}
+build:
+context: ./services/analysis
+dockerfile: Dockerfile.prod
+ports:
+- “8002:8000”
+environment:
+- DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/semiconductorlab
+- REDIS_URL=redis://redis:6379/2
+- NATS_URL=nats://nats:4222
+- S3_ENDPOINT=${S3_ENDPOINT}
+- S3_ACCESS_KEY=${S3_ACCESS_KEY}
+- S3_SECRET_KEY=${S3_SECRET_KEY}
+- CELERY_BROKER_URL=redis://redis:6379/3
+- LOG_LEVEL=INFO
+depends_on:
+- postgres
+- redis
+- nats
+- minio
+restart: unless-stopped
+deploy:
+replicas: 3
+resources:
+limits:
+cpus: ‘4.0’
+memory: 8G
+
+# ===== Celery Workers =====
+
+celery-worker:
+image: semiconductorlab/analysis:${VERSION:-latest}
+command: celery -A app.workers worker –loglevel=info –concurrency=4
+environment:
+- DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/semiconductorlab
+- REDIS_URL=redis://redis:6379/2
+- CELERY_BROKER_URL=redis://redis:6379/3
+- S3_ENDPOINT=${S3_ENDPOINT}
+- S3_ACCESS_KEY=${S3_ACCESS_KEY}
+- S3_SECRET_KEY=${S3_SECRET_KEY}
+depends_on:
+- postgres
+- redis
+- minio
+restart: unless-stopped
+deploy:
+replicas: 2
+resources:
+limits:
+cpus: ‘4.0’
+memory: 8G
+
+# ===== PostgreSQL + TimescaleDB =====
+
+postgres:
+image: timescale/timescaledb:latest-pg15
+ports:
+- “5432:5432”
+environment:
+- POSTGRES_DB=semiconductorlab
+- POSTGRES_USER=postgres
+- POSTGRES_PASSWORD=${DB_PASSWORD}
+- PGDATA=/var/lib/postgresql/data/pgdata
+volumes:
+- postgres-data:/var/lib/postgresql/data
+- ./db/migrations:/docker-entrypoint-initdb.d
+restart: unless-stopped
+healthcheck:
+test: [“CMD-SHELL”, “pg_isready -U postgres”]
+interval: 10s
+timeout: 5s
+retries: 5
+deploy:
+resources:
+limits:
+cpus: ‘4.0’
+memory: 8G
+
+# ===== Redis =====
+
+redis:
+image: redis:7-alpine
+ports:
+- “6379:6379”
+command: redis-server –appendonly yes –requirepass ${REDIS_PASSWORD}
+volumes:
+- redis-data:/data
+restart: unless-stopped
+healthcheck:
+test: [“CMD”, “redis-cli”, “ping”]
+interval: 10s
+timeout: 5s
+retries: 5
+
+# ===== NATS =====
+
+nats:
+image: nats:latest
+ports:
+- “4222:4222”
+- “8222:8222”
+command: “–jetstream –store_dir=/data”
+volumes:
+- nats-data:/data
+restart: unless-stopped
+healthcheck:
+test: [“CMD”, “wget”, “–spider”, “http://localhost:8222/healthz”]
+interval: 10s
+timeout: 5s
+retries: 5
+
+# ===== MinIO (S3-compatible storage) =====
+
+minio:
+image: minio/minio:latest
+ports:
+- “9000:9000”
+- “9001:9001”
+environment:
+- MINIO_ROOT_USER=${S3_ACCESS_KEY}
+- MINIO_ROOT_PASSWORD=${S3_SECRET_KEY}
+volumes:
+- minio-data:/data
+command: server /data –console-address “:9001”
+restart: unless-stopped
+healthcheck:
+test: [“CMD”, “curl”, “-f”, “http://localhost:9000/minio/health/live”]
+interval: 30s
+timeout: 10s
+retries: 3
+
+# ===== Prometheus =====
+
+prometheus:
+image: prom/prometheus:latest
+ports:
+- “9090:9090”
+volumes:
+- ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+- prometheus-data:/prometheus
+command:
+- ‘–config.file=/etc/prometheus/prometheus.yml’
+- ‘–storage.tsdb.path=/prometheus’
+- ‘–storage.tsdb.retention.time=30d’
+restart: unless-stopped
+
+# ===== Grafana =====
+
+grafana:
+image: grafana/grafana:latest
+ports:
+- “3001:3000”
+environment:
+- GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+- GF_INSTALL_PLUGINS=grafana-clock-panel
+volumes:
+- ./infra/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+- grafana-data:/var/lib/grafana
+depends_on:
+- prometheus
+restart: unless-stopped
+
+# ===== Loki (Log Aggregation) =====
+
+loki:
+image: grafana/loki:latest
+ports:
+- “3100:3100”
+volumes:
+- ./infra/monitoring/loki/loki-config.yml:/etc/loki/config.yml
+- loki-data:/loki
+command: -config.file=/etc/loki/config.yml
+restart: unless-stopped
+
+volumes:
+postgres-data:
+driver: local
+redis-data:
+driver: local
+nats-data:
+driver: local
+minio-data:
+driver: local
+prometheus-data:
+driver: local
+grafana-data:
+driver: local
+loki-data:
+driver: local
+
+networks:
+default:
+driver: bridge
+
+-----
+
+# File 2: .env.production.example
+
+# Production environment variables template
+
+# Application
+
+VERSION=1.0.0
+NODE_ENV=production
+LOG_LEVEL=INFO
+
+# Database
+
+DB_PASSWORD=CHANGE_ME_SECURE_PASSWORD
+DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/semiconductorlab
+
+# Redis
+
+REDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD
+REDIS_URL=redis://redis:6379/0
+
+# S3/MinIO
+
+S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=CHANGE_ME_MINIO_ACCESS_KEY
+S3_SECRET_KEY=CHANGE_ME_MINIO_SECRET_KEY
+
+# JWT
+
+JWT_SECRET=CHANGE_ME_JWT_SECRET_AT_LEAST_32_CHARS
+
+# Grafana
+
+GRAFANA_PASSWORD=CHANGE_ME_GRAFANA_PASSWORD
+
+# CORS
+
+CORS_ORIGINS=https://semiconductorlab.com,https://www.semiconductorlab.com
+
+# Email (for notifications)
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=notifications@semiconductorlab.com
+SMTP_PASSWORD=CHANGE_ME_SMTP_PASSWORD
+
+-----
+
+# File 3: Makefile.prod
+
+# Production deployment commands
+
+.PHONY: deploy health logs backup restore scale
+
+# Deploy to production
+
+deploy:
+@echo “🚀 Deploying SemiconductorLab to production…”
+@read -p “Have you reviewed the changes? (yes/no): “ confirm && [ “$$confirm” = “yes” ] || exit 1
+docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d –remove-orphans
+@echo “✓ Deployment complete”
+@echo “Running health checks…”
+@make health
+
+# Health check all services
+
+health:
+@echo “🏥 Checking service health…”
+@docker-compose -f docker-compose.prod.yml ps
+@curl -f http://localhost:3000/api/health || echo “❌ Web health check failed”
+@curl -f http://localhost:8000/health || echo “❌ API Gateway health check failed”
+@curl -f http://localhost:8001/health || echo “❌ Instruments health check failed”
+@curl -f http://localhost:8002/health || echo “❌ Analysis health check failed”
+@echo “✓ Health checks complete”
+
+# View logs
+
+logs:
+docker-compose -f docker-compose.prod.yml logs -f –tail=100
+
+# Backup database
+
+backup:
+@echo “💾 Creating database backup…”
+@mkdir -p backups
+@TIMESTAMP=$$(date +%Y%m%d_%H%M%S) &&   
+docker-compose -f docker-compose.prod.yml exec -T postgres   
+pg_dump -U postgres semiconductorlab | gzip > backups/db_$$TIMESTAMP.sql.gz
+@echo “✓ Backup created: backups/db_$$TIMESTAMP.sql.gz”
+
+# Restore database
+
+restore:
+@echo “⚠️  WARNING: This will restore the database from backup”
+@read -p “Enter backup filename (e.g., db_20250101_120000.sql.gz): “ filename &&   
+gunzip -c backups/$$filename |   
+docker-compose -f docker-compose.prod.yml exec -T postgres   
+psql -U postgres semiconductorlab
+@echo “✓ Database restored”
+
+# Scale services
+
+scale-analysis:
+docker-compose -f docker-compose.prod.yml up -d –scale analysis=5 –no-recreate
+
+scale-workers:
+docker-compose -f docker-compose.prod.yml up -d –scale celery-worker=4 –no-recreate
+
+# Rolling restart
+
+rolling-restart:
+@echo “🔄 Performing rolling restart…”
+@for service in web api-gateway instruments analysis; do   
+echo “Restarting $$service…”;   
+docker-compose -f docker-compose.prod.yml restart $$service;   
+sleep 10;   
+done
+@echo “✓ Rolling restart complete”
+
+# Stop all services
+
+stop:
+docker-compose -f docker-compose.prod.yml stop
+
+# Clean up
+
+clean:
+@echo “⚠️  WARNING: This will remove all containers and volumes”
+@read -p “Are you sure? (yes/no): “ confirm && [ “$$confirm” = “yes” ] || exit 1
+docker-compose -f docker-compose.prod.yml down -v
+@echo “✓ Cleanup complete”
+
+-----
+
+# File 4: kubernetes/deployment.yaml
+
+# Kubernetes production deployment (alternative to Docker Compose)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: semiconductorlab-web
+namespace: semiconductorlab
+spec:
+replicas: 3
+selector:
+matchLabels:
+app: web
+template:
+metadata:
+labels:
+app: web
+spec:
+containers:
+- name: web
+image: semiconductorlab/web:latest
+ports:
+- containerPort: 3000
+env:
+- name: NODE_ENV
+value: “production”
+- name: NEXT_PUBLIC_API_URL
+valueFrom:
+configMapKeyRef:
+name: app-config
+key: api-url
+resources:
+requests:
+memory: “512Mi”
+cpu: “500m”
+limits:
+memory: “1Gi”
+cpu: “1000m”
+livenessProbe:
+httpGet:
+path: /api/health
+port: 3000
+initialDelaySeconds: 30
+periodSeconds: 10
+readinessProbe:
+httpGet:
+path: /api/health
+port: 3000
+initialDelaySeconds: 5
+periodSeconds: 5
+
+-----
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: semiconductorlab-api
+namespace: semiconductorlab
+spec:
+replicas: 2
+selector:
+matchLabels:
+app: api
+template:
+metadata:
+labels:
+app: api
+spec:
+containers:
+- name: api
+image: semiconductorlab/api-gateway:latest
+ports:
+- containerPort: 8000
+env:
+- name: DATABASE_URL
+valueFrom:
+secretKeyRef:
+name: db-secret
+key: connection-string
+- name: JWT_SECRET
+valueFrom:
+secretKeyRef:
+name: jwt-secret
+key: token
+resources:
+requests:
+memory: “1Gi”
+cpu: “1000m”
+limits:
+memory: “2Gi”
+cpu: “2000m”
+
+-----
+
+# File 5: CI/CD Pipeline - .github/workflows/deploy-production.yml
+
+name: Deploy to Production
+
+on:
+push:
+tags:
+- ‘v*.*.*’
+
+jobs:
+test:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v3
+
+  - name: Run tests
+    run: |
+      docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+      docker-compose -f docker-compose.test.yml down
+  
+  - name: Check test results
+    run: |
+      if [ $? -ne 0 ]; then
+        echo "Tests failed"
+        exit 1
+      fi
+
+build-and-push:
+needs: test
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v3
+
+  - name: Set up Docker Buildx
+    uses: docker/setup-buildx-action@v2
+  
+  - name: Login to Docker Hub
+    uses: docker/login-action@v2
+    with:
+      username: ${{ secrets.DOCKER_USERNAME }}
+      password: ${{ secrets.DOCKER_PASSWORD }}
+  
+  - name: Extract version
+    id: version
+    run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+  
+  - name: Build and push
+    run: |
+      docker-compose -f docker-compose.prod.yml build
+      docker-compose -f docker-compose.prod.yml push
+
+deploy:
+needs: build-and-push
+runs-on: ubuntu-latest
+steps:
+- name: Deploy to production
+uses: appleboy/ssh-action@master
+with:
+host: ${{ secrets.PROD_SERVER_HOST }}
+username: ${{ secrets.PROD_SERVER_USER }}
+key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+script: |
+cd /opt/semiconductorlab
+git pull origin main
+make deploy
+make health
+
+-----
+
+# File 6: scripts/ops/deploy-production.sh
+
+# Manual deployment script
+
+#!/bin/bash
+set -e
+
+echo “=========================================”
+echo “SemiconductorLab Production Deployment”
+echo “=========================================”
+
+# Check prerequisites
+
+command -v docker >/dev/null 2>&1 || { echo “Docker is required but not installed”; exit 1; }
+command -v docker-compose >/dev/null 2>&1 || { echo “Docker Compose is required”; exit 1; }
+
+# Load environment
+
+if [ ! -f .env.production ]; then
+echo “❌ .env.production not found”
+echo “Copy .env.production.example and configure it”
+exit 1
+fi
+
+source .env.production
+
+# Validate critical env vars
+
+if [ -z “$DB_PASSWORD” ] || [ “$DB_PASSWORD” = “CHANGE_ME_SECURE_PASSWORD” ]; then
+echo “❌ DB_PASSWORD not configured in .env.production”
+exit 1
+fi
+
+if [ -z “$JWT_SECRET” ] || [ “$JWT_SECRET” = “CHANGE_ME_JWT_SECRET_AT_LEAST_32_CHARS” ]; then
+echo “❌ JWT_SECRET not configured in .env.production”
+exit 1
+fi
+
+# Confirm deployment
+
+read -p “Deploy version ${VERSION:-latest} to production? (yes/no): “ confirm
+if [ “$confirm” != “yes” ]; then
+echo “Deployment cancelled”
+exit 0
+fi
+
+# Backup database
+
+echo “📦 Creating backup…”
+make -f Makefile.prod backup
+
+# Pull latest images
+
+echo “📥 Pulling latest images…”
+docker-compose -f docker-compose.prod.yml pull
+
+# Deploy
+
+echo “🚀 Deploying…”
+docker-compose -f docker-compose.prod.yml up -d –remove-orphans
+
+# Wait for services
+
+echo “⏳ Waiting for services to start…”
+sleep 30
+
+# Health check
+
+echo “🏥 Running health checks…”
+make -f Makefile.prod health
+
+echo “”
+echo “=========================================”
+echo “✅ Deployment complete!”
+echo “=========================================”
+echo “”
+echo “Services:”
+echo “  Web UI:    http://localhost”
+echo “  API:       http://localhost:8000”
+echo “  Grafana:   http://localhost:3001”
+echo “  MinIO:     http://localhost:9001”
+echo “”
+echo “Next steps:”
+echo “  - View logs:    make -f Makefile.prod logs”
+echo “  - Monitor:      http://localhost:3001”
+echo “  - Scale up:     make -f Makefile.prod scale-analysis”
+echo “”

@@ -5,7 +5,6 @@ version: 1.0.0
 description: |
 Enterprise-grade semiconductor characterization platform API.
 
-```
 ## Features
 - Instrument management and control
 - Experiment orchestration
@@ -15,7 +14,6 @@ Enterprise-grade semiconductor characterization platform API.
 
 ## Authentication
 Uses OAuth2/OIDC with JWT bearer tokens.
-```
 
 contact:
 name: Platform Team
@@ -157,7 +155,6 @@ application/json:
 schema:
 $ref: ‘#/components/schemas/UserListResponse’
 
-```
 post:
   tags: [users]
   summary: Create user
@@ -174,7 +171,6 @@ post:
         application/json:
           schema:
             $ref: '#/components/schemas/User'
-```
 
 /users/{user_id}:
 get:
@@ -237,7 +233,6 @@ application/json:
 schema:
 $ref: ‘#/components/schemas/InstrumentListResponse’
 
-```
 post:
   tags: [instruments]
   summary: Register instrument
@@ -254,7 +249,6 @@ post:
         application/json:
           schema:
             $ref: '#/components/schemas/Instrument'
-```
 
 /instruments/{instrument_id}:
 get:
@@ -275,7 +269,6 @@ application/json:
 schema:
 $ref: ‘#/components/schemas/Instrument’
 
-```
 patch:
   tags: [instruments]
   summary: Update instrument
@@ -299,7 +292,6 @@ patch:
         application/json:
           schema:
             $ref: '#/components/schemas/Instrument'
-```
 
 /instruments/{instrument_id}/connect:
 post:
@@ -368,7 +360,6 @@ application/json:
 schema:
 $ref: ‘#/components/schemas/SampleListResponse’
 
-```
 post:
   tags: [samples]
   summary: Create sample
@@ -385,7 +376,6 @@ post:
         application/json:
           schema:
             $ref: '#/components/schemas/Sample'
-```
 
 /samples/{sample_id}:
 get:
@@ -441,7 +431,6 @@ application/json:
 schema:
 $ref: ‘#/components/schemas/RunListResponse’
 
-```
 post:
   tags: [runs]
   summary: Create and start run
@@ -458,7 +447,6 @@ post:
         application/json:
           schema:
             $ref: '#/components/schemas/Run'
-```
 
 /runs/{run_id}:
 get:
@@ -711,7 +699,6 @@ type: integer
 minimum: 1
 default: 1
 
-```
 PageSizeParam:
   name: page_size
   in: query
@@ -720,7 +707,6 @@ PageSizeParam:
     minimum: 1
     maximum: 100
     default: 20
-```
 
 responses:
 Unauthorized:
@@ -733,7 +719,6 @@ example:
 error: unauthorized
 message: Invalid or expired token
 
-```
 NotFound:
   description: Resource not found
   content:
@@ -743,7 +728,6 @@ NotFound:
       example:
         error: not_found
         message: Resource not found
-```
 
 schemas:
 # Authentication
@@ -762,7 +746,6 @@ expires_in:
 type: integer
 example: 900
 
-```
 # User
 User:
   type: object
@@ -1185,4 +1168,3 @@ Error:
     details:
       type: object
       additionalProperties: true
-```

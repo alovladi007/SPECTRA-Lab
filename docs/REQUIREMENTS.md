@@ -1,0 +1,497 @@
+# Product Requirements Document (PRD)
+
+## SemiconductorLab: Enterprise Characterization Platform
+
+**Version:** 1.0  
+**Date:** October 21, 2025  
+**Status:** Approved  
+**Owner:** Platform Engineering Team
+
+-----
+
+## Executive Summary
+
+SemiconductorLab is an enterprise-grade characterization platform that unifies electrical, optical, structural, and chemical analysis methods under a single system. It addresses the critical need for integrated data management, automated analysis, and quality control in semiconductor R&D and manufacturing environments.
+
+**Business Objectives:**
+
+- Reduce time-to-result by 60% through automation
+- Ensure 100% traceability for regulatory compliance (ISO 17025, 21 CFR Part 11)
+- Enable data-driven decisions via SPC and predictive analytics
+- Support 10+ concurrent instruments with <1% system downtime
+- ROI target: 18-month payback through efficiency gains
+
+-----
+
+## Stakeholders
+
+### Primary Stakeholders
+
+|Role                     |Name          |Responsibilities                      |Success Criteria                            |
+|-------------------------|--------------|--------------------------------------|--------------------------------------------|
+|**Lab Director**         |Dr. Sarah Chen|Budget approval, regulatory compliance|On-time, on-budget delivery; audit readiness|
+|**Lead Process Engineer**|John Martinez |Technical requirements, validation    |Accurate results; <5% failed runs           |
+|**QA Manager**           |Emily Roberts |Quality systems, SOPs                 |100% traceability; compliant reports        |
+|**IT Director**          |Michael Zhang |Infrastructure, security              |99.5% uptime; zero security incidents       |
+|**Technicians (5)**      |Lab Team      |Daily operations                      |Easy-to-use UI; <30 min training per method |
+
+### Secondary Stakeholders
+
+- R&D Scientists (end users of data)
+- External Auditors (ISO, regulatory)
+- Equipment Vendors (driver integration support)
+- Executive Management (ROI oversight)
+
+-----
+
+## Problem Statement
+
+**Current State:**
+
+- Data scattered across 12+ vendor-specific software packages
+- Manual data transcription → 10% error rate
+- No centralized SPC or trending
+- Difficult to correlate results across methods
+- Compliance documentation takes 4-8 hours per audit
+- Adding new instrument takes 2-4 weeks of IT effort
+
+**Pain Points:**
+
+1. **Data Silos:** Cannot easily compare IV characteristics with XRD phase data for same sample
+1. **Error-Prone:** Manual copy-paste from instrument to spreadsheet to report
+1. **Limited Analytics:** No ML-driven anomaly detection; defects discovered late
+1. **Compliance Burden:** Auditors require paper trails; digital provenance lacking
+1. **Scalability:** Adding 10 new instruments would overwhelm current process
+
+**Impact:**
+
+- Lost productivity: ~$400K/year (engineering time on data wrangling)
+- Quality escapes: ~2% of devices fail post-characterization
+- Delayed time-to-market: 3-6 weeks added to development cycles
+
+-----
+
+## Vision & Goals
+
+### Vision Statement
+
+*“A unified platform where every measurement—from resistivity to atomic composition—is automatically analyzed, quality-controlled, and traced, empowering engineers to focus on innovation rather than data wrangling.”*
+
+### Goals (SMART)
+
+1. **G1:** Integrate 20 characterization methods across 4 categories by end of Phase 5 (Week 16)
+1. **G2:** Achieve <1% failed run rate (excluding sample quality issues) within 3 months post-deployment
+1. **G3:** Reduce average time from sample to approved report from 8 hours to <2 hours
+1. **G4:** Enable 100% traceability for all runs (sample → instrument → operator → result → approval)
+1. **G5:** Provide SPC dashboards with <5-minute data latency for real-time quality monitoring
+1. **G6:** Support virtual metrology (VM) models with R² > 0.85 for thickness, resistivity, and roughness
+
+### Non-Goals (Out of Scope for v1.0)
+
+- Full MES/ERP integration (basic export hooks only)
+- Advanced process control (APC) for equipment (VM predictions only)
+- Direct equipment control for hazardous processes (safety interlocks via separate system)
+- Mobile app (web responsive only)
+- Multi-site federated analytics (single-site deployment)
+
+-----
+
+## Success Metrics
+
+### Key Performance Indicators (KPIs)
+
+|Metric                 |Baseline      |Target (3 months)|Measurement Method      |
+|-----------------------|--------------|-----------------|------------------------|
+|**Throughput**         |15 runs/day   |50 runs/day      |System logs             |
+|**Failed Run Rate**    |12%           |<1%              |Result validation checks|
+|**Time to Report**     |8 hours       |<2 hours         |Timestamp analysis      |
+|**SPC Compliance**     |60%           |95%              |Control chart coverage  |
+|**User Satisfaction**  |N/A (manual)  |>80%             |Quarterly survey (NPS)  |
+|**Data Loss Incidents**|2/year        |0                |Audit log review        |
+|**Regulatory Findings**|8 (last audit)|0                |Audit reports           |
+
+### Leading Indicators
+
+- # of instruments onboarded per month (target: 3-5)
+- # of automated workflows created (target: 15 by Week 12)
+- # of ML models in production (target: 5 by Week 14)
+- Average training time per new user (target: <2 hours)
+
+-----
+
+## Scope & Features
+
+### Core Features (Must-Have)
+
+#### 1. Instrument Integration & Data Acquisition
+
+- **F1.1:** VISA/SCPI driver framework for SMUs, LCR meters, sourcemeters (Keysight, Keithley)
+- **F1.2:** Spectrometer drivers (Ocean Optics, Avantes, Horiba)
+- **F1.3:** Plugin architecture for vendor-specific adapters
+- **F1.4:** HIL simulators for all methods (enable dev/test without hardware)
+- **F1.5:** Live data streaming (real-time I-V curves, spectra)
+- **F1.6:** Emergency abort (stop measurement in <1 second)
+
+#### 2. Method Implementations (Minimum 20)
+
+**Electrical:**
+
+- F2.1: Four-point probe (Van der Pauw, sheet resistance)
+- F2.2: Hall effect (mobility, carrier concentration, type)
+- F2.3: I-V sweeps (diodes, BJTs, MOSFETs, solar cells) with parameter extraction
+- F2.4: C-V profiling (doping, flat-band, interface traps)
+- F2.5: DLTS/DLCP (trap characterization)
+- F2.6: EBIC, PCD (lifetime, diffusion length)
+
+**Optical:**
+
+- F2.7: UV-Vis-NIR spectroscopy (absorption, transmission, reflectance, Tauc plots)
+- F2.8: FTIR (vibrational modes, peak assignment)
+- F2.9: Ellipsometry (Ψ/Δ, multi-layer fitting, n/k extraction)
+- F2.10: PL/EL (peak energy, FWHM, quantum efficiency)
+- F2.11: Raman (phase ID, strain/stress)
+- F2.12: Cathodoluminescence (hyperspectral imaging)
+
+**Structural/Morphological:**
+
+- F2.13: XRD (phase ID, crystallite size, lattice parameters)
+- F2.14: SEM/TEM (imaging, grain analysis, scale calibration)
+- F2.15: AFM (topography, roughness, PSD)
+- F2.16: Profilometry (step height, waviness)
+
+**Chemical/Elemental:**
+
+- F2.17: XPS/XRF (quantitative analysis, depth profiling)
+- F2.18: SIMS (depth profiling, matrix corrections)
+- F2.19: RBS (layer thickness, composition)
+- F2.20: NAA (trace element quantification)
+
+#### 3. Analysis & Quality Control
+
+- **F3.1:** Automated parameter extraction (e.g., diode ideality, MOSFET Vth, solar cell FF)
+- **F3.2:** Curve fitting with uncertainty (Levenberg-Marquardt, bootstrap)
+- **F3.3:** Statistical process control (X-bar/R, EWMA, CUSUM) with rule detection
+- **F3.4:** Cp/Cpk calculation and trending
+- **F3.5:** Wafer maps (Kriging interpolation, colorscale visualization)
+- **F3.6:** Outlier detection (Chauvenet, Z-score, IQR)
+- **F3.7:** Multi-run comparisons (overlay plots, difference maps)
+
+#### 4. Virtual Metrology & Machine Learning
+
+- **F4.1:** Feature store (FDC sensors, recipe params, layout features)
+- **F4.2:** VM model training (scikit-learn, LightGBM) with cross-validation
+- **F4.3:** Hyperparameter tuning (Optuna, GridSearch)
+- **F4.4:** Anomaly detection (Isolation Forest, DBSCAN, Autoencoders)
+- **F4.5:** Drift monitoring (PSI, KL divergence, concept drift)
+- **F4.6:** ONNX export for production inference
+- **F4.7:** Model versioning and A/B testing
+
+#### 5. LIMS/ELN & Traceability
+
+- **F5.1:** Sample hierarchy (Organization → Project → Wafer → Die → Device)
+- **F5.2:** Barcode/QR code generation and scanning
+- **F5.3:** Chain-of-custody logging (who handled what when)
+- **F5.4:** Rich-text ELN with embedded plots and images
+- **F5.5:** Version-controlled SOPs with pre-run checklists
+- **F5.6:** E-signatures (timestamp, IP, reason) compliant with 21 CFR Part 11 considerations
+- **F5.7:** Calibration tracking (certificates, expiry reminders, uncertainty budgets)
+
+#### 6. Reporting & Export
+
+- **F6.1:** Auto-generated PDF reports (summary, methods, parameters, plots, SPC, approvals)
+- **F6.2:** Batch reporting (multi-wafer, multi-run)
+- **F6.3:** FAIR data export (.zip with metadata, checksums, README)
+- **F6.4:** Export to CSV, MATLAB, Python scripts
+- **F6.5:** Audit trail (immutable logs for all actions)
+
+#### 7. User Interface
+
+- **F7.1:** Role-based access control (Admin, PI, Engineer, Technician, Viewer)
+- **F7.2:** Project/Sample/Method/Instrument dashboards
+- **F7.3:** Experiment builder (parameter forms, presets, safety checks)
+- **F7.4:** Live run viewer (real-time plots, progress bar, logs)
+- **F7.5:** Results explorer (interactive plots, zoom/pan, cursor measurements)
+- **F7.6:** SPC hub (control charts, drill-down, alert triage)
+- **F7.7:** VM studio (train/evaluate/deploy models)
+- **F7.8:** Admin panel (instruments, calibrations, users, API keys)
+
+#### 8. Security & Compliance
+
+- **F8.1:** OAuth2/OIDC authentication (SSO ready)
+- **F8.2:** RBAC with granular permissions
+- **F8.3:** Encrypted data at rest (database, object storage)
+- **F8.4:** TLS 1.3 for data in transit
+- **F8.5:** Audit logs (all read/write/delete operations)
+- **F8.6:** Backup and restore (automated daily, tested quarterly)
+- **F8.7:** Secrets management (Vault or SOPS)
+
+### Nice-to-Have (Future Releases)
+
+- Advanced scheduling (reservation system for instruments)
+- Integration with external LIMS (STARLIMS, LabWare)
+- Multi-language support (currently English only)
+- Jupyter Notebook integration (embedded analysis)
+- GraphQL API (REST only in v1.0)
+
+-----
+
+## User Stories & Use Cases
+
+### User Persona: Lab Technician (Maria)
+
+**Background:** 3 years experience, chemistry degree, operates 5 different instruments daily.  
+**Goals:** Complete 20+ measurements per day, minimize errors, meet shift quotas.  
+**Pain Points:** Switching between 5 different software interfaces, manual data entry, unclear error messages.
+
+#### Use Case 1: Run Solar Cell I-V Characterization
+
+**Actor:** Maria (Technician)  
+**Preconditions:** Solar cell mounted, contacts verified, instrument calibrated  
+**Flow:**
+
+1. Maria logs into SemiconductorLab and navigates to “New Experiment”
+1. Selects “Solar Cell I-V” template from method library
+1. Scans barcode on solar cell sample → system auto-fills sample metadata
+1. Reviews pre-run checklist (illumination source ON, compliance limits set)
+1. Clicks “Start” → system performs sweep, displays live I-V curve
+1. System auto-calculates Jsc, Voc, FF, efficiency → flags if out-of-spec
+1. Maria reviews results, adds note (“Cell showed slight edge damage”), approves
+1. PDF report auto-generated and saved to sample record
+
+**Success Criteria:**
+
+- Total time: <10 minutes (vs. 30 minutes manual)
+- Zero transcription errors
+- Report includes all required metadata for audit
+
+-----
+
+### User Persona: Process Engineer (David)
+
+**Background:** PhD in materials science, 10 years experience, evaluates process changes.  
+**Goals:** Correlate characterization data across methods, identify root causes, optimize processes.  
+**Pain Points:** Data in silos, manual correlation, lack of SPC, reactive troubleshooting.
+
+#### Use Case 2: Investigate Mobility Degradation
+
+**Actor:** David (Engineer)  
+**Preconditions:** SPC alert triggered (Hall mobility trending down over 10 wafers)  
+**Flow:**
+
+1. David receives email alert with link to SPC chart
+1. Clicks through to see mobility X-bar chart with 7 points below centerline
+1. Drills down to affected wafers → sees they all came from Furnace B
+1. Queries related measurements: XPS shows increased oxygen at interface
+1. Cross-references equipment logs: Furnace B had vacuum leak during affected runs
+1. Uses VM studio to predict future mobility based on XPS O-concentration
+1. Adds root cause and corrective action to ELN, links to all affected runs
+1. Exports analysis package for management review
+
+**Success Criteria:**
+
+- Root cause identified in <2 hours (vs. 2 days manual)
+- Data correlation automated (XPS + Hall + equipment logs)
+- Preventive action (VM model flags future issues before mobility measured)
+
+-----
+
+## Technical Requirements
+
+### Performance
+
+- **REQ-PERF-1:** Support 100 concurrent users with <1s p95 latency for API calls
+- **REQ-PERF-2:** Real-time data streaming at 10 Hz for live plots
+- **REQ-PERF-3:** SPC calculations complete within 5 seconds of new data arrival
+- **REQ-PERF-4:** Report generation <30 seconds for single-run, <2 minutes for 100-run batch
+- **REQ-PERF-5:** Database queries return results in <500 ms for 95% of requests
+- **REQ-PERF-6:** ML inference <50 ms per prediction (VM models)
+
+### Scalability
+
+- **REQ-SCALE-1:** Horizontal scaling to 10 application servers (K8s HPA)
+- **REQ-SCALE-2:** Database supports 10M+ results (3 years at 50 runs/day * 20 metrics/run * 365 days)
+- **REQ-SCALE-3:** Object storage capacity 100 TB (raw data, images, backups)
+- **REQ-SCALE-4:** Message bus handles 1000 events/second (instrument streams)
+
+### Reliability
+
+- **REQ-REL-1:** System uptime 99.5% (excluding scheduled maintenance)
+- **REQ-REL-2:** Zero data loss (ACID transactions, replication, backups)
+- **REQ-REL-3:** Automatic failover <30 seconds (database, application servers)
+- **REQ-REL-4:** Graceful degradation (if SPC service down, core acquisition continues)
+
+### Security
+
+- **REQ-SEC-1:** Authentication via OAuth2/OIDC (SSO with corporate AD/LDAP)
+- **REQ-SEC-2:** Authorization via RBAC with 5 roles (Admin, PI, Engineer, Technician, Viewer)
+- **REQ-SEC-3:** Data encryption at rest (AES-256) and in transit (TLS 1.3)
+- **REQ-SEC-4:** Audit logs retained for 7 years, tamper-evident
+- **REQ-SEC-5:** No critical vulnerabilities (OWASP Top 10, CVE scans)
+- **REQ-SEC-6:** Secrets never in code/config (Vault or SOPS)
+- **REQ-SEC-7:** Rate limiting (100 req/min per user, 10 req/min per API key)
+
+### Usability
+
+- **REQ-UX-1:** New user can complete first experiment in <30 minutes after training
+- **REQ-UX-2:** Responsive design (desktop, tablet; mobile read-only)
+- **REQ-UX-3:** Accessibility WCAG 2.1 Level AA (keyboard nav, screen readers, contrast)
+- **REQ-UX-4:** Contextual help (tooltips, “Explain this result” buttons, embedded tutorials)
+- **REQ-UX-5:** Error messages actionable (not “Error 500” but “Instrument not responding; check USB connection”)
+
+### Compliance
+
+- **REQ-COMP-1:** 21 CFR Part 11 compliance for e-signatures, audit trails
+- **REQ-COMP-2:** ISO 17025 traceability (instrument calibration, method validation)
+- **REQ-COMP-3:** GDPR considerations (user data export, right to be forgotten)
+- **REQ-COMP-4:** SOP enforcement (cannot skip pre-run checklist)
+
+### Interoperability
+
+- **REQ-INT-1:** REST API (OpenAPI 3.0 spec)
+- **REQ-INT-2:** Webhook support for external systems (MES, ERP)
+- **REQ-INT-3:** Export formats: CSV, HDF5, OME-TIFF, JCAMP-DX, PDF
+- **REQ-INT-4:** Import from vendor files (e.g., Keithley .csv, Ocean Optics .txt)
+
+-----
+
+## Constraints & Assumptions
+
+### Constraints
+
+1. **Budget:** $950K total (loaded costs, infrastructure, contingency)
+1. **Timeline:** 16 weeks (aggressive; assumes full-time team availability)
+1. **Team Size:** 6 FTE (2 backend, 2 frontend, 1 DevOps, 1 domain expert)
+1. **Deployment:** On-premises (air-gapped optional; cloud-ready architecture)
+1. **Instruments:** Initial support for Keysight, Keithley, Ocean Optics, Horiba (expand later)
+
+### Assumptions
+
+1. **Hardware:** Lab provides instruments with VISA/USB/Ethernet interfaces
+1. **Network:** 1 Gbps LAN; stable connectivity to all instruments
+1. **IT Support:** IT team provisions VMs/K8s cluster, manages backups
+1. **Training:** Lab commits 2 hours per user for training
+1. **Validation:** Domain expert available for all 16 sessions to validate accuracy
+1. **Data:** Historical data available for ML training (>1000 runs per method preferred)
+
+-----
+
+## Dependencies & Integration Points
+
+### External Systems
+
+|System               |Integration Type      |Purpose              |Owner                |
+|---------------------|----------------------|---------------------|---------------------|
+|**AD/LDAP**          |OAuth2/SAML           |User authentication  |IT (Michael Zhang)   |
+|**ELN (LabArchives)**|Export hook (optional)|Notebook sync        |QA (Emily Roberts)   |
+|**MES (Camstar)**    |Webhook (future)      |Lot tracking         |Manufacturing IT     |
+|**Equipment FDC**    |OPC-UA (future)       |Real-time sensor data|Equipment Engineering|
+
+### Vendor APIs
+
+- **Keysight/Keithley:** VISA libraries (NI-VISA, Keysight IO Libraries)
+- **Ocean Optics:** OmniDriver SDK (C/C++ wrapper → Python ctypes)
+- **Horiba:** DDE (legacy) → migrate to REST API if available
+
+-----
+
+## Risks & Mitigation Strategies
+
+*(See Risk Register in Roadmap for program-level risks)*
+
+### Product-Level Risks
+
+|Risk                                        |Impact|Mitigation                                                                   |
+|--------------------------------------------|------|-----------------------------------------------------------------------------|
+|**Accuracy concerns vs. vendor software**   |High  |Validation with golden datasets; side-by-side comparison; publish methodology|
+|**User adoption resistance**                |High  |Early user testing; champions program; phased rollout                        |
+|**Instrument compatibility issues**         |Medium|HIL simulators; plugin architecture; fallback to manual entry                |
+|**Performance bottlenecks with large files**|Medium|Streaming uploads; lazy loading; pagination; compression                     |
+|**Regulatory audit failure**                |High  |Compliance officer review at S1, S8, S15; mock audit at S16                  |
+
+-----
+
+## Release Plan & Phasing
+
+### Phase 1: MVP (Weeks 1-8)
+
+**Scope:** Core infrastructure + 6 electrical methods + basic SPC  
+**Target Users:** Process engineers (5 users)  
+**Goal:** Validate architecture, gather feedback
+
+### Phase 2: Optical & Structural (Weeks 9-12)
+
+**Scope:** Add 8 optical/structural methods + imaging suite  
+**Target Users:** Materials scientists (10 users)  
+**Goal:** Expand method coverage
+
+### Phase 3: Chemical & ML (Weeks 13-14)
+
+**Scope:** Add 6 chemical methods + VM/ML suite  
+**Target Users:** Full lab (20 users)  
+**Goal:** Enable predictive analytics
+
+### Phase 4: LIMS/ELN & Hardening (Weeks 15-16)
+
+**Scope:** ELN, SOPs, reporting, HA deployment  
+**Target Users:** All users + QA + auditors  
+**Goal:** Production-ready
+
+### Post-Launch (Weeks 17-20)
+
+**Scope:** Bug fixes, optimization, training, pilot expansion  
+**Target Users:** Full lab + external collaborators  
+**Goal:** Ramp to 50 runs/day
+
+-----
+
+## Acceptance Criteria (Program Level)
+
+At the end of S16, the following must be demonstrated:
+
+1. **Functional Completeness:**
+- [ ] All 20 methods implemented with HIL simulators
+- [ ] 3 end-to-end workflows validated with real/synthetic data
+- [ ] SPC dashboards live with <5 min latency
+- [ ] VM models deployed for 3 target metrics (R² > 0.85)
+1. **Performance:**
+- [ ] Load test passes (100 concurrent users, <1s p95 latency)
+- [ ] 50 runs/day sustained for 1 week pilot
+1. **Quality:**
+- [ ] <1% failed run rate (excluding sample issues)
+- [ ] Accuracy validation: 95% of metrics within ±5% of reference
+1. **Compliance:**
+- [ ] 100% traceability audit passes
+- [ ] E-signatures captured for all approvals
+- [ ] Mock ISO audit finds zero critical non-conformances
+1. **Usability:**
+- [ ] 80% positive user feedback (NPS > 30)
+- [ ] Average training time <2 hours per new user
+1. **Security:**
+- [ ] Penetration test finds no critical vulnerabilities
+- [ ] Secrets management validated (no secrets in repos)
+1. **Operability:**
+- [ ] HA failover completes in <30 seconds
+- [ ] Backup/restore tested successfully
+- [ ] Documentation complete (Admin Guide, User Guide, Method Playbooks)
+
+-----
+
+## Sign-Off
+
+|Role               |Name          |Signature  |Date   |
+|-------------------|--------------|-----------|-------|
+|**Lab Director**   |Dr. Sarah Chen|___________|_______|
+|**Lead Engineer**  |John Martinez |___________|_______|
+|**QA Manager**     |Emily Roberts |___________|_______|
+|**IT Director**    |Michael Zhang |___________|_______|
+|**Program Manager**|Alex Johnson  |___________|_______|
+
+-----
+
+**Approval Status:** ☐ Draft | ☐ In Review | ☑ Approved | ☐ Archived
+
+**Next Review Date:** Week 8 (Mid-program checkpoint)
+
+-----
+
+*End of PRD*

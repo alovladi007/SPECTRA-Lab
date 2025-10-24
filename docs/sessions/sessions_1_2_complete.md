@@ -47,7 +47,6 @@ This document provides the **complete, production-ready implementation** for Ses
 
 ## 🗂️ Repository Structure (Complete)
 
-```
 semiconductorlab/
 ├── apps/
 │   └── web/                          # Next.js frontend
@@ -164,7 +163,6 @@ semiconductorlab/
 ├── Makefile                         # ✅ COMPLETE
 ├── README.md
 └── CONTRIBUTING.md
-```
 
 -----
 
@@ -172,7 +170,6 @@ semiconductorlab/
 
 ### Prerequisites
 
-```bash
 # Required
 Docker 24+ & Docker Compose
 Node.js 20+ & pnpm 9+
@@ -182,11 +179,9 @@ Make
 # Optional (for local dev)
 PostgreSQL 15+
 Redis 7+
-```
 
 ### 1-Minute Setup
 
-```bash
 # Clone and start
 git clone https://github.com/org/semiconductorlab.git
 cd semiconductorlab
@@ -198,11 +193,9 @@ make dev-up
 # - Web UI: http://localhost:3000
 # - API Docs: http://localhost:8000/docs
 # - Grafana: http://localhost:3001 (admin/admin)
-```
 
 ### Verify Installation
 
-```bash
 # Check services
 make dev-logs
 
@@ -217,7 +210,6 @@ python scripts/dev/generate_test_data.py
 
 # Run tests
 make test
-```
 
 -----
 
@@ -243,12 +235,10 @@ make test
 
 **Run Migration:**
 
-```bash
 psql -U postgres -d semiconductorlab < db/migrations/001_initial_schema.sql
 
 # Or via Alembic
 alembic upgrade head
-```
 
 ### ORM Models (Artifact 2)
 
@@ -264,7 +254,6 @@ alembic upgrade head
 
 **Usage Example:**
 
-```python
 from app.models import Organization, User, Project, Run
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -283,7 +272,6 @@ session.commit()
 runs = session.query(Run).filter(
     Run.status == RunStatus.COMPLETED
 ).all()
-```
 
 ### Pydantic Schemas
 
@@ -298,7 +286,6 @@ runs = session.query(Run).filter(
 
 **Usage Example:**
 
-```python
 from app.schemas import UserCreate, UserResponse
 from app.models import User
 
@@ -315,7 +302,6 @@ user_data = UserCreate(
 # Convert ORM to schema
 user_orm = session.query(User).first()
 user_schema = UserResponse.model_validate(user_orm)
-```
 
 ### Unit Handling System
 
@@ -330,7 +316,6 @@ user_schema = UserResponse.model_validate(user_orm)
 
 **Usage Example:**
 
-```python
 from semiconductorlab_common.units import Q_, PhysicalConstants
 
 # Create quantities
@@ -346,7 +331,6 @@ print(Vt.to('mV'))  # ~25.9 mV
 # Unit validation
 from semiconductorlab_common.units import CommonQuantities
 valid_v = CommonQuantities.VOLTAGE.validate(5.0, 'V')
-```
 
 ### File Handlers
 
@@ -362,7 +346,6 @@ valid_v = CommonQuantities.VOLTAGE.validate(5.0, 'V')
 
 **Usage Example:**
 
-```python
 from semiconductorlab_common.storage import HDF5Handler
 import numpy as np
 
@@ -377,7 +360,6 @@ HDF5Handler.write("iv_data.h5", data, metadata)
 # Read back
 read_data = HDF5Handler.read("iv_data.h5")
 print(read_data['measurements']['voltage'])
-```
 
 ### Test Data Generators
 
@@ -391,7 +373,6 @@ print(read_data['measurements']['voltage'])
 
 **Usage:**
 
-```bash
 # Generate all test data
 python scripts/dev/generate_test_data.py
 
@@ -402,11 +383,9 @@ python scripts/dev/generate_test_data.py
 # - optical/uvvis_gaas.json
 # - ...
 # - manifest.json
-```
 
 **Programmatic Usage:**
 
-```python
 from scripts.dev.generate_test_data import (
     IVGenerator, HallGenerator, XRDGenerator
 )
@@ -422,7 +401,6 @@ diode_data = iv_gen.generate_diode(
 
 print(diode_data.keys())
 # ['voltage', 'current', 'parameters', 'metadata']
-```
 
 -----
 
@@ -430,7 +408,6 @@ print(diode_data.keys())
 
 ### Unit Tests
 
-```bash
 # Run all unit tests
 make test-unit
 
@@ -439,11 +416,9 @@ pytest --cov=app --cov-report=html
 
 # Test specific module
 pytest tests/test_models.py -v
-```
 
 ### Integration Tests
 
-```bash
 # Start test environment
 docker-compose -f docker-compose.test.yml up -d
 
@@ -452,13 +427,11 @@ make test-e2e
 
 # Cleanup
 docker-compose -f docker-compose.test.yml down -v
-```
 
 ### Validation Tests
 
 **Database:**
 
-```bash
 # Run migration
 psql -U postgres -d semiconductorlab_test < db/migrations/001_initial_schema.sql
 
@@ -473,11 +446,9 @@ psql -U postgres -d semiconductorlab_test -c "
 SELECT hypertable_name 
 FROM timescaledb_information.hypertables;"
 # Expected: runs, measurements, results, audit_log
-```
 
 **ORM Models:**
 
-```python
 # Test in Python
 from app.models import Base, Organization, User
 from sqlalchemy import create_engine
@@ -488,11 +459,9 @@ Base.metadata.create_all(engine)
 # Verify all models
 assert len(Base.metadata.tables) == 28
 print("✓ All 28 models loaded")
-```
 
 **Schemas:**
 
-```python
 from app.schemas import UserCreate
 from pydantic import ValidationError
 
@@ -518,11 +487,9 @@ try:
     )
 except ValidationError as e:
     print(f"✓ Caught {len(e.errors())} validation errors")
-```
 
 **Units:**
 
-```python
 from semiconductorlab_common.units import Q_
 from pint import DimensionalityError
 
@@ -538,7 +505,6 @@ try:
     invalid = voltage + current  # Can't add V + A
 except DimensionalityError:
     print("✓ Dimensional analysis catches errors")
-```
 
 -----
 
@@ -572,7 +538,6 @@ except DimensionalityError:
 
 ### Daily Development
 
-```bash
 # 1. Start services
 make dev-up
 
@@ -592,11 +557,9 @@ make format
 git add .
 git commit -m "feat: add new feature"
 git push
-```
 
 ### Adding a New Method
 
-```bash
 # 1. Add to database
 psql -U postgres -d semiconductorlab -c "
 INSERT INTO methods (name, display_name, category, parameter_schema)
@@ -613,7 +576,6 @@ touch services/analysis/tests/test_new_method.py
 
 # 5. Update docs
 touch docs/methods/electrical/new_method.md
-```
 
 -----
 
@@ -621,22 +583,16 @@ touch docs/methods/electrical/new_method.md
 
 ### Development
 
-```bash
 make dev-up
-```
 
 ### Staging
 
-```bash
 make deploy-staging
-```
 
 ### Production
 
-```bash
 # Requires confirmation
 make deploy-prod
-```
 
 -----
 
