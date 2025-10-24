@@ -1,0 +1,37 @@
+{
+  "name": "session11-xps-xrf-ui",
+  "version": "1.0.0",
+  "description": "XPS/XRF Chemical Analysis User Interface",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next": "^13.4.0",
+    "typescript": "^5.0.0",
+    "@radix-ui/react-select": "^1.2.0",
+    "@radix-ui/react-slider": "^1.1.0",
+    "@radix-ui/react-switch": "^1.0.0",
+    "@radix-ui/react-dialog": "^1.0.0",
+    "@radix-ui/react-tabs": "^1.0.0",
+    "recharts": "^2.5.0",
+    "lucide-react": "^0.260.0",
+    "tailwindcss": "^3.3.0",
+    "@tailwindcss/forms": "^0.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.40.0",
+    "eslint-config-next": "^13.4.0",
+    "jest": "^29.5.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/jest-dom": "^5.16.0"
+  }
+}
