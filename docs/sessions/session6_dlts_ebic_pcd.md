@@ -1,0 +1,1611 @@
+# Session 6: Electrical III - DLTS, EBIC, PCD Implementation
+
+**Session:** S6 - Electrical III (Advanced Characterization)  
+**Duration:** Week 6 (5 days)  
+**Status:** STARTING  
+**Prerequisites:** Sessions 1-5 Complete ✅
+
+---
+
+## 📋 Session 6 Overview
+
+### Scope
+Advanced electrical characterization methods focusing on:
+- **DLTS** (Deep Level Transient Spectroscopy) - Trap characterization
+- **EBIC** (Electron Beam Induced Current) - Defect/junction imaging
+- **PCD** (Photoconductance Decay) - Minority carrier lifetime
+
+### Business Value
+- Enable failure analysis and reliability assessment
+- Identify performance-limiting defects
+- Optimize process conditions for carrier lifetime
+- Support advanced device development (power, RF, photonic)
+
+### Technical Challenges
+- Complex signal processing (lock-in, FFT, deconvolution)
+- Temperature-dependent measurements (-196°C to 400°C)
+- Sub-microsecond time resolution
+- 2D/3D mapping and visualization
+- Correlation with structural defects
+
+---
+
+## 🎯 Deliverables
+
+### 1. DLTS Analysis Module
+- Capacitance transient capture and analysis
+- Temperature scan automation
+- Arrhenius plot generation
+- Trap signature extraction (Et, σn, σp, Nt)
+- Multiple peak deconvolution
+- Rate window variation
+- Isothermal DLTS (I-DLTS)
+
+### 2. EBIC Analysis Module  
+- Beam-induced current mapping
+- Junction delineation
+- Defect contrast imaging
+- Minority carrier diffusion length extraction
+- Temperature-dependent EBIC
+- Correlation with SEM images
+- Line scan and area mapping modes
+
+### 3. PCD Analysis Module
+- Transient photoconductance analysis
+- Injection-dependent lifetime (τ vs Δn)
+- Surface recombination velocity (SRV)
+- Bulk lifetime separation
+- Temperature-dependent measurements
+- Quasi-steady-state (QSSPC) mode
+- Generalized analysis for various structures
+
+### 4. Frontend UI Components
+- DLTS measurement interface with temperature control
+- EBIC mapping viewer with SEM overlay
+- PCD lifetime analyzer with injection plots
+- Comparative analysis dashboards
+
+### 5. Integration & Testing
+- HIL simulators for each method
+- Test data generators (trap spectra, lifetime curves)
+- Integration tests for complete workflows
+- Performance benchmarks
+- Documentation and training materials
+
+---
+
+## 🏗️ Technical Architecture
+
+### DLTS System Architecture
+
+# Core DLTS Components
+class DLTSAnalyzer:
+    - CapacitanceTransientCapture
+    - TemperatureController
+    - RateWindowProcessor
+    - ArrheniusAnalyzer
+    - TrapDatabase
+    
+class TransientProcessor:
+    - BaselineCorrection
+    - ExponentialFitting
+    - PeakDeconvolution
+    - NoiseReduction
+
+class TrapCharacterizer:
+    - ActivationEnergyExtractor
+    - CaptureCrossSectionCalculator
+    - TrapConcentrationEstimator
+    - DefectIdentifier
+
+### EBIC System Architecture
+
+class EBICAnalyzer:
+    - BeamController
+    - CurrentAmplifier
+    - ImageAcquisition
+    - ContrastAnalyzer
+    
+class DiffusionLengthExtractor:
+    - LineScanAnalysis
+    - ExponentialDecayFitting
+    - TemperatureCorrection
+    - MaterialDatabase
+
+class DefectImager:
+    - ContrastEnhancement
+    - DefectSegmentation
+    - SizeDistributionAnalysis
+    - DepthProfiling
+
+### PCD System Architecture
+
+class PCDAnalyzer:
+    - PhotoconductanceDecayCapture
+    - CarrierDensityCalculator
+    - LifetimeExtractor
+    - SRVAnalyzer
+    
+class InjectionAnalysis:
+    - LowInjectionRegime
+    - HighInjectionRegime
+    - AugerRecombination
+    - RadiativeRecombination
+
+class SurfacePassivation:
+    - EffectivLifetimeAnalysis
+    - BulkLifetimeSeparation
+    - SurfaceRecombinationVelocity
+    - PassivationQualityMetrics
+
+---
+
+## 📊 Data Models & Schemas
+
+### DLTS Data Model
+
+-- DLTS Measurements
+CREATE TABLE dlts_measurements (
+    id UUID PRIMARY KEY,
+    sample_id UUID REFERENCES samples(id),
+    measurement_type VARCHAR(50), -- 'conventional', 'laplace', 'isothermal'
+    temperature_range JSONB, -- {start: 77, stop: 400, step: 2}
+    voltage_pulse JSONB, -- {v_reverse: -5, v_pulse: 0, width: 1e-3}
+    rate_windows FLOAT[], -- [20, 50, 100, 200, 500] s^-1
+    created_at TIMESTAMP,
+    metadata JSONB
+);
+
+-- DLTS Trap Signatures
+CREATE TABLE dlts_traps (
+    id UUID PRIMARY KEY,
+    measurement_id UUID REFERENCES dlts_measurements(id),
+    trap_label VARCHAR(50), -- 'E1', 'H1', etc.
+    activation_energy FLOAT, -- eV
+    energy_uncertainty FLOAT,
+    capture_cross_section FLOAT, -- cm^2
+    cross_section_uncertainty FLOAT,
+    trap_concentration FLOAT, -- cm^-3
+    trap_type VARCHAR(20), -- 'electron', 'hole'
+    peak_temperature FLOAT, -- K
+    identified_defect VARCHAR(100), -- 'Fe_i', 'V_O', etc.
+    confidence_score FLOAT
+);
+
+-- DLTS Transients
+CREATE TABLE dlts_transients (
+    id UUID PRIMARY KEY,
+    measurement_id UUID,
+    temperature FLOAT,
+    time_array FLOAT[], -- microseconds
+    capacitance_array FLOAT[], -- pF
+    processed_signal FLOAT[], -- DLTS signal
+    fit_parameters JSONB
+);
+
+### EBIC Data Model
+
+-- EBIC Measurements
+CREATE TABLE ebic_measurements (
+    id UUID PRIMARY KEY,
+    sample_id UUID REFERENCES samples(id),
+    sem_image_id UUID REFERENCES images(id),
+    beam_energy FLOAT, -- keV
+    beam_current FLOAT, -- pA
+    scan_area JSONB, -- {x: 100, y: 100, unit: 'um'}
+    pixel_resolution INTEGER[],
+    temperature FLOAT,
+    bias_voltage FLOAT,
+    created_at TIMESTAMP
+);
+
+-- EBIC Maps
+CREATE TABLE ebic_maps (
+    id UUID PRIMARY KEY,
+    measurement_id UUID REFERENCES ebic_measurements(id),
+    current_map FLOAT[][], -- 2D array of current values
+    normalized_map FLOAT[][],
+    contrast_map FLOAT[][],
+    diffusion_length_map FLOAT[][], -- micrometers
+    statistics JSONB -- {mean, std, min, max, defect_density}
+);
+
+-- EBIC Line Profiles
+CREATE TABLE ebic_profiles (
+    id UUID PRIMARY KEY,
+    map_id UUID REFERENCES ebic_maps(id),
+    profile_type VARCHAR(50), -- 'horizontal', 'vertical', 'diagonal', 'radial'
+    start_point FLOAT[], -- [x, y]
+    end_point FLOAT[],
+    distance_array FLOAT[], -- micrometers
+    current_array FLOAT[], -- nA
+    fitted_diffusion_length FLOAT,
+    fit_quality FLOAT
+);
+
+### PCD Data Model
+
+-- PCD Measurements
+CREATE TABLE pcd_measurements (
+    id UUID PRIMARY KEY,
+    sample_id UUID REFERENCES samples(id),
+    measurement_mode VARCHAR(50), -- 'transient', 'quasi-steady-state'
+    excitation_wavelength FLOAT, -- nm
+    photon_flux FLOAT, -- photons/cm^2/s
+    temperature FLOAT,
+    sample_thickness FLOAT, -- micrometers
+    surface_condition VARCHAR(100),
+    created_at TIMESTAMP
+);
+
+-- PCD Lifetime Data
+CREATE TABLE pcd_lifetime (
+    id UUID PRIMARY KEY,
+    measurement_id UUID REFERENCES pcd_measurements(id),
+    injection_level FLOAT[], -- Δn (cm^-3)
+    effective_lifetime FLOAT[], -- microseconds
+    bulk_lifetime FLOAT[], -- separated bulk component
+    surface_lifetime FLOAT[], -- surface component
+    srv_front FLOAT, -- cm/s
+    srv_back FLOAT,
+    auger_coefficient FLOAT, -- cm^6/s
+    radiative_coefficient FLOAT -- cm^3/s
+);
+
+-- PCD Transients
+CREATE TABLE pcd_transients (
+    id UUID PRIMARY KEY,
+    measurement_id UUID REFERENCES pcd_measurements(id),
+    time_array FLOAT[], -- microseconds
+    photoconductance_array FLOAT[], -- S
+    carrier_density_array FLOAT[], -- cm^-3
+    generation_rate FLOAT, -- cm^-3/s
+    fit_model VARCHAR(50),
+    fit_parameters JSONB
+);
+
+---
+
+## 💻 Implementation Details
+
+### Day 1-2: DLTS Implementation
+
+#### DLTS Core Analysis Module
+
+# services/analysis/app/methods/electrical/dlts_analysis.py
+
+import numpy as np
+from scipy import signal, optimize
+from typing import Dict, List, Tuple, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+class DLTSAnalyzer:
+    """
+    Deep Level Transient Spectroscopy Analysis
+    
+    Processes capacitance transients to extract trap signatures:
+    - Energy level (Et)
+    - Capture cross-section (σ)
+    - Trap concentration (Nt)
+    """
+    
+    def __init__(self):
+        self.k_B = 8.617333e-5  # eV/K
+        self.trap_database = self._load_trap_database()
+    
+    def analyze_dlts_spectrum(
+        self,
+        temperatures: np.ndarray,  # K
+        transients: List[np.ndarray],  # Capacitance vs time for each T
+        time_points: np.ndarray,  # seconds
+        rate_windows: List[float],  # s^-1
+        reverse_voltage: float,
+        pulse_voltage: float,
+        doping_concentration: float  # cm^-3
+    ) -> Dict:
+        """Complete DLTS analysis workflow"""
+        
+        # 1. Process transients for each temperature
+        dlts_signals = []
+        for temp, transient in zip(temperatures, transients):
+            # Baseline correction
+            baseline = np.mean(transient[-100:])  # Last 100 points
+            corrected = transient - baseline
+            
+            # Apply rate windows (boxcar or lock-in)
+            signals = self._apply_rate_windows(
+                corrected, time_points, rate_windows
+            )
+            dlts_signals.append(signals)
+        
+        dlts_signals = np.array(dlts_signals)
+        
+        # 2. Find peaks in DLTS spectrum
+        peaks = []
+        for rw_idx, rate_window in enumerate(rate_windows):
+            spectrum = dlts_signals[:, rw_idx]
+            peak_indices = signal.find_peaks(
+                -spectrum,  # Negative for electron traps
+                height=0.001,
+                distance=10
+            )[0]
+            
+            for peak_idx in peak_indices:
+                peaks.append({
+                    'temperature': temperatures[peak_idx],
+                    'rate_window': rate_window,
+                    'amplitude': abs(spectrum[peak_idx])
+                })
+        
+        # 3. Construct Arrhenius plot
+        trap_signatures = self._extract_trap_signatures(
+            peaks, doping_concentration
+        )
+        
+        # 4. Identify defects
+        for trap in trap_signatures:
+            trap['identified_defect'] = self._identify_defect(
+                trap['activation_energy'],
+                trap['capture_cross_section'],
+                trap['trap_type']
+            )
+        
+        return {
+            'dlts_spectrum': dlts_signals,
+            'temperatures': temperatures.tolist(),
+            'rate_windows': rate_windows,
+            'trap_signatures': trap_signatures,
+            'quality_metrics': self._calculate_quality_metrics(dlts_signals)
+        }
+    
+    def _apply_rate_windows(
+        self,
+        transient: np.ndarray,
+        time_points: np.ndarray,
+        rate_windows: List[float]
+    ) -> np.ndarray:
+        """Apply rate window correlation"""
+        
+        signals = []
+        for rate_window in rate_windows:
+            # Boxcar method: S(T) = C(t1) - C(t2)
+            t1 = 1.0 / rate_window
+            t2 = 2.0 / rate_window
+            
+            idx1 = np.argmin(np.abs(time_points - t1))
+            idx2 = np.argmin(np.abs(time_points - t2))
+            
+            signal_amplitude = transient[idx1] - transient[idx2]
+            signals.append(signal_amplitude)
+        
+        return np.array(signals)
+    
+    def _extract_trap_signatures(
+        self,
+        peaks: List[Dict],
+        doping_concentration: float
+    ) -> List[Dict]:
+        """Extract trap parameters from Arrhenius plot"""
+        
+        # Group peaks by trap
+        trap_groups = self._group_peaks_by_trap(peaks)
+        
+        trap_signatures = []
+        for trap_id, trap_peaks in trap_groups.items():
+            if len(trap_peaks) < 3:
+                continue  # Need at least 3 points for fitting
+            
+            # Arrhenius plot: ln(en/T²) vs 1000/T
+            x_data = []  # 1000/T
+            y_data = []  # ln(en/T²)
+            
+            for peak in trap_peaks:
+                T = peak['temperature']
+                en = peak['rate_window']
+                
+                x_data.append(1000.0 / T)
+                y_data.append(np.log(en / (T * T)))
+            
+            x_data = np.array(x_data)
+            y_data = np.array(y_data)
+            
+            # Linear fit: y = -Ea/kB * x + ln(σn * γ)
+            slope, intercept = np.polyfit(x_data, y_data, 1)
+            
+            activation_energy = -slope * self.k_B / 1000  # eV
+            capture_cross_section = np.exp(intercept) / (3.25e15 * np.sqrt(300))
+            
+            # Calculate trap concentration from peak amplitude
+            avg_amplitude = np.mean([p['amplitude'] for p in trap_peaks])
+            trap_concentration = 2 * doping_concentration * avg_amplitude
+            
+            trap_signatures.append({
+                'trap_id': trap_id,
+                'activation_energy': activation_energy,
+                'capture_cross_section': capture_cross_section,
+                'trap_concentration': trap_concentration,
+                'trap_type': 'electron' if activation_energy > 0 else 'hole',
+                'peak_temperatures': [p['temperature'] for p in trap_peaks],
+                'r_squared': self._calculate_r_squared(x_data, y_data, slope, intercept)
+            })
+        
+        return trap_signatures
+    
+    def _identify_defect(
+        self,
+        energy: float,
+        cross_section: float,
+        trap_type: str
+    ) -> Dict:
+        """Identify defect by comparing with known signatures"""
+        
+        best_match = None
+        min_distance = float('inf')
+        
+        for defect in self.trap_database:
+            if defect['type'] != trap_type:
+                continue
+            
+            # Calculate Euclidean distance in (E, log(σ)) space
+            energy_diff = (energy - defect['energy']) / 0.05  # 50 meV tolerance
+            sigma_diff = (np.log10(cross_section) - np.log10(defect['sigma'])) / 1.0
+            
+            distance = np.sqrt(energy_diff**2 + sigma_diff**2)
+            
+            if distance < min_distance and distance < 2.0:  # Threshold
+                min_distance = distance
+                best_match = defect
+        
+        if best_match:
+            return {
+                'name': best_match['name'],
+                'confidence': max(0, 100 * (1 - min_distance / 2.0))
+            }
+        
+        return {'name': 'Unknown', 'confidence': 0}
+    
+    def _load_trap_database(self) -> List[Dict]:
+        """Load database of known trap signatures"""
+        
+        # Common defects in silicon
+        return [
+            {'name': 'Fe_i', 'energy': 0.38, 'sigma': 1.3e-14, 'type': 'electron'},
+            {'name': 'Cr_i', 'energy': 0.22, 'sigma': 2e-15, 'type': 'electron'},
+            {'name': 'Au_s', 'energy': 0.54, 'sigma': 1e-15, 'type': 'electron'},
+            {'name': 'Ti_dd', 'energy': 0.27, 'sigma': 3e-14, 'type': 'electron'},
+            {'name': 'V_O', 'energy': 0.17, 'sigma': 2e-14, 'type': 'electron'},
+            {'name': 'V_2', 'energy': 0.43, 'sigma': 5e-15, 'type': 'electron'},
+            {'name': 'C_i-O_i', 'energy': 0.36, 'sigma': 1e-14, 'type': 'electron'},
+            {'name': 'Fe_i', 'energy': 0.71, 'sigma': 7e-17, 'type': 'hole'},
+            {'name': 'Cr_i', 'energy': 0.87, 'sigma': 1e-16, 'type': 'hole'},
+            {'name': 'Au_s', 'energy': 0.55, 'sigma': 7e-17, 'type': 'hole'},
+        ]
+    
+    def _group_peaks_by_trap(self, peaks: List[Dict]) -> Dict:
+        """Group peaks that belong to the same trap"""
+        
+        # Simple clustering based on activation energy
+        trap_groups = {}
+        trap_counter = 0
+        
+        sorted_peaks = sorted(peaks, key=lambda p: p['temperature'])
+        
+        for peak in sorted_peaks:
+            assigned = False
+            
+            # Check if peak belongs to existing trap
+            for trap_id, trap_peaks in trap_groups.items():
+                # Peaks from same trap should follow Arrhenius relation
+                if self._peaks_are_related(peak, trap_peaks):
+                    trap_groups[trap_id].append(peak)
+                    assigned = True
+                    break
+            
+            if not assigned:
+                trap_counter += 1
+                trap_groups[f'T{trap_counter}'] = [peak]
+        
+        return trap_groups
+    
+    def _peaks_are_related(self, peak: Dict, trap_peaks: List[Dict]) -> bool:
+        """Check if peak belongs to same trap as existing peaks"""
+        
+        if len(trap_peaks) < 2:
+            return True  # Accept first two peaks
+        
+        # Predict expected rate window for this temperature
+        # based on existing Arrhenius relation
+        x_existing = [1000.0 / p['temperature'] for p in trap_peaks]
+        y_existing = [np.log(p['rate_window'] / (p['temperature']**2)) 
+                      for p in trap_peaks]
+        
+        if len(x_existing) >= 2:
+            slope, intercept = np.polyfit(x_existing, y_existing, 1)
+            
+            x_new = 1000.0 / peak['temperature']
+            y_predicted = slope * x_new + intercept
+            y_actual = np.log(peak['rate_window'] / (peak['temperature']**2))
+            
+            # Allow 20% deviation
+            if abs(y_actual - y_predicted) / abs(y_predicted) < 0.2:
+                return True
+        
+        return False
+    
+    def _calculate_quality_metrics(self, dlts_signals: np.ndarray) -> Dict:
+        """Calculate quality metrics for DLTS measurement"""
+        
+        return {
+            'snr': float(np.mean(dlts_signals) / np.std(dlts_signals)),
+            'baseline_stability': float(np.std(dlts_signals[0]) / np.mean(np.abs(dlts_signals))),
+            'peak_resolution': self._calculate_peak_resolution(dlts_signals),
+            'quality_score': self._calculate_overall_quality(dlts_signals)
+        }
+    
+    def _calculate_r_squared(
+        self,
+        x_data: np.ndarray,
+        y_data: np.ndarray,
+        slope: float,
+        intercept: float
+    ) -> float:
+        """Calculate R-squared for linear fit"""
+        
+        y_pred = slope * x_data + intercept
+        ss_res = np.sum((y_data - y_pred) ** 2)
+        ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+        
+        return 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+    
+    def _calculate_peak_resolution(self, signals: np.ndarray) -> float:
+        """Calculate peak resolution metric"""
+        
+        # Find all peaks
+        all_peaks = []
+        for spectrum in signals.T:
+            peaks = signal.find_peaks(-spectrum)[0]
+            all_peaks.extend(peaks)
+        
+        if len(all_peaks) < 2:
+            return 100.0
+        
+        # Calculate minimum peak separation
+        all_peaks = sorted(all_peaks)
+        min_separation = min(all_peaks[i+1] - all_peaks[i] 
+                            for i in range(len(all_peaks)-1))
+        
+        return float(min_separation)
+    
+    def _calculate_overall_quality(self, signals: np.ndarray) -> int:
+        """Calculate overall quality score 0-100"""
+        
+        snr = np.mean(signals) / np.std(signals) if np.std(signals) > 0 else 0
+        
+        if snr > 10:
+            return 95
+        elif snr > 5:
+            return 85
+        elif snr > 2:
+            return 70
+        else:
+            return 50
+
+
+class LaplaceDLTS:
+    """Laplace DLTS for high-resolution spectroscopy"""
+    
+    def __init__(self):
+        self.regularization_parameter = 1e-6
+    
+    def analyze_laplace_dlts(
+        self,
+        transient: np.ndarray,
+        time_points: np.ndarray,
+        temperature: float,
+        num_rates: int = 100
+    ) -> Dict:
+        """
+        Perform Laplace DLTS analysis
+        
+        Converts single transient to emission rate spectrum
+        using Tikhonov regularization
+        """
+        
+        # Create emission rate grid
+        rate_min = 1.0 / time_points[-1]
+        rate_max = 1.0 / time_points[1]
+        emission_rates = np.logspace(
+            np.log10(rate_min),
+            np.log10(rate_max),
+            num_rates
+        )
+        
+        # Build kernel matrix K where C(t) = ∫S(e)exp(-et)de
+        kernel = np.zeros((len(time_points), len(emission_rates)))
+        for i, t in enumerate(time_points):
+            for j, rate in enumerate(emission_rates):
+                kernel[i, j] = np.exp(-rate * t)
+        
+        # Solve inverse problem with Tikhonov regularization
+        # Minimize ||KC - S||² + α||C||²
+        ktk = kernel.T @ kernel
+        regularization = self.regularization_parameter * np.eye(len(emission_rates))
+        
+        spectrum = np.linalg.solve(
+            ktk + regularization,
+            kernel.T @ transient
+        )
+        
+        # Find peaks in emission spectrum
+        peaks = signal.find_peaks(spectrum, height=0.1*np.max(spectrum))[0]
+        
+        peak_rates = emission_rates[peaks]
+        peak_amplitudes = spectrum[peaks]
+        
+        return {
+            'emission_rates': emission_rates.tolist(),
+            'spectrum': spectrum.tolist(),
+            'peak_rates': peak_rates.tolist(),
+            'peak_amplitudes': peak_amplitudes.tolist(),
+            'temperature': temperature,
+            'resolution': len(peaks)
+        }
+
+### Day 2-3: EBIC Implementation
+
+# services/analysis/app/methods/electrical/ebic_analysis.py
+
+import numpy as np
+from scipy import ndimage, optimize
+from typing import Dict, Tuple, Optional
+import cv2
+
+class EBICAnalyzer:
+    """
+    Electron Beam Induced Current Analysis
+    
+    Processes EBIC maps to extract:
+    - Junction delineation
+    - Defect identification
+    - Minority carrier diffusion length
+    """
+    
+    def __init__(self):
+        self.materials_db = self._load_materials_database()
+    
+    def analyze_ebic_map(
+        self,
+        current_map: np.ndarray,  # 2D array of EBIC current
+        sem_image: Optional[np.ndarray],  # Corresponding SEM image
+        beam_energy: float,  # keV
+        beam_current: float,  # pA
+        pixel_size: float,  # micrometers
+        temperature: float = 300.0,  # K
+        material: str = 'Si'
+    ) -> Dict:
+        """Complete EBIC map analysis"""
+        
+        # 1. Normalize and process current map
+        normalized_map = self._normalize_current_map(
+            current_map, beam_current
+        )
+        
+        # 2. Calculate contrast map
+        contrast_map = self._calculate_contrast(normalized_map)
+        
+        # 3. Identify junction location
+        junction_mask = self._find_junction(normalized_map)
+        
+        # 4. Extract defects
+        defects = self._identify_defects(
+            contrast_map, junction_mask
+        )
+        
+        # 5. Calculate diffusion length from line profiles
+        diffusion_lengths = self._extract_diffusion_lengths(
+            normalized_map, junction_mask, pixel_size, material
+        )
+        
+        # 6. Overlay analysis
+        if sem_image is not None:
+            overlay = self._create_overlay(
+                sem_image, current_map, defects
+            )
+        else:
+            overlay = None
+        
+        return {
+            'current_map': current_map.tolist(),
+            'normalized_map': normalized_map.tolist(),
+            'contrast_map': contrast_map.tolist(),
+            'junction_mask': junction_mask.tolist(),
+            'defects': defects,
+            'diffusion_lengths': diffusion_lengths,
+            'statistics': self._calculate_statistics(normalized_map),
+            'overlay_image': overlay,
+            'quality_score': self._assess_quality(normalized_map, contrast_map)
+        }
+    
+    def _normalize_current_map(
+        self,
+        current_map: np.ndarray,
+        beam_current: float
+    ) -> np.ndarray:
+        """Normalize EBIC current by beam current"""
+        
+        # Remove background
+        background = ndimage.gaussian_filter(current_map, sigma=20)
+        corrected = current_map - background
+        
+        # Normalize by beam current
+        normalized = corrected / (beam_current * 1e-12)  # Convert pA to A
+        
+        # Clip outliers
+        percentile_1 = np.percentile(normalized, 1)
+        percentile_99 = np.percentile(normalized, 99)
+        normalized = np.clip(normalized, percentile_1, percentile_99)
+        
+        return normalized
+    
+    def _calculate_contrast(self, normalized_map: np.ndarray) -> np.ndarray:
+        """Calculate EBIC contrast map"""
+        
+        # Local contrast: (I - I_mean) / I_mean
+        mean_filtered = ndimage.uniform_filter(normalized_map, size=5)
+        
+        contrast = np.zeros_like(normalized_map)
+        mask = mean_filtered > 0
+        contrast[mask] = (normalized_map[mask] - mean_filtered[mask]) / mean_filtered[mask]
+        
+        return contrast
+    
+    def _find_junction(self, normalized_map: np.ndarray) -> np.ndarray:
+        """Identify junction location from EBIC signal"""
+        
+        # Junction shows maximum EBIC signal
+        threshold = np.percentile(normalized_map, 90)
+        junction_mask = normalized_map > threshold
+        
+        # Morphological operations to clean up
+        junction_mask = ndimage.binary_closing(junction_mask, iterations=2)
+        junction_mask = ndimage.binary_opening(junction_mask, iterations=1)
+        
+        # Find largest connected component
+        labeled, num_features = ndimage.label(junction_mask)
+        if num_features > 0:
+            sizes = ndimage.sum(junction_mask, labeled, range(1, num_features+1))
+            max_label = np.argmax(sizes) + 1
+            junction_mask = labeled == max_label
+        
+        return junction_mask
+    
+    def _identify_defects(
+        self,
+        contrast_map: np.ndarray,
+        junction_mask: np.ndarray
+    ) -> List[Dict]:
+        """Identify defects from contrast variations"""
+        
+        defects = []
+        
+        # Look for dark spots (reduced EBIC)
+        defect_threshold = -0.3  # 30% reduction
+        defect_mask = contrast_map < defect_threshold
+        
+        # Remove junction area
+        defect_mask = defect_mask & ~junction_mask
+        
+        # Label individual defects
+        labeled, num_defects = ndimage.label(defect_mask)
+        
+        for i in range(1, num_defects + 1):
+            defect_pixels = labeled == i
+            
+            # Calculate defect properties
+            y_coords, x_coords = np.where(defect_pixels)
+            
+            defect = {
+                'id': i,
+                'center': [float(np.mean(x_coords)), float(np.mean(y_coords))],
+                'area': float(np.sum(defect_pixels)),
+                'contrast': float(np.mean(contrast_map[defect_pixels])),
+                'max_contrast': float(np.min(contrast_map[defect_pixels])),
+                'type': self._classify_defect(contrast_map[defect_pixels])
+            }
+            
+            defects.append(defect)
+        
+        return defects
+    
+    def _extract_diffusion_lengths(
+        self,
+        normalized_map: np.ndarray,
+        junction_mask: np.ndarray,
+        pixel_size: float,
+        material: str
+    ) -> Dict:
+        """Extract minority carrier diffusion length"""
+        
+        # Find junction edge
+        edges = ndimage.find_boundaries(junction_mask)
+        edge_points = np.argwhere(edges)
+        
+        if len(edge_points) == 0:
+            return {'error': 'No junction found'}
+        
+        # Extract perpendicular line profiles
+        diffusion_lengths = []
+        
+        for point in edge_points[::10]:  # Sample every 10th point
+            # Get perpendicular direction
+            gradient = ndimage.sobel(junction_mask.astype(float))
+            direction = gradient[point[0], point[1]]
+            
+            if abs(direction) < 0.1:
+                continue
+            
+            # Extract line profile
+            profile_length = 50  # pixels
+            profile = self._extract_line_profile(
+                normalized_map, point, direction, profile_length
+            )
+            
+            if len(profile) < 10:
+                continue
+            
+            # Fit exponential decay
+            try:
+                L = self._fit_diffusion_length(
+                    profile, pixel_size, material
+                )
+                if L > 0 and L < 1000:  # Reasonable range in micrometers
+                    diffusion_lengths.append(L)
+            except:
+                continue
+        
+        if diffusion_lengths:
+            return {
+                'mean': float(np.mean(diffusion_lengths)),
+                'std': float(np.std(diffusion_lengths)),
+                'min': float(np.min(diffusion_lengths)),
+                'max': float(np.max(diffusion_lengths)),
+                'values': diffusion_lengths[:100]  # Limit to 100 values
+            }
+        else:
+            return {'error': 'Could not extract diffusion length'}
+    
+    def _fit_diffusion_length(
+        self,
+        profile: np.ndarray,
+        pixel_size: float,
+        material: str
+    ) -> float:
+        """Fit exponential decay to extract diffusion length"""
+        
+        # Create distance array
+        distances = np.arange(len(profile)) * pixel_size
+        
+        # Normalize profile
+        profile = profile / np.max(profile)
+        
+        # Fit: I(x) = I0 * exp(-x/L)
+        def exponential(x, I0, L):
+            return I0 * np.exp(-x / L)
+        
+        # Only fit the decay part
+        mask = profile > 0.1  # Above noise floor
+        
+        try:
+            popt, _ = optimize.curve_fit(
+                exponential,
+                distances[mask],
+                profile[mask],
+                p0=[1.0, 10.0],  # Initial guess
+                bounds=([0.1, 0.1], [2.0, 1000.0])
+            )
+            
+            return popt[1]  # Diffusion length L
+        except:
+            return -1
+    
+    def _create_overlay(
+        self,
+        sem_image: np.ndarray,
+        current_map: np.ndarray,
+        defects: List[Dict]
+    ) -> np.ndarray:
+        """Create overlay of EBIC on SEM image"""
+        
+        # Convert SEM to RGB if grayscale
+        if len(sem_image.shape) == 2:
+            sem_rgb = cv2.cvtColor(sem_image, cv2.COLOR_GRAY2RGB)
+        else:
+            sem_rgb = sem_image.copy()
+        
+        # Normalize current map to 0-255
+        current_norm = (current_map - np.min(current_map))
+        current_norm = (255 * current_norm / np.max(current_norm)).astype(np.uint8)
+        
+        # Create colored overlay
+        overlay = sem_rgb.copy()
+        
+        # Apply colormap to EBIC
+        ebic_colored = cv2.applyColorMap(current_norm, cv2.COLORMAP_JET)
+        
+        # Blend with SEM
+        alpha = 0.3
+        overlay = cv2.addWeighted(overlay, 1-alpha, ebic_colored, alpha, 0)
+        
+        # Mark defects
+        for defect in defects:
+            center = tuple(map(int, defect['center']))
+            radius = int(np.sqrt(defect['area'] / np.pi))
+            cv2.circle(overlay, center, radius, (255, 0, 0), 2)
+        
+        return overlay
+    
+    def _classify_defect(self, defect_contrast: np.ndarray) -> str:
+        """Classify defect type based on contrast signature"""
+        
+        mean_contrast = np.mean(defect_contrast)
+        
+        if mean_contrast < -0.8:
+            return "Strong recombination center"
+        elif mean_contrast < -0.5:
+            return "Moderate recombination center"
+        elif mean_contrast < -0.3:
+            return "Weak recombination center"
+        else:
+            return "Unknown"
+    
+    def _calculate_statistics(self, normalized_map: np.ndarray) -> Dict:
+        """Calculate map statistics"""
+        
+        return {
+            'mean': float(np.mean(normalized_map)),
+            'std': float(np.std(normalized_map)),
+            'min': float(np.min(normalized_map)),
+            'max': float(np.max(normalized_map)),
+            'median': float(np.median(normalized_map)),
+            'uniformity': float(np.std(normalized_map) / np.mean(normalized_map))
+        }
+    
+    def _assess_quality(
+        self,
+        normalized_map: np.ndarray,
+        contrast_map: np.ndarray
+    ) -> int:
+        """Assess measurement quality"""
+        
+        # Signal-to-noise ratio
+        signal = np.mean(normalized_map)
+        noise = np.std(normalized_map[0:10, 0:10])  # Corner region
+        snr = signal / noise if noise > 0 else 0
+        
+        # Contrast quality
+        contrast_range = np.max(contrast_map) - np.min(contrast_map)
+        
+        score = 50
+        if snr > 20:
+            score += 25
+        elif snr > 10:
+            score += 15
+        
+        if contrast_range > 0.5:
+            score += 25
+        elif contrast_range > 0.2:
+            score += 15
+        
+        return min(100, score)
+    
+    def _load_materials_database(self) -> Dict:
+        """Load material properties database"""
+        
+        return {
+            'Si': {
+                'diffusion_length_electrons': 150,  # micrometers at 300K
+                'diffusion_length_holes': 50,
+                'absorption_depth': {10: 1.0, 20: 5.0, 30: 10.0}  # keV: micrometers
+            },
+            'GaAs': {
+                'diffusion_length_electrons': 10,
+                'diffusion_length_holes': 2,
+                'absorption_depth': {10: 0.5, 20: 2.0, 30: 5.0}
+            },
+            'SiC': {
+                'diffusion_length_electrons': 100,
+                'diffusion_length_holes': 30,
+                'absorption_depth': {10: 2.0, 20: 8.0, 30: 15.0}
+            }
+        }
+    
+    def _extract_line_profile(
+        self,
+        image: np.ndarray,
+        start_point: np.ndarray,
+        direction: float,
+        length: int
+    ) -> np.ndarray:
+        """Extract line profile from image"""
+        
+        # Calculate end point
+        angle = np.arctan2(direction, 1.0)
+        end_point = start_point + length * np.array([np.cos(angle), np.sin(angle)])
+        
+        # Create line coordinates
+        num_points = length
+        x = np.linspace(start_point[1], end_point[1], num_points)
+        y = np.linspace(start_point[0], end_point[0], num_points)
+        
+        # Sample image along line
+        profile = []
+        for xi, yi in zip(x, y):
+            if 0 <= yi < image.shape[0] and 0 <= xi < image.shape[1]:
+                # Bilinear interpolation
+                profile.append(ndimage.map_coordinates(image, [[yi], [xi]])[0])
+        
+        return np.array(profile)
+
+### Day 3-4: PCD Implementation
+
+# services/analysis/app/methods/electrical/pcd_analysis.py
+
+import numpy as np
+from scipy import optimize, integrate
+from typing import Dict, List, Tuple, Optional
+
+class PCDAnalyzer:
+    """
+    Photoconductance Decay Analysis
+    
+    Measures minority carrier lifetime through:
+    - Transient photoconductance
+    - Quasi-steady-state photoconductance (QSSPC)
+    - Surface recombination velocity extraction
+    """
+    
+    def __init__(self):
+        self.q = 1.602176634e-19  # C
+        self.k_B = 1.380649e-23  # J/K
+        
+    def analyze_pcd_transient(
+        self,
+        time: np.ndarray,  # seconds
+        photoconductance: np.ndarray,  # Siemens
+        sample_thickness: float,  # cm
+        sample_area: float,  # cm²
+        resistivity: float,  # Ohm-cm (dark)
+        temperature: float = 300.0,  # K
+        doping_type: str = 'p-type',
+        doping_concentration: float = 1e15,  # cm^-3
+        generation_profile: str = 'uniform'
+    ) -> Dict:
+        """Analyze photoconductance decay transient"""
+        
+        # 1. Convert photoconductance to carrier density
+        delta_n = self._conductance_to_carrier_density(
+            photoconductance,
+            sample_thickness,
+            sample_area,
+            temperature,
+            doping_type,
+            doping_concentration
+        )
+        
+        # 2. Calculate generation rate
+        if generation_profile == 'uniform':
+            G = self._calculate_generation_rate(delta_n, time)
+        else:
+            G = 0  # Assume instantaneous pulse
+        
+        # 3. Extract effective lifetime
+        tau_eff = self._extract_effective_lifetime(
+            delta_n, time, G
+        )
+        
+        # 4. Separate bulk and surface components
+        bulk_surface = self._separate_bulk_surface(
+            tau_eff, delta_n, sample_thickness
+        )
+        
+        # 5. Extract SRV
+        srv = self._extract_srv(
+            tau_eff, bulk_surface['tau_bulk'],
+            sample_thickness
+        )
+        
+        # 6. Identify recombination mechanisms
+        mechanisms = self._identify_recombination_mechanisms(
+            tau_eff, delta_n, temperature
+        )
+        
+        return {
+            'time': time.tolist(),
+            'photoconductance': photoconductance.tolist(),
+            'carrier_density': delta_n.tolist(),
+            'effective_lifetime': tau_eff.tolist(),
+            'bulk_lifetime': bulk_surface['tau_bulk'].tolist(),
+            'surface_lifetime': bulk_surface['tau_surface'].tolist(),
+            'srv_front': srv['front'],
+            'srv_back': srv['back'],
+            'srv_effective': srv['effective'],
+            'mechanisms': mechanisms,
+            'quality_metrics': self._calculate_quality_metrics(
+                time, photoconductance, tau_eff
+            )
+        }
+    
+    def analyze_qsspc(
+        self,
+        generation_rate: np.ndarray,  # photons/cm³/s
+        photoconductance: np.ndarray,  # Siemens
+        sample_thickness: float,  # cm
+        sample_area: float,  # cm²
+        temperature: float = 300.0,
+        calibration_constant: float = 1.0
+    ) -> Dict:
+        """
+        Analyze quasi-steady-state photoconductance
+        
+        For slowly varying illumination where dn/dt << G
+        """
+        
+        # Convert to carrier density
+        delta_n = photoconductance / (
+            self.q * sample_area * sample_thickness * 
+            (self._mobility_sum(temperature))
+        )
+        
+        # Calculate lifetime: tau = Δn / G
+        tau_eff = delta_n / generation_rate
+        
+        # Remove outliers
+        valid = (tau_eff > 1e-9) & (tau_eff < 1e-2)  # 1ns to 10ms
+        
+        delta_n_valid = delta_n[valid]
+        tau_eff_valid = tau_eff[valid]
+        
+        # Fit injection-dependent lifetime models
+        models = self._fit_lifetime_models(delta_n_valid, tau_eff_valid)
+        
+        return {
+            'injection_level': delta_n_valid.tolist(),
+            'effective_lifetime': tau_eff_valid.tolist(),
+            'models': models,
+            'srv': self._extract_srv_from_model(models),
+            'quality_score': self._assess_qsspc_quality(
+                delta_n_valid, tau_eff_valid
+            )
+        }
+    
+    def _conductance_to_carrier_density(
+        self,
+        photoconductance: np.ndarray,
+        thickness: float,
+        area: float,
+        temperature: float,
+        doping_type: str,
+        doping_concentration: float
+    ) -> np.ndarray:
+        """Convert photoconductance to excess carrier density"""
+        
+        # Mobility sum (electrons + holes)
+        mu_sum = self._mobility_sum(temperature)
+        
+        # Basic conversion: ΔG = q * Δn * (μn + μp) * A * W
+        delta_n = photoconductance / (self.q * mu_sum * area * thickness)
+        
+        # High injection correction
+        if doping_type == 'p-type':
+            n0 = 1e10**2 / doping_concentration  # Intrinsic carrier concentration
+            # At high injection, conductance is enhanced
+            correction = 1 + delta_n / doping_concentration
+        else:
+            correction = 1
+        
+        return delta_n / correction
+    
+    def _extract_effective_lifetime(
+        self,
+        delta_n: np.ndarray,
+        time: np.ndarray,
+        generation_rate: float
+    ) -> np.ndarray:
+        """Extract effective lifetime from decay"""
+        
+        tau_eff = np.zeros_like(delta_n)
+        
+        # Method 1: Generalized analysis
+        # tau_eff = Δn / (G - dn/dt)
+        
+        # Calculate derivative
+        dn_dt = np.gradient(delta_n, time)
+        
+        denominator = generation_rate - dn_dt
+        
+        # Avoid division by zero
+        valid = np.abs(denominator) > 1e10  # cm^-3/s
+        
+        tau_eff[valid] = delta_n[valid] / denominator[valid]
+        
+        # Smooth results
+        from scipy.signal import savgol_filter
+        if len(tau_eff) > 11:
+            tau_eff = savgol_filter(tau_eff, 11, 3)
+        
+        # Physical limits
+        tau_eff = np.clip(tau_eff, 1e-9, 1e-2)  # 1ns to 10ms
+        
+        return tau_eff
+    
+    def _separate_bulk_surface(
+        self,
+        tau_eff: np.ndarray,
+        delta_n: np.ndarray,
+        thickness: float
+    ) -> Dict:
+        """Separate bulk and surface recombination"""
+        
+        # Model: 1/tau_eff = 1/tau_bulk + 1/tau_surface
+        # where tau_surface = W / (2*S_eff)
+        
+        # Assume bulk lifetime is injection-dependent
+        # and surface lifetime is constant at low injection
+        
+        # Find low injection region
+        low_injection_mask = delta_n < 1e14  # cm^-3
+        
+        if np.sum(low_injection_mask) > 10:
+            # At low injection, plot 1/tau_eff vs 1/W should be linear
+            # Intercept = 1/tau_bulk, Slope = 2*S_eff
+            
+            # Simplified: assume constant tau_bulk
+            tau_eff_low = np.median(tau_eff[low_injection_mask])
+            
+            # Estimate surface component
+            tau_surface_estimate = thickness / (2 * 10)  # Assume S = 10 cm/s initially
+            
+            tau_bulk = 1 / (1/tau_eff_low - 1/tau_surface_estimate)
+            
+            if tau_bulk < 0:
+                tau_bulk = tau_eff_low * 2  # Fallback
+        else:
+            tau_bulk = np.max(tau_eff) * 1.5  # Assume bulk dominates at peak
+        
+        # Calculate surface component for all injection levels
+        tau_surface = np.zeros_like(tau_eff)
+        valid = tau_eff < tau_bulk * 0.99
+        tau_surface[valid] = 1 / (1/tau_eff[valid] - 1/tau_bulk)
+        tau_surface[~valid] = thickness / (2 * 1)  # Very low SRV
+        
+        return {
+            'tau_bulk': np.full_like(tau_eff, tau_bulk),
+            'tau_surface': tau_surface
+        }
+    
+    def _extract_srv(
+        self,
+        tau_eff: np.ndarray,
+        tau_bulk: np.ndarray,
+        thickness: float
+    ) -> Dict:
+        """Extract surface recombination velocity"""
+        
+        # For symmetric surfaces: tau_surface = W / (2*S)
+        # For asymmetric: need more complex model
+        
+        tau_surface = 1 / (1/tau_eff - 1/tau_bulk)
+        
+        # Avoid infinities
+        tau_surface = np.clip(tau_surface, thickness/(2*1e7), thickness/(2*0.1))
+        
+        s_effective = thickness / (2 * np.median(tau_surface))
+        
+        return {
+            'effective': float(s_effective),
+            'front': float(s_effective),  # Assume symmetric
+            'back': float(s_effective),
+            'unit': 'cm/s'
+        }
+    
+    def _identify_recombination_mechanisms(
+        self,
+        tau_eff: np.ndarray,
+        delta_n: np.ndarray,
+        temperature: float
+    ) -> Dict:
+        """Identify dominant recombination mechanisms"""
+        
+        mechanisms = {}
+        
+        # Check for Auger recombination (high injection)
+        high_injection = delta_n > 1e17
+        if np.any(high_injection):
+            # Auger: tau ∝ 1/Δn²
+            tau_high = tau_eff[high_injection]
+            n_high = delta_n[high_injection]
+            
+            if len(tau_high) > 5:
+                # Check if tau*n² is constant
+                auger_product = tau_high * n_high**2
+                if np.std(auger_product) / np.mean(auger_product) < 0.3:
+                    mechanisms['auger'] = {
+                        'coefficient': float(1 / np.mean(auger_product)),
+                        'dominant_above': float(1e17)
+                    }
+        
+        # Check for SRH recombination (mid injection)
+        mid_injection = (delta_n > 1e13) & (delta_n < 1e16)
+        if np.sum(mid_injection) > 10:
+            # SRH shows characteristic peak
+            tau_mid = tau_eff[mid_injection]
+            
+            # Look for maximum
+            peak_idx = np.argmax(tau_mid)
+            if peak_idx > 0 and peak_idx < len(tau_mid) - 1:
+                mechanisms['srh'] = {
+                    'peak_lifetime': float(tau_mid[peak_idx]),
+                    'peak_injection': float(delta_n[mid_injection][peak_idx])
+                }
+        
+        # Radiative recombination (mainly for direct bandgap)
+        # tau_rad = 1 / (B * Δn) where B ~ 1e-10 cm³/s for Si
+        mechanisms['radiative'] = {
+            'coefficient': 1e-10,  # cm³/s
+            'significance': 'negligible' if temperature < 400 else 'minor'
+        }
+        
+        return mechanisms
+    
+    def _fit_lifetime_models(
+        self,
+        delta_n: np.ndarray,
+        tau_eff: np.ndarray
+    ) -> Dict:
+        """Fit various lifetime models to injection-dependent data"""
+        
+        models = {}
+        
+        # 1. SRH model: tau = tau0 / (1 + Δn/Ndop)
+        try:
+            def srh_model(n, tau0, ndop):
+                return tau0 / (1 + n / ndop)
+            
+            popt_srh, _ = optimize.curve_fit(
+                srh_model, delta_n, tau_eff,
+                p0=[np.max(tau_eff), 1e15],
+                bounds=([1e-9, 1e13], [1e-2, 1e18])
+            )
+            
+            models['srh'] = {
+                'tau0': float(popt_srh[0]),
+                'ndop': float(popt_srh[1]),
+                'fit_quality': self._calculate_r_squared(
+                    tau_eff, srh_model(delta_n, *popt_srh)
+                )
+            }
+        except:
+            pass
+        
+        # 2. Auger model at high injection
+        high_n = delta_n > 1e16
+        if np.sum(high_n) > 5:
+            # tau = 1 / (C_aug * n²)
+            c_auger = np.mean(1 / (tau_eff[high_n] * delta_n[high_n]**2))
+            models['auger'] = {
+                'coefficient': float(c_auger),
+                'unit': 'cm^6/s'
+            }
+        
+        # 3. Complete model combining SRH, Auger, and surface
+        def complete_model(n, tau_srh, s_eff, c_aug, thickness):
+            tau_surf = thickness / (2 * s_eff)
+            tau_aug = 1 / (c_aug * n**2)
+            return 1 / (1/tau_srh + 1/tau_surf + 1/tau_aug)
+        
+        # Simplified fitting
+        if 'srh' in models:
+            models['complete'] = {
+                'tau_srh': models['srh']['tau0'],
+                's_effective': 10.0,  # cm/s, typical
+                'c_auger': models.get('auger', {}).get('coefficient', 1e-30)
+            }
+        
+        return models
+    
+    def _calculate_generation_rate(
+        self,
+        delta_n: np.ndarray,
+        time: np.ndarray
+    ) -> float:
+        """Calculate photogeneration rate"""
+        
+        # For transient mode with flash lamp
+        # Assume instantaneous generation at t=0
+        
+        # Estimate from initial carrier density
+        # G = Δn(0) / τ_pulse where τ_pulse ~ 10 µs typically
+        
+        if len(delta_n) > 0 and delta_n[0] > 0:
+            pulse_width = 10e-6  # 10 microseconds
+            G = delta_n[0] / pulse_width
+        else:
+            G = 0
+        
+        return G
+    
+    def _mobility_sum(self, temperature: float) -> float:
+        """Calculate sum of electron and hole mobilities"""
+        
+        # Simple model for silicon
+        T = temperature
+        
+        # Electron mobility (cm²/V·s)
+        mu_n = 1414 * (T / 300) ** (-2.42)
+        
+        # Hole mobility
+        mu_p = 470.5 * (T / 300) ** (-2.20)
+        
+        return mu_n + mu_p
+    
+    def _calculate_quality_metrics(
+        self,
+        time: np.ndarray,
+        photoconductance: np.ndarray,
+        tau_eff: np.ndarray
+    ) -> Dict:
+        """Calculate measurement quality metrics"""
+        
+        # Signal-to-noise ratio
+        signal = np.max(photoconductance)
+        noise = np.std(photoconductance[-100:])  # Tail noise
+        snr = signal / noise if noise > 0 else 0
+        
+        # Dynamic range
+        dynamic_range = np.log10(
+            np.max(photoconductance) / np.min(photoconductance[photoconductance > 0])
+        ) if np.any(photoconductance > 0) else 0
+        
+        # Lifetime consistency
+        tau_variation = np.std(tau_eff) / np.mean(tau_eff) if np.mean(tau_eff) > 0 else 1
+        
+        # Overall quality score
+        score = 50
+        if snr > 100:
+            score += 20
+        elif snr > 20:
+            score += 10
+        
+        if dynamic_range > 3:
+            score += 20
+        elif dynamic_range > 2:
+            score += 10
+        
+        if tau_variation < 0.5:
+            score += 10
+        
+        return {
+            'snr': float(snr),
+            'dynamic_range': float(dynamic_range),
+            'tau_consistency': float(1 - tau_variation),
+            'quality_score': min(100, score)
+        }
+    
+    def _assess_qsspc_quality(
+        self,
+        delta_n: np.ndarray,
+        tau_eff: np.ndarray
+    ) -> int:
+        """Assess QSSPC measurement quality"""
+        
+        score = 70  # Base score
+        
+        # Check injection range
+        injection_range = np.log10(np.max(delta_n) / np.min(delta_n))
+        if injection_range > 3:
+            score += 15
+        elif injection_range > 2:
+            score += 10
+        
+        # Check for smooth lifetime curve
+        if len(tau_eff) > 10:
+            # Calculate roughness
+            roughness = np.std(np.diff(np.log10(tau_eff))) / np.mean(np.log10(tau_eff))
+            if roughness < 0.1:
+                score += 15
+            elif roughness < 0.2:
+                score += 10
+        
+        return min(100, score)
+    
+    def _extract_srv_from_model(self, models: Dict) -> Dict:
+        """Extract SRV from fitted models"""
+        
+        if 'complete' in models:
+            return {
+                'effective': models['complete']['s_effective'],
+                'unit': 'cm/s',
+                'method': 'model_fit'
+            }
+        else:
+            return {
+                'effective': 10.0,  # Default estimate
+                'unit': 'cm/s',
+                'method': 'default'
+            }
+    
+    def _calculate_r_squared(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """Calculate R-squared value"""
+        
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        
+        return 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+
+---
+
+## 📅 Implementation Schedule
+
+### Day 1: DLTS Core
+- [ ] Morning: DLTS analyzer class
+- [ ] Afternoon: Arrhenius analysis & trap identification
+- [ ] Evening: Test data generator
+
+### Day 2: EBIC Implementation  
+- [ ] Morning: EBIC map analyzer
+- [ ] Afternoon: Diffusion length extraction
+- [ ] Evening: Defect identification algorithms
+
+### Day 3: PCD Implementation
+- [ ] Morning: Transient PCD analyzer
+- [ ] Afternoon: QSSPC mode & lifetime models
+- [ ] Evening: SRV extraction
+
+### Day 4: Frontend UI
+- [ ] Morning: DLTS measurement interface
+- [ ] Afternoon: EBIC viewer with SEM overlay
+- [ ] Evening: PCD lifetime analyzer UI
+
+### Day 5: Integration & Testing
+- [ ] Morning: Integration tests
+- [ ] Afternoon: Documentation
+- [ ] Evening: Deployment preparation
+
+---
+
+## 🎯 Success Criteria
+
+### Technical Requirements
+- [ ] DLTS: Trap energy accuracy < 10 meV
+- [ ] EBIC: Diffusion length accuracy < 10%
+- [ ] PCD: Lifetime accuracy < 5%
+- [ ] Processing time < 2s per analysis
+- [ ] Memory usage < 500MB per dataset
+
+### Quality Metrics
+- [ ] Unit test coverage > 90%
+- [ ] Integration tests for all workflows
+- [ ] API response time < 500ms
+- [ ] UI responsiveness < 200ms
+
+### Documentation
+- [ ] Method theory & equations
+- [ ] API documentation
+- [ ] User guides with examples
+- [ ] Troubleshooting guide
+
+---
+
+## 🚀 Next Steps
+
+1. **Review this plan** with stakeholders
+2. **Set up development branch** for Session 6
+3. **Begin DLTS implementation** (highest priority)
+4. **Schedule mid-session review** (Day 3)
+5. **Prepare for Session 7** (Optical methods)
+
+---
+
+**Ready to begin Session 6 implementation!**
