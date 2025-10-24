@@ -1,0 +1,952 @@
+# Semiconductor Characterization Platform - Master Roadmap
+
+## Program Overview
+
+**Duration:** 16 Sessions (~6-8 months)  
+**Team Size:** 4-6 engineers (2 backend, 2 frontend, 1 DevOps, 1 domain expert)  
+**Budget Estimate:** $800K-1.2M (incl. hardware simulators, pilot equipment)
+
+-----
+
+## Phase 1: Foundation (Weeks 1-4)
+
+### **S1 – Program Setup & Architecture** [Week 1]
+
+**Duration:** 5 days  
+**Team:** Full team
+
+#### Objectives
+
+- Establish development environment and standards
+- Define architecture and technology stack
+- Create repository structure and CI/CD pipelines
+- Document program governance
+
+#### Deliverables
+
+1. **Program PRD** (markdown)
+- Stakeholder map (lab managers, engineers, QA, regulatory)
+- Success metrics (throughput, data quality, compliance)
+- Risk register with mitigation strategies
+- Budget and resource allocation
+1. **Architecture Documentation**
+- C4 Context, Container, Component diagrams
+- Technology stack justification
+- Integration patterns (event-driven, REST, gRPC)
+- Security architecture (zero-trust model)
+- Scalability plan (10 instruments → 100+ instruments)
+1. **Repository Scaffold**
+- Monorepo structure (NX or Turborepo)
+- Docker Compose for local development
+- Helm charts skeleton for K8s deployment
+- Pre-commit hooks, linters, formatters
+1. **OpenAPI Specification v1**
+- Auth endpoints (OAuth2/OIDC)
+- Instruments CRUD
+- Samples/Wafers/Dies hierarchy
+- Runs and Results
+- Webhook/SSE for real-time updates
+1. **Database Schema v1**
+- PostgreSQL + TimescaleDB migrations
+- Core entities (User, Project, Instrument, Sample, Run, Result)
+- Audit log tables
+- JSONB columns for flexible metadata
+1. **UI Shell (Next.js)**
+- Authentication pages
+- Navigation shell with role-based menus
+- Stub pages for all major modules
+- Design system setup (Tailwind + shadcn/ui)
+1. **HIL Simulator Framework**
+- Abstract base classes for instrument simulators
+- Noise models (Johnson, shot, 1/f)
+- Example: Diode I-V simulator with temperature dependence
+- Test harness for simulator validation
+1. **DevOps Baseline**
+- GitHub Actions CI (build, test, lint, security scan)
+- Docker registry setup
+- Secrets management (SOPS or Vault integration)
+- Observability stack (Prometheus, Grafana, Loki)
+
+#### Acceptance Criteria
+
+- [ ] All repos cloneable and buildable in < 5 minutes
+- [ ] OpenAPI spec validates in Swagger Editor
+- [ ] Database migrations run successfully
+- [ ] UI renders with mock data
+- [ ] Diode simulator produces realistic I-V curves
+- [ ] CI pipeline green on main branch
+
+#### Risks & Mitigation
+
+|Risk                   |Probability|Impact|Mitigation                                     |
+|-----------------------|-----------|------|-----------------------------------------------|
+|Tech stack disagreement|Medium     |High  |Early architecture review with stakeholders    |
+|Database schema churn  |High       |Medium|Use JSONB for extensibility; version migrations|
+|CI complexity          |Medium     |Medium|Start simple; iterate based on needs           |
+
+-----
+
+### **S2 – Data Model & Persistence** [Week 2]
+
+**Duration:** 5 days  
+**Team:** 2 backend engineers + domain expert
+
+#### Objectives
+
+- Finalize complete data model for all characterization methods
+- Implement persistence layer with ORMs
+- Create data validation and migration tools
+- Establish unit/uncertainty handling
+
+#### Deliverables
+
+1. **Complete SQL Schema**
+- Organizations, Projects, Users (with RBAC)
+- Instruments (registry, calibrations, maintenance)
+- Materials library (band gaps, refractive indices, etc.)
+- Sample hierarchy (Wafer → Die → Device → Test structure)
+- Recipes (method templates with parameters)
+- Runs (experiments with full provenance)
+- Results (time-series, spectra, images, derived metrics)
+- Attachments (raw files, reports, notebooks)
+- Approvals and e-signatures
+1. **ORM Models**
+- SQLAlchemy models with relationships
+- Pydantic schemas for validation
+- Factory functions for test data generation
+- Migration scripts (Alembic)
+1. **Object Storage Schema**
+- S3/MinIO bucket structure
+- Naming conventions (run_id/method/timestamp/file)
+- Metadata sidecar JSON (hash, size, units, provenance)
+- Retention policies
+1. **Unit Handling System**
+- Pint integration for all physical quantities
+- UCUM serialization for interoperability
+- Uncertainty propagation (uncertainties package)
+- Validation decorators for API endpoints
+1. **File Format Handlers**
+- HDF5/NPZ readers/writers (spectra, IV curves)
+- OME-TIFF for microscopy
+- JCAMP-DX parser/generator
+- CSV/Parquet with schema validation
+1. **Test Data Generators**
+- Synthetic datasets for all methods (see S4-S12)
+- Golden reference samples (known materials)
+- Edge cases (noisy data, calibration drift, anomalies)
+
+#### Acceptance Criteria
+
+- [ ] All migrations run forward and backward cleanly
+- [ ] ORM models cover 100% of entities
+- [ ] Unit validation catches mismatched quantities
+- [ ] File handlers roundtrip with <1% error
+- [ ] Test data generation scripts execute in <30s
+- [ ] Database seeds in < 10s for dev environments
+
+#### Risks & Mitigation
+
+|Risk                           |Probability|Impact|Mitigation                                                 |
+|-------------------------------|-----------|------|-----------------------------------------------------------|
+|Schema bloat                   |High       |Medium|Use EAV for method-specific params; JSONB for extensibility|
+|File format incompatibility    |Medium     |High  |Prioritize open standards; provide converters              |
+|Performance with large datasets|Medium     |High  |Partition time-series tables; use indexes wisely           |
+
+-----
+
+### **S3 – Instrument SDK & HIL** [Week 3]
+
+**Duration:** 5 days  
+**Team:** 2 backend engineers
+
+#### Objectives
+
+- Create unified instrument driver SDK
+- Implement VISA/SCPI core library
+- Build plugin architecture for vendor-specific drivers
+- Develop HIL simulators for 3 reference instruments
+
+#### Deliverables
+
+1. **Instrument SDK Core**
+- Abstract `Instrument` base class
+- Connection managers (VISA, serial, TCP/IP, USB)
+- Command queue with priority and timeout
+- Error handling and retry logic
+- Capability discovery (query supported methods)
+1. **VISA/SCPI Library**
+- Wrapper around PyVISA
+- Command templates for common operations
+- Response parsers (numeric, waveform, binary)
+- Safe shutdown sequences
+1. **Plugin Architecture**
+- Vendor adapter interface
+- Dynamic loading from `plugins/` directory
+- Configuration via YAML/TOML
+- Version compatibility checks
+1. **Reference Drivers (3)**
+- **SMU (Keithley 2400/2600):** I-V sweeps, compliance
+- **Spectrometer (Ocean Optics/Avantes):** UV-Vis-NIR acquisition
+- **Ellipsometer (J.A. Woollam/Horiba):** Ψ/Δ measurement
+1. **HIL Simulators (3)**
+- **SMU Simulator:** Ideal + parasitic diode/MOSFET models
+- **Spectrometer Simulator:** Gaussian peaks + baseline
+- **Ellipsometer Simulator:** Fresnel multilayer model
+1. **Driver Test Suite**
+- Mock instrument fixtures
+- Contract tests (all drivers implement same interface)
+- Stress tests (rapid connect/disconnect, abort)
+- Latency profiling
+
+#### Acceptance Criteria
+
+- [ ] SDK connects to real instruments (if available) or simulators
+- [ ] All 3 reference drivers pass contract tests
+- [ ] HIL simulators produce physically plausible data
+- [ ] Plugin hot-reload works without restart
+- [ ] Error handling covers 20+ failure modes
+- [ ] Docs include “Adding a New Driver” tutorial
+
+#### Risks & Mitigation
+
+|Risk                  |Probability|Impact|Mitigation                                            |
+|----------------------|-----------|------|------------------------------------------------------|
+|Vendor API changes    |Medium     |Medium|Abstract vendor-specific code; pin driver versions    |
+|VISA library conflicts|High       |Low   |Use virtual environments; document dependencies       |
+|Simulator realism     |Medium     |High  |Validate against real data; iterate with domain expert|
+
+-----
+
+### **S4 – Electrical I (4PP, Hall)** [Week 4]
+
+**Duration:** 5 days  
+**Team:** 1 backend + 1 frontend + domain expert
+
+#### Objectives
+
+- Implement four-point probe and Hall effect workflows
+- Create analysis pipelines for sheet resistance and carrier properties
+- Build interactive UI for setup and results
+
+#### Deliverables
+
+1. **Four-Point Probe (4PP)**
+- Van der Pauw measurement sequences
+- Contact resistance check routine
+- Temperature compensation (TCR correction)
+- Sheet resistance calculation with geometric factors
+- Uniformity maps (for wafer-level scans)
+1. **Hall Effect**
+- Single-field and multi-field configurations
+- Hall coefficient extraction (linear fit)
+- Mobility and carrier concentration calculation
+- Sign detection (n-type vs p-type)
+- Temperature-dependent Hall (optional)
+1. **Analysis Pipelines**
+- Outlier rejection (Chauvenet’s criterion)
+- Statistical summaries (mean, std, CV%)
+- Wafer map generation (Kriging interpolation)
+- SPC integration (X-bar/R charts)
+1. **UI Screens**
+- Experiment wizard (sample selection, method params)
+- Live preview (resistance/Hall voltage vs time)
+- Results dashboard (wafer map, histograms, stats)
+- Export options (CSV, PDF report, MATLAB/Python scripts)
+1. **Reports**
+- Auto-generated PDF with method, parameters, plots, acceptance
+- Comparison to specifications (inline alerts if out-of-spec)
+1. **Test Data**
+- Synthetic 4PP data (uniform + gradient + defects)
+- Synthetic Hall data (Si, GaAs, GaN reference values)
+
+#### Acceptance Criteria
+
+- [ ] 4PP pipeline matches known sheet resistance within 2%
+- [ ] Hall analysis correctly identifies carrier type and mobility
+- [ ] Wafer maps render with color scales and legends
+- [ ] Reports include all required metadata and signatures
+- [ ] UI loads and runs end-to-end in < 2 minutes
+
+#### Risks & Mitigation
+
+|Risk                              |Probability|Impact|Mitigation                                               |
+|----------------------------------|-----------|------|---------------------------------------------------------|
+|Van der Pauw edge effects         |Medium     |Medium|Document sample prep requirements; use correction factors|
+|Hall noise in low-mobility samples|High       |Medium|Multi-measurement averaging; document uncertainty        |
+
+-----
+
+## Phase 2: Electrical Characterization (Weeks 5-7)
+
+### **S5 – Electrical II (IV, CV)** [Week 5]
+
+**Duration:** 5 days  
+**Team:** 1 backend + 1 frontend + domain expert
+
+#### Objectives
+
+- Implement I-V characterization for diodes, BJTs, MOSFETs, solar cells
+- Implement C-V profiling for MOS and Schottky structures
+- Extract key device parameters automatically
+
+#### Deliverables
+
+1. **I-V Sweeps**
+- Forward/reverse bias for diodes (ideality factor, saturation current)
+- BJT: Gummel plots, Early voltage, β vs IC
+- MOSFET: Transfer (Id-Vg), output (Id-Vd), threshold extraction (linear/constant-current)
+- Solar cell: J-V under illumination (Jsc, Voc, FF, η, Rs, Rsh, MPP)
+- Stress management (compliance limits, pulse mode)
+1. **C-V Profiling**
+- High-frequency (1 MHz) and low-frequency (1 kHz) C-V
+- Doping profile extraction (1/C² plots)
+- Flat-band voltage, threshold voltage
+- Interface trap density (conductance method)
+- Schottky barrier height
+1. **Parameter Extraction**
+- Curve fitting (Levenberg-Marquardt, trust region)
+- Goodness-of-fit metrics (R², RMSE)
+- Uncertainty bounds (bootstrap)
+- Comparison to models (Shockley, BSIM)
+1. **Safety Features**
+- Pre-run safety checks (voltage/current limits)
+- Emergency abort (hardware interlock simulation)
+- Post-run device health indicators
+1. **UI Enhancements**
+- Sweep builder (linear, log, custom points)
+- Real-time curve fitting overlay
+- Parameter table with units and uncertainty
+- Device comparison (overlay multiple runs)
+1. **Test Data**
+- Si diode, GaN LED, Si solar cell, Si MOSFET synthetic I-V/C-V
+
+#### Acceptance Criteria
+
+- [ ] Diode ideality factor within 0.1 of expected
+- [ ] MOSFET Vth extraction matches 3 methods within 50 mV
+- [ ] Solar cell efficiency calculation within 0.5% absolute
+- [ ] C-V doping profile matches analytical solution
+- [ ] Abort stops measurement in < 1 second
+
+#### Risks & Mitigation
+
+|Risk                      |Probability|Impact|Mitigation                                     |
+|--------------------------|-----------|------|-----------------------------------------------|
+|Device damage during sweep|Medium     |High  |Implement progressive compliance; user training|
+|Oscillations in C-V       |Medium     |Medium|Document shielding and cabling best practices  |
+
+-----
+
+### **S6 – Electrical III (DLTS/DLCP, EBIC/PCD)** [Week 6]
+
+**Duration:** 5 days  
+**Team:** 1 backend + domain expert
+
+#### Objectives
+
+- Implement deep-level transient spectroscopy (DLTS) and capacitance (DLCP)
+- Implement electron-beam induced current (EBIC) and photoconductive decay (PCD)
+- Extract trap parameters and lifetime
+
+#### Deliverables
+
+1. **DLTS/DLCP**
+- Pulse sequence generation (fill pulse, measurement)
+- Transient capture (boxcar, lock-in)
+- Arrhenius plot generation
+- Trap signature extraction (activation energy, capture cross-section)
+- DLCP variant for resistive samples
+1. **EBIC**
+- Beam position sync (via SEM control or manual)
+- Current map acquisition
+- Minority carrier diffusion length extraction
+- Junction delineation
+1. **PCD**
+- Laser pulse triggering
+- Decay curve acquisition (μs to ms range)
+- Lifetime fitting (single/double exponential, SRH)
+- Surface recombination velocity estimation
+1. **Analysis Pipelines**
+- Automated peak detection (DLTS spectra)
+- Multi-trap deconvolution
+- Lifetime vs injection level
+- Spatial maps (EBIC, lifetime imaging)
+1. **Validation**
+- Compare to literature values for known defects (Fe in Si, EL2 in GaAs)
+
+#### Acceptance Criteria
+
+- [ ] DLTS extracts trap energy within 0.05 eV
+- [ ] EBIC maps match diffusion length within 10%
+- [ ] PCD lifetime matches reference samples within 15%
+- [ ] All pipelines handle noisy data gracefully
+
+#### Risks & Mitigation
+
+|Risk                      |Probability|Impact|Mitigation                                              |
+|--------------------------|-----------|------|--------------------------------------------------------|
+|Low signal-to-noise (DLTS)|High       |High  |Implement averaging; notch filters; document sample prep|
+|EBIC beam damage          |Medium     |High  |Limit total dose; document beam conditions              |
+
+-----
+
+### **S7 – Optical I (UV-Vis-NIR, FTIR)** [Week 7]
+
+**Duration:** 5 days  
+**Team:** 1 backend + 1 frontend
+
+#### Objectives
+
+- Implement UV-Vis-NIR spectroscopy (absorption, transmission, reflectance)
+- Implement FTIR for vibrational analysis
+- Extract optical band gaps and identify chemical bonds
+
+#### Deliverables
+
+1. **UV-Vis-NIR**
+- Spectrum acquisition (200-2500 nm typical)
+- Baseline correction (polynomial, rubberband)
+- Transmission → absorption conversion (Beer-Lambert)
+- Tauc plot generation (direct/indirect band gap)
+- Urbach tail fitting
+1. **FTIR**
+- Spectrum acquisition (400-4000 cm⁻¹ typical)
+- Baseline correction (spline, asymmetric least squares)
+- Peak finding and assignment (library matching)
+- Quantification (peak area, concentration)
+- ATR correction factors
+1. **Analysis Pipelines**
+- Automated band gap extraction (Tauc method, derivative)
+- Vibrational mode library (Si-O, C-H, N-H, etc.)
+- Multi-spectrum comparison (stacking, PCA)
+1. **UI**
+- Interactive spectrum viewer (zoom, pan, cursor)
+- Peak annotation tools
+- Export to JCAMP-DX, CSV
+1. **Test Data**
+- Synthetic UV-Vis (Si, GaAs, organic polymer)
+- Synthetic FTIR (SiO₂, polymers)
+
+#### Acceptance Criteria
+
+- [ ] Band gap extraction within 0.05 eV of known values
+- [ ] FTIR peak positions within 5 cm⁻¹
+- [ ] Baseline correction robust to 10+ test cases
+- [ ] Export formats validate against standards
+
+#### Risks & Mitigation
+
+|Risk              |Probability|Impact|Mitigation                                                |
+|------------------|-----------|------|----------------------------------------------------------|
+|Baseline ambiguity|High       |Medium|Provide multiple methods; allow manual override           |
+|Instrument drift  |Medium     |Medium|Implement reference checks; document calibration frequency|
+
+-----
+
+## Phase 3: Optical & Structural (Weeks 8-11)
+
+### **S8 – Optical II (Ellipsometry, PL/EL, Raman)** [Week 8]
+
+**Duration:** 5 days  
+**Team:** 1 backend + 1 frontend + domain expert
+
+#### Deliverables
+
+1. **Ellipsometry**
+- Ψ and Δ acquisition vs wavelength or angle
+- Multi-layer model builder (substrate + film stack)
+- Dispersion models (Cauchy, Sellmeier, Tauc-Lorentz, Drude)
+- Thickness and optical constants fitting (Levenberg-Marquardt)
+- Confidence intervals (parameter correlation)
+1. **PL/EL**
+- Spectrum acquisition (photoluminescence, electroluminescence)
+- Peak finding (Gaussian/Lorentzian fits)
+- FWHM, integrated intensity, peak energy
+- Temperature-dependent PL (Varshni fit)
+- Quantum efficiency estimation
+1. **Raman**
+- Spectrum acquisition
+- Peak assignment (phonon modes, strain)
+- Phase identification (crystalline vs amorphous)
+- Stress/strain tensor extraction
+- Spatial mapping
+1. **UI**
+- Model builder for ellipsometry (drag-and-drop layers)
+- Live fit preview with residuals
+- PL/Raman peak gallery (hover for assignments)
+1. **Test Data**
+- Ellipsometry: SiO₂ on Si, TiO₂ films
+- PL: GaN, InGaN/GaN quantum wells
+- Raman: Si (crystalline vs amorphous), graphene
+
+#### Acceptance Criteria
+
+- [ ] Ellipsometry thickness within 1 nm for films > 10 nm
+- [ ] PL peak energy within 5 meV
+- [ ] Raman peak positions within 2 cm⁻¹
+- [ ] Model fits converge in < 10 seconds
+
+-----
+
+### **S9 – Structural I (XRD)** [Week 9]
+
+**Duration:** 5 days
+
+#### Deliverables
+
+1. **XRD Analysis**
+- θ-2θ scan processing
+- Phase identification (PDF database matching)
+- Scherrer equation (crystallite size)
+- Lattice parameter refinement
+- Texture analysis (pole figures, optional)
+- Reciprocal space maps (RSM, optional)
+1. **UI**
+- Diffractogram viewer (log scale, peak markers)
+- Phase card overlay
+- Export to CIF format
+1. **Test Data**
+- Synthetic XRD (Si, GaAs, GaN, AlN)
+
+#### Acceptance Criteria
+
+- [ ] Phase ID matches expected structure
+- [ ] Crystallite size within 20% of reference
+- [ ] Peak indexing correct for cubic/hexagonal systems
+
+-----
+
+### **S10 – Structural II (SEM/TEM/AFM/Profilometry)** [Week 10]
+
+**Duration:** 5 days
+
+#### Deliverables
+
+1. **SEM/TEM Imaging**
+- Image import (TIFF, DM3, etc.)
+- Scale calibration and measurement tools
+- Grain size analysis (intercept method)
+- Contrast/denoise filters
+- Annotation layers (ROIs, labels)
+1. **AFM**
+- Topography import (ASCII, HDF5)
+- Roughness metrics (Ra, Rq, Rsk, Rku, PSD)
+- Plane fitting and leveling
+- Line profiles with cursor
+- Tip deconvolution (optional)
+1. **Profilometry**
+- Step height measurement
+- Waviness and form separation
+- Stitching for long scans
+1. **UI**
+- Image gallery with thumbnails
+- ROI selection and statistics
+- Histogram equalization toggle
+- Export annotated images
+1. **Test Data**
+- Synthetic SEM (grain boundaries, voids)
+- Synthetic AFM (rough surface, step)
+
+#### Acceptance Criteria
+
+- [ ] Roughness calculations match reference within 5%
+- [ ] Step height measurements within 2 nm
+- [ ] Image processing non-destructive (original preserved)
+
+-----
+
+### **S11 – Chemical I (XPS/XRF)** [Week 11]
+
+**Duration:** 5 days
+
+#### Deliverables
+
+1. **XPS**
+- Survey scan and high-resolution scans
+- Peak fitting (Voigt profiles)
+- Charge referencing (C 1s at 284.8 eV)
+- Atomic% quantification (sensitivity factors)
+- Depth profiling (sputtering)
+1. **XRF**
+- Energy-dispersive XRF (EDXRF) analysis
+- Elemental identification
+- Fundamental parameters or calibration curves
+- Thickness measurement for thin films
+1. **UI**
+- Peak fitting interface (add/remove peaks, constraints)
+- Sensitivity factor library editor
+- Composition table
+1. **Test Data**
+- Synthetic XPS (SiO₂, Si₃N₄, Al₂O₃)
+- Synthetic XRF (Ti/Cr/Cu thin films)
+
+#### Acceptance Criteria
+
+- [ ] XPS atomic% within 5% absolute
+- [ ] XRF elemental ID correct for Z > 11
+- [ ] Peak fitting χ² < 1.5
+
+-----
+
+## Phase 4: Chemical & Advanced Analytics (Weeks 12-14)
+
+### **S12 – Chemical II (SIMS/RBS/NAA, Chemical Etch)** [Week 12]
+
+**Duration:** 5 days
+
+#### Deliverables
+
+1. **SIMS**
+- Depth profile import (counts vs time)
+- Conversion to concentration (calibration with standards)
+- Matrix effect corrections
+- Detection limit estimation
+1. **RBS**
+- Spectrum import (yield vs energy)
+- Kinematic factor calculation
+- Layer fitting (composition, thickness, areal density)
+- Non-Rutherford cross-section handling
+1. **NAA**
+- Decay curve analysis
+- Elemental quantification (comparator method)
+- Interference corrections
+1. **Chemical Etch Mapping**
+- Etch rate vs pattern density
+- Loading effect visualization
+1. **Test Data**
+- SIMS: B/P implants in Si
+- RBS: HfO₂/SiO₂ stack
+- NAA: trace metals in Si
+
+#### Acceptance Criteria
+
+- [ ] SIMS depth profiles resolve 5× dynamic range
+- [ ] RBS fits within 10% for layer thickness
+- [ ] NAA quantification within certified reference material specs
+
+-----
+
+### **S13 – SPC Hub** [Week 13]
+
+**Duration:** 5 days  
+**Team:** 1 backend + 1 frontend
+
+#### Deliverables
+
+1. **Control Charts**
+- X-bar/R, EWMA, CUSUM for each metric
+- Subgrouping strategies (by lot, wafer, operator, time)
+- Control limit calculation (3σ, probability limits)
+- Rule detection (Western Electric, Nelson)
+1. **Cp/Cpk Calculation**
+- Specification limits from recipes
+- Process capability indices
+- Trend over time (capability drift)
+1. **Alerting**
+- Real-time alerts (email, Slack, SMS)
+- Escalation rules
+- Triage workflow (assign, investigate, resolve)
+1. **Root Cause Analysis**
+- Automated suggestions (instrument drift, calibration due, operator change)
+- Link to related runs, maintenance logs, environmental data
+1. **UI**
+- SPC dashboard (control charts for all active metrics)
+- Drill-down (click chart → see individual runs)
+- “Explain Alert” sidebar with suggestions
+1. **Test Data**
+- Synthetic SPC scenarios (in-control, trend, shift, cycle)
+
+#### Acceptance Criteria
+
+- [ ] Control limits calculated correctly for 10+ test datasets
+- [ ] Alerts trigger within 1 second of rule violation
+- [ ] False positive rate < 1% on synthetic data
+- [ ] Dashboard loads in < 2 seconds for 1000 data points
+
+-----
+
+### **S14 – VM & ML Suite** [Week 14]
+
+**Duration:** 5 days  
+**Team:** 1 backend (ML specialist) + 1 frontend
+
+#### Deliverables
+
+1. **Virtual Metrology (VM) Templates**
+- Feature extraction (FDC sensor streams, recipe params, layout features)
+- Target metrology (thickness, roughness, resistivity, etc.)
+- Model training pipeline (sklearn, LightGBM)
+- Cross-validation (k-fold, time-series split)
+- Hyperparameter tuning (Optuna, GridSearch)
+- Model cards (performance, training data, limitations)
+1. **Anomaly Detection**
+- Unsupervised: Isolation Forest, DBSCAN, Autoencoders
+- Supervised: classification on labeled faults
+- Streaming anomaly detection (online learning)
+1. **Drift Detection**
+- Concept drift monitors (PSI, KL divergence)
+- Data drift monitors (feature distribution shifts)
+- Model performance drift (accuracy over time)
+1. **Time-Series Forecasting**
+- Prophet, ARIMA, or LSTM (justify choice based on data characteristics)
+- Predictive maintenance (remaining useful life)
+- Calibration interval optimization
+1. **Model Deployment**
+- ONNX export for inference
+- REST API for predictions
+- A/B testing framework
+1. **UI**
+- Feature store browser
+- Model training wizard
+- Performance monitoring dashboard
+- Prediction explorer (what-if analysis)
+1. **Test Data**
+- Synthetic VM dataset (thickness vs time, power, pressure)
+- Anomaly examples (equipment faults, process drifts)
+
+#### Acceptance Criteria
+
+- [ ] VM model R² > 0.85 on holdout set
+- [ ] Anomaly detection precision > 0.8, recall > 0.7
+- [ ] Drift detection triggers before SPC violation (lead time > 3 runs)
+- [ ] ONNX inference < 50 ms per prediction
+- [ ] Model retraining completes in < 30 minutes
+
+-----
+
+## Phase 5: LIMS/ELN & Hardening (Weeks 15-16)
+
+### **S15 – LIMS/ELN & Reporting** [Week 15]
+
+**Duration:** 5 days  
+**Team:** 2 backend + 1 frontend
+
+#### Deliverables
+
+1. **ELN (Electronic Lab Notebook)**
+- Rich text editor (TipTap, Quill, or ProseMirror)
+- Embed plots, images, parameters
+- Version control (audit trail)
+- Templates for methods
+- E-signatures (21 CFR Part 11 considerations)
+1. **LIMS Features**
+- Sample lifecycle (received → in-process → complete → archived)
+- Custody chain (who handled when)
+- Barcode/QR code generation and scanning
+- Lot/wafer genealogy (parent-child relationships)
+1. **SOP Library**
+- Versioned SOP documents (markdown or PDF)
+- Pre-run checklists (interactive)
+- Training records (who read/signed which SOP)
+1. **Automated Reporting**
+- PDF generation (ReportLab, WeasyPrint, or Playwright)
+- Templating (Jinja2)
+- Sections: summary, methods, parameters, results, SPC status, approvals
+- Batch report generation (multi-wafer, multi-run)
+1. **FAIR Data Export**
+- Export package (.zip) with:
+  - README.md (study overview)
+  - metadata.json (schema, provenance)
+  - data/ (raw + processed files)
+  - reports/ (PDFs)
+  - checksums.txt (SHA256)
+1. **UI**
+- ELN editor page
+- Sample tracking dashboard
+- SOP viewer with checklist
+- Report generator with preview
+1. **Test Data**
+- Example ELN entries for each method
+- Mock sample batches with full genealogy
+
+#### Acceptance Criteria
+
+- [ ] ELN saves and renders rich content correctly
+- [ ] Sample tracking queries run in < 500 ms
+- [ ] PDF reports include all required sections
+- [ ] FAIR export packages validate against schema
+- [ ] E-signatures captured with timestamp and IP
+
+-----
+
+### **S16 – Hardening & Pilot** [Week 16]
+
+**Duration:** 5 days  
+**Team:** Full team
+
+#### Objectives
+
+- Performance profiling and optimization
+- Security audit and penetration testing
+- High-availability deployment
+- Pilot run with real or realistic data
+- Final documentation and training materials
+
+#### Deliverables
+
+1. **Performance Optimization**
+- Database query optimization (indexes, materialized views)
+- Caching strategy (Redis for hot data)
+- Asset optimization (lazy loading, CDN)
+- Background job queuing (Celery, BullMQ)
+- Load testing (Locust, k6) - target 100 concurrent users
+1. **Security Hardening**
+- OWASP Top 10 review
+- Input validation and sanitization
+- Rate limiting (per user, per endpoint)
+- Secrets rotation procedures
+- Dependency vulnerability scanning (Snyk, Dependabot)
+- Penetration test report (external or internal)
+1. **High Availability**
+- Database replication (Patroni for Postgres)
+- Application horizontal scaling (K8s HPA)
+- Message bus clustering (Kafka or NATS JetStream)
+- Backup and restore procedures (automated daily)
+- Disaster recovery plan (RTO/RPO targets)
+1. **Pilot Run**
+- Select 3-5 representative workflows (e.g., solar cell IV+EQE, MOS C-V, XRD phase ID)
+- Run end-to-end with synthetic or real data
+- Capture metrics (throughput, data quality, user satisfaction)
+- Identify bugs and UX friction
+- Generate pilot report
+1. **Documentation**
+- **System Admin Guide** (installation, configuration, backups, troubleshooting)
+- **Lab User Guide** (sample submission, running experiments, interpreting results)
+- **Method Playbooks** (one per method with theory, setup, analysis, tips)
+- **API Documentation** (OpenAPI + examples)
+- **Training Videos** (5-10 min each for key workflows)
+1. **Handoff Materials**
+- Source code with README and architecture docs
+- Deployment scripts (Helm charts, Terraform)
+- Test suites (unit, integration, E2E)
+- Runbook for on-call engineers
+- Issue tracker with known issues and roadmap
+
+#### Acceptance Criteria
+
+- [ ] Load test sustains 100 users with <1s p95 latency
+- [ ] Security audit finds no critical vulnerabilities
+- [ ] HA failover completes in < 30 seconds
+- [ ] Pilot runs complete successfully with <5% error rate
+- [ ] Documentation reviewed and approved by stakeholders
+- [ ] Training session conducted with pilot users
+
+#### Risks & Mitigation
+
+|Risk                                   |Probability|Impact|Mitigation                                          |
+|---------------------------------------|-----------|------|----------------------------------------------------|
+|Performance bottlenecks discovered late|Medium     |High  |Profile early and often; prioritize optimization    |
+|Security vulnerabilities               |Medium     |High  |Engage security team from S1; regular scans         |
+|Pilot reveals critical UX issues       |Medium     |Medium|Conduct user testing in S14-S15; iterate quickly    |
+|Deployment complexity                  |Low        |High  |Rehearse deployment; document step-by-step; automate|
+
+-----
+
+## Risk Register (Program-Level)
+
+|ID|Risk                                 |Probability|Impact|Owner             |Mitigation                           |Contingency                            |
+|--|-------------------------------------|-----------|------|------------------|-------------------------------------|---------------------------------------|
+|R1|Key personnel leave mid-program      |Low        |High  |PM                |Cross-train; document continuously   |Contract extensions; hire contractors  |
+|R2|Hardware not available for testing   |Medium     |Medium|DevOps            |HIL simulators; borrow from partners |Delay hardware-dependent sessions      |
+|R3|Scope creep (new methods added)      |High       |High  |PM                |Strict change control; prioritize MVP|Time-box sessions; park features for v2|
+|R4|Third-party library incompatibility  |Medium     |Medium|Backend lead      |Early PoCs; fallback libraries       |Implement from scratch if needed       |
+|R5|Regulatory requirements change       |Low        |High  |Compliance officer|Monitor regulations; engage early    |Refactor compliance module             |
+|R6|Integration with legacy systems fails|Medium     |Medium|Backend lead      |Adapter pattern; mocks               |Manual data migration                  |
+|R7|Performance does not meet targets    |Medium     |High  |Backend lead      |Profile early; optimize hot paths    |Accept lower scale; add hardware       |
+|R8|Budget overrun                       |Medium     |High  |PM                |Track burn rate; reforecast monthly  |Descope non-critical features          |
+
+-----
+
+## Success Metrics
+
+|Metric               |Target                                           |Measurement         |
+|---------------------|-------------------------------------------------|--------------------|
+|**Throughput**       |50 runs/day across 10 instruments                |System logs         |
+|**Data Quality**     |<1% failed runs, <5% out-of-spec                 |SPC reports         |
+|**Uptime**           |99.5% (excluding maintenance)                    |Observability stack |
+|**User Satisfaction**|>80% positive feedback                           |Post-pilot survey   |
+|**Time to Result**   |<30 min from sample to report (automated methods)|Telemetry           |
+|**Compliance**       |100% traceability for all runs                   |Audit trail review  |
+|**Extensibility**    |New method added in <5 days (avg)                |Retrospective timing|
+
+-----
+
+## Stakeholder Communication Plan
+
+|Stakeholder          |Cadence      |Format              |Key Concerns                        |
+|---------------------|-------------|--------------------|------------------------------------|
+|Lab Managers         |Weekly       |Status email + demo |Throughput, compliance, budget      |
+|Engineers/Technicians|Daily (Slack)|Standups, changelogs|Usability, bugs, training           |
+|QA/Regulatory        |Bi-weekly    |Review meeting      |Compliance, audit trails, validation|
+|Executives           |Monthly      |Executive summary   |ROI, risks, milestones              |
+|External Auditors    |As needed    |Documentation review|21 CFR Part 11, ISO 17025           |
+
+-----
+
+## Budget Estimate
+
+|Category                             |Cost (USD)|Notes                                                        |
+|-------------------------------------|----------|-------------------------------------------------------------|
+|Personnel (6 FTE × 6 months)         |$600K     |Loaded costs (salary + benefits)                             |
+|Cloud/Infrastructure                 |$50K      |AWS/GCP (dev + staging + prod)                               |
+|Software Licenses                    |$30K      |Developer tools, CI/CD, observability                        |
+|Hardware (simulators, test equipment)|$100K     |USB oscilloscopes, SMUs, spectrometers (lab-grade simulators)|
+|Security Audit                       |$20K      |External penetration test                                    |
+|Training & Documentation             |$30K      |Technical writers, video production                          |
+|Contingency (15%)                    |$120K     |Buffer for unknowns                                          |
+|**Total**                            |**$950K** |Mid-range estimate                                           |
+
+-----
+
+## Appendix: Technology Stack Rationale
+
+### Frontend
+
+- **Next.js (TypeScript):** SSR/SSG for performance; React ecosystem; TypeScript for type safety.
+- **Tailwind CSS:** Utility-first; rapid prototyping; consistent design.
+- **shadcn/ui:** High-quality components; customizable; accessible.
+- **Plotly.js / Recharts:** Interactive plots; export to PNG/SVG; wide adoption.
+
+### Backend
+
+- **FastAPI (Python):** High performance; async support; automatic OpenAPI docs; rich ecosystem for scientific computing (NumPy, SciPy, scikit-learn).
+- **SQLAlchemy + Alembic:** Mature ORM; powerful query builder; schema migrations.
+- **PostgreSQL + TimescaleDB:** ACID compliance; JSON support; time-series optimization.
+- **Celery (background jobs):** Distributed task queue; supports retries, priorities.
+
+### Data & Messaging
+
+- **S3/MinIO:** Object storage for large files; versioning; lifecycle policies.
+- **Kafka or NATS:** Event streaming; high throughput; replay capability. (NATS chosen for simpler ops in <10 instrument scale; Kafka for >100 scale.)
+
+### ML/Analytics
+
+- **scikit-learn:** Wide range of algorithms; battle-tested; great docs.
+- **LightGBM:** Fast gradient boosting; handles tabular data well.
+- **ONNX:** Interoperability; deploy models without Python runtime.
+
+### DevOps
+
+- **Docker + Kubernetes:** Containerization; orchestration; horizontal scaling.
+- **GitHub Actions:** CI/CD; integrated with repo; good free tier.
+- **Prometheus + Grafana:** Metrics collection; visualization; alerting.
+- **Loki:** Log aggregation; integrates with Grafana.
+
+### Security
+
+- **OAuth2/OIDC (Keycloak or Auth0):** Industry standard; SSO support.
+- **SOPS or HashiCorp Vault:** Secrets encryption; key rotation.
+
+-----
+
+## Next Steps (Immediate Actions)
+
+1. **Approve Roadmap:** Stakeholder sign-off on scope, timeline, budget.
+1. **Assemble Team:** Recruit or assign personnel; confirm availability.
+1. **Procure Infrastructure:** Provision cloud accounts; set up repos.
+1. **Schedule Kickoff:** Full-day workshop to align on architecture, standards, and rituals.
+1. **Launch S1:** Execute Session 1 deliverables (see below).
+
+-----
+
+*End of Roadmap*
