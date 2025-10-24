@@ -1,0 +1,194 @@
+# XPS/XRF Analysis System Configuration
+# Session 11 - Chemical Analysis Module
+
+# XPS Configuration
+xps:
+  sources:
+    - name: "Al Kα"
+      energy: 1486.6
+      resolution: 0.5
+      spot_size: 400  # μm
+    - name: "Mg Kα"
+      energy: 1253.6
+      resolution: 0.7
+      spot_size: 400
+    - name: "Monochromatic Al Kα"
+      energy: 1486.6
+      resolution: 0.3
+      spot_size: 15  # μm
+    - name: "Ag Lα"
+      energy: 2984.3
+      resolution: 0.8
+      spot_size: 400
+  
+  calibration:
+    reference_peak: "C1s"
+    reference_energy: 284.5
+    tolerance: 2.0
+    auto_calibrate: true
+  
+  acquisition:
+    default_pass_energy: 20
+    default_dwell_time: 50
+    default_scans: 10
+    default_step_size: 0.1
+  
+  background_methods:
+    - method: "Shirley"
+      max_iterations: 50
+      tolerance: 1e-5
+    - method: "Tougaard"
+      B: 2866
+      C: 1643
+      D: 1
+    - method: "Linear"
+      endpoints: "manual"
+  
+  peak_fitting:
+    shapes:
+      - "Gaussian"
+      - "Lorentzian"
+      - "Voigt"
+      - "Doniach-Sunjic"
+      - "Pseudo-Voigt"
+    default_shape: "Voigt"
+    convergence_threshold: 1e-6
+    max_iterations: 1000
+
+# XRF Configuration
+xrf:
+  excitation:
+    sources:
+      - type: "X-ray Tube"
+        voltage_range: [10, 100]  # kV
+        default_voltage: 50
+        target: "Rh"
+      - type: "Radioisotope"
+        sources: ["Fe-55", "Cd-109", "Am-241"]
+    
+  detector:
+    type: "Si(Li)"
+    resolution: 150  # eV at 5.9 keV Mn Kα
+    window: "Be"
+    thickness: 25  # μm
+    dead_time: 10e-6  # seconds
+    
+  acquisition:
+    default_time: 300  # seconds
+    default_atmosphere: "air"
+    atmospheres: ["air", "vacuum", "helium"]
+    
+  quantification:
+    method: "fundamental_parameters"
+    matrix_corrections: true
+    iterations: 5
+    convergence: 0.01
+    
+  calibration:
+    energy_calibration:
+      - element: "Fe"
+        line: "Kα"
+        energy: 6.404
+      - element: "Cu"
+        line: "Kα"
+        energy: 8.048
+
+# Element Database
+elements:
+  database_type: "internal"
+  custom_elements_path: "data/custom_elements.json"
+  update_frequency: "monthly"
+  
+  included_elements:
+    - H, He, Li, Be, B, C, N, O, F, Ne
+    - Na, Mg, Al, Si, P, S, Cl, Ar
+    - K, Ca, Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn
+    - Ga, Ge, As, Se, Br, Kr
+    - Rb, Sr, Y, Zr, Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd
+    - In, Sn, Sb, Te, I, Xe
+    - Cs, Ba, La-Lu, Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg
+    - Tl, Pb, Bi
+
+# Data Processing
+processing:
+  smoothing:
+    method: "savgol"
+    window_length: 5
+    polyorder: 2
+  
+  peak_detection:
+    prominence: 0.1
+    distance: 10
+    width: [1, 20]
+    
+  noise_reduction:
+    enable: true
+    method: "wavelet"
+    level: 2
+
+# Analysis Parameters
+analysis:
+  depth_profiling:
+    etch_rate: 0.1  # nm/s (calibrated for SiO2)
+    crater_size: 2  # mm
+    raster_size: 3  # mm
+    
+  chemical_state:
+    tolerance: 2.0  # eV
+    min_percentage: 5  # %
+    
+  detection_limits:
+    confidence_level: 3  # sigma
+    background_points: 50
+
+# Export Settings
+export:
+  formats:
+    - format: "CSV"
+      delimiter: ","
+      include_header: true
+    - format: "HDF5"
+      compression: "gzip"
+      compression_level: 6
+    - format: "VAMAS"
+      version: "2008"
+    - format: "JSON"
+      indent: 2
+  
+  report:
+    format: "PDF"
+    include_raw_data: false
+    include_fitted_curves: true
+    include_parameters: true
+    company_logo: "assets/logo.png"
+    
+# Database Configuration
+database:
+  type: "postgresql"
+  host: "localhost"
+  port: 5432
+  database: "semiconductor_lab"
+  schema: "chemical_analysis"
+  
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8011
+  cors_origins: ["http://localhost:3000", "http://localhost:3011"]
+  max_upload_size: 100  # MB
+  rate_limit: 100  # requests per minute
+  
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "json"
+  file: "logs/chemical_analysis.log"
+  rotation: "daily"
+  retention: 30  # days
+  
+# Performance Settings
+performance:
+  parallel_processing: true
+  max_workers: 4
+  cache_size: 1000  # MB
+  batch_size: 100

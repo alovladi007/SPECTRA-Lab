@@ -147,6 +147,10 @@ make format          # Format code
 - ✅ **AFM (Atomic Force Microscopy)** - Surface topography and roughness
 - ✅ **Optical Microscopy** - Multi-scale imaging and inspection
 
+### Chemical Characterization
+- ✅ **XPS (X-ray Photoelectron Spectroscopy)** - Surface chemistry and chemical states
+- ✅ **XRF (X-ray Fluorescence)** - Elemental composition analysis
+
 ## Project Status
 
 **All Sessions Complete:**
@@ -159,8 +163,9 @@ make format          # Format code
 - ✅ Session 8: Optical Advanced (Ellipsometry, PL, Raman)
 - ✅ Session 9: Structural I (X-Ray Diffraction)
 - ✅ Session 10: Structural II (Microscopy & Imaging)
+- ✅ Session 11: Chemical Analysis (XPS & XRF)
 
-**Total Files:** 127 integrated files
+**Total Files:** 141 integrated files
 **Status:** Production Ready ✅
 
 ## Contributing
