@@ -1,0 +1,41 @@
+# Backend Dockerfile for XPS/XRF Analysis Service
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libhdf5-dev \
+    libatlas-base-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY src/ ./src/
+COPY config/ ./config/
+COPY data/ ./data/
+
+# Create necessary directories
+RUN mkdir -p logs exports
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV API_PORT=8011
+
+# Expose port
+EXPOSE 8011
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8011/api/chemical/health')"
+
+# Run the application
+CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8011"]
