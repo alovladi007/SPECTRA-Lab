@@ -1,0 +1,1190 @@
+# Session 5 Method Playbooks
+
+## Complete Guide: MOSFET, Solar Cell, C-V, and BJT Characterization
+
+**Document Version:** 1.0  
+**Date:** October 21, 2025  
+**Audience:** Lab Technicians, Process Engineers, Device Physicists
+
+-----
+
+# Table of Contents
+
+1. [MOSFET I-V Characterization](#mosfet-characterization)
+1. [Solar Cell I-V Testing](#solar-cell-testing)
+1. [C-V Profiling & Doping Analysis](#cv-profiling)
+1. [BJT Characterization](#bjt-characterization)
+1. [Troubleshooting Guide](#troubleshooting)
+1. [Safety Procedures](#safety)
+
+-----
+
+# 1. MOSFET I-V Characterization {#mosfet-characterization}
+
+## 1.1 Overview
+
+**Purpose:** Extract key MOSFET parameters including threshold voltage (Vth), transconductance (gm), mobility (μ), and subthreshold characteristics.
+
+**Applications:**
+
+- Process development and optimization
+- Device modeling and SPICE parameter extraction
+- Quality control and reliability testing
+- Failure analysis
+
+**Typical Duration:** 15-30 minutes per device
+
+-----
+
+## 1.2 Theory & Background
+
+### Key Parameters
+
+**Threshold Voltage (Vth):**
+
+- Gate voltage required to create conduction channel
+- Critical for digital circuit design
+- Target: ±50mV uniformity across wafer
+
+**Transconductance (gm = ∂Id/∂Vgs):**
+
+- Indicates switching speed and gain
+- Higher is better for analog applications
+- Typical: 10-100 mS for discrete devices
+
+**Subthreshold Slope (SS):**
+
+- How sharply device turns on/off
+- Theoretical minimum: 60 mV/decade at 300K
+- Good devices: 65-80 mV/decade
+
+**Ion/Ioff Ratio:**
+
+- On-state vs off-state current
+- Digital applications need >10⁶
+- Low-power needs >10⁹
+
+-----
+
+## 1.3 Equipment Setup
+
+### Required Equipment
+
+- **Semiconductor Parameter Analyzer** (e.g., Keysight B1500A, Keithley 4200)
+- **Probe Station** with temperature control
+- **Microscope** for probe positioning
+- **Shielded cables** and triaxial connections
+- **Faraday cage** (for low-current measurements)
+
+### Probe Configuration
+
+```
+Source (S) ──┬── Ground
+             │
+Gate (G)  ───┼── SMU1 (Vgs sweep)
+             │
+Drain (D) ───┼── SMU2 (Vds, measure Id)
+             │
+Bulk (B)  ───┴── Ground (or separate SMU)
+```
+
+**Important:** Always ground substrate to avoid floating body effects.
+
+-----
+
+## 1.4 Measurement Procedure
+
+### Step 1: Sample Preparation (5 minutes)
+
+1. **Visual Inspection:**
+- Check for scratches, contamination, or damage
+- Verify device markings and orientation
+- Document device ID and wafer location
+1. **Cleaning (if needed):**
+- Blow off particles with N₂ gun
+- Avoid touching active areas
+- For stubborn contamination: IPA + N₂ dry
+1. **Mount on Chuck:**
+- Center device under microscope
+- Apply vacuum (if available)
+- Allow thermal stabilization (2-5 min)
+
+### Step 2: Probe Landing (2-3 minutes)
+
+1. **Approach probes carefully:**
+- Use microscope at 200-500× magnification
+- Lower probes slowly to avoid damage
+- Verify good contact (slight resistance felt)
+1. **Check contact resistance:**
+   
+   ```
+   Platform: Instruments → Probe Check
+   - Set 1 μA test current
+   - Measure 2-probe resistance
+   - Target: <100 Ω for good contacts
+   ```
+1. **If high resistance:**
+- Lift and reposition probes
+- Clean probe tips with probe cleaner
+- Check pad surface quality
+
+### Step 3: Transfer Characteristics (5-10 minutes)
+
+**Purpose:** Extract Vth, gm, SS, Ion/Ioff
+
+**Platform Navigation:**
+
+```
+Dashboard → Electrical → MOSFET Characterization
+```
+
+**Configuration:**
+
+|Parameter      |n-MOS    |p-MOS         |Notes                      |
+|---------------|---------|--------------|---------------------------|
+|**Device Type**|n-channel|p-channel     |Select correctly!          |
+|**Measurement**|Transfer |Transfer      |Id-Vgs                     |
+|**Vds**        |0.05-0.1V|-0.05 to -0.1V|Linear region              |
+|**Vgs Start**  |-1V      |-3V           |Below Vth                  |
+|**Vgs Stop**   |3V       |1V            |Well above Vth             |
+|**Vgs Step**   |20mV     |20mV          |Compromise speed/resolution|
+|**Compliance** |100mA    |100mA         |Prevent damage             |
+
+**Geometry Inputs:**
+
+- **Width (W):** Measure from layout (μm)
+- **Length (L):** Measure from layout (μm)
+- **Oxide thickness (tox):** From process spec (nm)
+
+**Click “Start Measurement”**
+
+**What to Watch:**
+
+- Current should increase exponentially then quadratically
+- Log scale plot should show clear subthreshold region
+- No sudden jumps (indicates breakdown)
+
+**Typical Duration:** 3-5 minutes
+
+### Step 4: Output Characteristics (5-10 minutes)
+
+**Purpose:** Verify saturation behavior, extract Ron, λ
+
+**Configuration:**
+
+|Parameter      |n-MOS               |p-MOS                    |
+|---------------|--------------------|-------------------------|
+|**Measurement**|Output              |Output                   |
+|**Vgs Array**  |0.5, 1, 1.5, 2, 2.5V|-0.5, -1, -1.5, -2, -2.5V|
+|**Vds Start**  |0V                  |0V                       |
+|**Vds Stop**   |5V                  |-5V                      |
+|**Vds Step**   |50mV                |50mV                     |
+
+**Click “Start Measurement”**
+
+**Expected Curves:**
+
+- Linear region: Id increases with Vds
+- Saturation: Id plateaus (pinch-off)
+- Higher Vgs → higher current
+- Curves should be parallel and evenly spaced
+
+-----
+
+## 1.5 Data Analysis & Interpretation
+
+### Platform Auto-Analysis
+
+The platform automatically extracts:
+
+1. **Threshold Voltage (3 methods):**
+- Linear extrapolation (primary)
+- Constant current method
+- Transconductance maximum method
+1. **Transconductance:**
+- gm,max = max(∂Id/∂Vgs)
+- Location (Vgs @ gm,max)
+1. **Subthreshold Slope:**
+- SS = ∂Vgs / ∂(log Id) in subthreshold region
+- Should be 60-100 mV/decade
+1. **Ion/Ioff Ratio:**
+- Ion at Vgs = Vdd
+- Ioff at Vgs = 0V
+- Should be >10⁶
+1. **Mobility Extraction:**
+- μ = (gm × L) / (Cox × W × Vds)
+- Compare to process target
+
+### Quality Score (0-100)
+
+**Excellent (80-100):**
+
+- Vth within spec (±0.1V)
+- SS < 80 mV/dec
+- Ion/Ioff > 10⁷
+- Smooth curves, no hysteresis
+
+**Good (60-79):**
+
+- Vth acceptable
+- SS < 100 mV/dec
+- Ion/Ioff > 10⁶
+- Minor anomalies
+
+**Needs Review (<60):**
+
+- Vth out of spec
+- Poor SS
+- Low Ion/Ioff
+- Investigate issues
+
+-----
+
+## 1.6 Common Issues & Solutions
+
+### Problem: High Threshold Voltage
+
+**Symptoms:**
+
+- Vth > 1V (n-MOS) or < -1V (p-MOS)
+- Shift from expected value
+
+**Possible Causes:**
+
+1. **Oxide charge:** Fixed or mobile ions
+1. **Work function shift:** Wrong gate material
+1. **High doping:** Check implant dose
+
+**Solutions:**
+
+- Forming gas anneal (H₂/N₂ 5%/95%, 400°C, 30 min)
+- Review gate stack process
+- Adjust doping concentration
+
+### Problem: Poor Subthreshold Slope
+
+**Symptoms:**
+
+- SS > 100 mV/decade
+- Gradual turn-on
+
+**Possible Causes:**
+
+1. **Interface traps (Dit):** Poor oxide quality
+1. **Bulk traps:** Contamination
+1. **Junction leakage:** Damaged regions
+
+**Solutions:**
+
+- Improve oxidation process
+- Clean anneal
+- Check for punchthrough
+
+### Problem: Low Mobility
+
+**Symptoms:**
+
+- μ < 200 cm²/V·s (n-MOS)
+- μ < 50 cm²/V·s (p-MOS)
+
+**Possible Causes:**
+
+1. **Surface roughness:** Poor oxide interface
+1. **Charged impurities:** High doping
+1. **High field:** Incorrect analysis
+
+**Solutions:**
+
+- Optimize oxidation temperature
+- Reduce doping if possible
+- Verify extraction method
+
+### Problem: Hysteresis
+
+**Symptoms:**
+
+- Forward and reverse sweeps differ
+- Vth shifts during measurement
+
+**Possible Causes:**
+
+1. **Charge trapping:** Slow oxide traps
+1. **Mobile ions:** Na⁺, K⁺ contamination
+1. **Hot carriers:** High field stress
+
+**Solutions:**
+
+- Slow down sweep rate
+- Clean process (remove contamination)
+- Reduce measurement Vds
+
+-----
+
+## 1.7 Reporting & Documentation
+
+### Platform Export
+
+**Data Export:**
+
+```
+Results → Export Data
+Format: JSON, CSV, or Excel
+Includes: Raw curves, extracted parameters, metadata
+```
+
+**PDF Report Generation:**
+
+```
+Results → Generate Report
+Contents:
+- Summary table (Vth, gm, SS, mobility, etc.)
+- Transfer curves (linear and log scale)
+- Output characteristics
+- Quality assessment
+- Test conditions and device info
+```
+
+### Lab Notebook Entry
+
+**Required Information:**
+
+- Device ID and wafer/lot number
+- Measurement date and operator
+- Equipment used and calibration date
+- Temperature and environmental conditions
+- Extracted parameters with uncertainties
+- Pass/fail against specifications
+- Any anomalies or notes
+
+-----
+
+# 2. Solar Cell I-V Testing {#solar-cell-testing}
+
+## 2.1 Overview
+
+**Purpose:** Measure photovoltaic conversion efficiency and performance parameters under controlled illumination.
+
+**Key Parameters:**
+
+- Short-circuit current (Isc)
+- Open-circuit voltage (Voc)
+- Maximum power point (Vmpp, Impp, Pmax)
+- Fill factor (FF)
+- Efficiency (η)
+
+**Standards:** IEC 60904 series, ASTM E1036
+
+-----
+
+## 2.2 Theory & Background
+
+### Standard Test Conditions (STC)
+
+**Definition:**
+
+- Irradiance: 1000 W/m² (1 sun)
+- Spectrum: AM 1.5 Global
+- Temperature: 25°C
+- Total irradiance: 1000 W/m²
+
+### Single Diode Model
+
+Solar cell can be modeled as:
+
+```
+I = Isc - Id - Ish
+Id = I0 × [exp((V + I×Rs)/(n×Vt)) - 1]
+Ish = (V + I×Rs) / Rsh
+
+Where:
+- I0 = saturation current
+- n = ideality factor
+- Rs = series resistance
+- Rsh = shunt resistance
+- Vt = thermal voltage (kT/q ≈ 26mV at 25°C)
+```
+
+### Efficiency Calculation
+
+```
+η = Pmax / (Irradiance × Area)
+  = (Vmpp × Impp) / (1000 W/m² × Area)
+
+FF = Pmax / (Voc × Isc)
+   = (Vmpp × Impp) / (Voc × Isc)
+```
+
+**World Records:**
+
+- Silicon (c-Si): 26.1%
+- GaAs: 29.1%
+- Perovskite: 25.8%
+- Multi-junction: >47%
+
+-----
+
+## 2.3 Equipment Setup
+
+### Required Equipment
+
+1. **Solar Simulator:**
+- Class A preferred (spatial uniformity <2%)
+- AM 1.5G spectrum filter
+- Calibrated with reference cell
+1. **Source-Measure Unit (SMU):**
+- Keysight B2900 or equivalent
+- 4-wire (Kelvin) connections
+- Current range: 0-10A typical
+1. **Temperature Control:**
+- Peltier stage or water-cooled chuck
+- Temperature sensor (RTD or thermocouple)
+- PID controller
+1. **Reference Cell:**
+- Same material as test cell (Si, GaAs, etc.)
+- NIST-traceable calibration
+- Annual recalibration required
+
+### Connection Diagram
+
+```
+Solar Simulator
+    │
+    ↓
+┌───────────┐
+│Solar Cell │
+│  (DUT)    │
+└─────┬─────┘
+      │
+SMU ──┼── Force V+, Sense V+
+      │
+      │── Force V-, Sense V-
+      │
+      │── Ground/Shield
+      │
+Temp Controller
+```
+
+-----
+
+## 2.4 Measurement Procedure
+
+### Step 1: Solar Simulator Setup (10 minutes)
+
+1. **Power On:**
+- Allow 15-30 min warm-up
+- Monitor stability indicator
+1. **Calibrate Irradiance:**
+   
+   ```
+   - Place reference cell at test plane
+   - Adjust lamp power to 1000 W/m² (1 sun)
+   - Verify uniformity across cell area
+   - Document actual irradiance
+   ```
+1. **Check Spectrum:**
+- Verify AM 1.5G filter installed
+- Class A simulator: <25% spectral mismatch
+
+### Step 2: Sample Preparation (5 minutes)
+
+1. **Clean Cell Surface:**
+- Blow off dust with N₂
+- No solvents (avoid coating damage)
+1. **Measure Active Area:**
+- Use calibrated ruler or caliper
+- Exclude bus bars and grid lines
+- Document in cm²
+1. **Mount on Chuck:**
+- Center under illumination
+- Make good thermal contact
+- Allow temperature stabilization (5 min)
+1. **Connect Wires:**
+- 4-wire Kelvin connection
+- Red (+) to bus bar, Black (-) to back contact
+- Minimize series resistance
+
+### Step 3: Temperature Stabilization (5 minutes)
+
+**Critical:** Temperature affects Voc (~-2mV/°C)
+
+```
+Platform: Instruments → Temperature Control
+- Set target: 25°C
+- Wait for stability: ±0.5°C
+- Monitor continuously during measurement
+```
+
+### Step 4: I-V Measurement (2-5 minutes)
+
+**Platform Navigation:**
+
+```
+Dashboard → Electrical → Solar Cell Characterization
+```
+
+**Configuration:**
+
+|Parameter        |Value                     |Notes                   |
+|-----------------|--------------------------|------------------------|
+|**Cell Type**    |Si, GaAs, Perovskite, etc.|Select material         |
+|**Active Area**  |Measured value (cm²)      |Critical for η          |
+|**Irradiance**   |1000 W/m²                 |Or actual value         |
+|**Temperature**  |25°C                      |From temp controller    |
+|**Spectrum**     |AM1.5G                    |Standard                |
+|**Voltage Start**|-0.2V                     |Slightly negative       |
+|**Voltage Stop** |Voc + 0.1V                |Beyond open circuit     |
+|**Voltage Step** |5-10mV                    |Balance speed/resolution|
+|**Sweep Rate**   |50-100 mV/s               |Not too fast!           |
+
+**Advanced Settings (if available):**
+
+- Pre-conditioning: Light soak 1 min
+- Reverse sweep: Check hysteresis
+- Multiple averages: 3-5 for precision
+
+**Click “Start Measurement”**
+
+### Step 5: Dark I-V (Optional, 2 minutes)
+
+**Purpose:** Extract diode parameters (I0, n, Rs, Rsh)
+
+```
+- Block light completely
+- Sweep from -0.5V to +0.8V
+- Record dark current
+```
+
+-----
+
+## 2.5 Data Analysis & Interpretation
+
+### Platform Auto-Analysis
+
+**Extracted Parameters:**
+
+1. **Short-Circuit Current (Isc):**
+- Current at V = 0
+- Should scale linearly with irradiance
+- Jsc = Isc / Area (mA/cm²)
+1. **Open-Circuit Voltage (Voc):**
+- Voltage at I = 0
+- Logarithmic dependence on irradiance
+- Decreases with temperature
+1. **Maximum Power Point (MPP):**
+- Voltage and current where P = V×I is maximum
+- Vmpp typically 70-85% of Voc
+- Impp typically 85-95% of Isc
+1. **Fill Factor:**
+   
+   ```
+   FF = (Vmpp × Impp) / (Voc × Isc)
+   
+   Typical values:
+   - Excellent: 0.80-0.85
+   - Good: 0.70-0.80
+   - Poor: <0.70
+   ```
+1. **Efficiency:**
+   
+   ```
+   η = Pmax / (Irradiance × Area)
+   
+   At STC (1000 W/m², 25°C):
+   η (%) = Pmax (W) × 1000 / Area (cm²)
+   ```
+1. **Series Resistance (Rs):**
+- From slope near Voc
+- Low Rs → high FF
+- Target: <1 Ω·cm²
+1. **Shunt Resistance (Rsh):**
+- From slope near Isc
+- High Rsh → high FF
+- Target: >1000 Ω·cm²
+
+### STC Normalization
+
+**Temperature Correction:**
+
+```
+Voc(25°C) = Voc(T) + β × (T - 25°C)
+β ≈ -2.2 mV/°C for Si
+
+Isc(25°C) = Isc(T) × [1 + α × (T - 25°C)]
+α ≈ +0.06%/°C for Si
+
+η(25°C) = η(T) × [1 - γ × (T - 25°C)]
+γ ≈ -0.4%/°C for Si
+```
+
+**Irradiance Correction:**
+
+```
+Isc(1000) = Isc(actual) × (1000 / actual_irradiance)
+
+Voc(1000) = Voc(actual) + Vt × ln(1000 / actual_irradiance)
+Where Vt ≈ 26mV at 25°C
+```
+
+-----
+
+## 2.6 Common Issues & Solutions
+
+### Problem: Low Fill Factor
+
+**Symptoms:**
+
+- FF < 0.70
+- “Soft” knee in I-V curve
+
+**Possible Causes:**
+
+1. **High Rs:** Poor contacts, thin metallization
+1. **Low Rsh:** Edge defects, pinholes
+1. **Poor junction:** Low lifetime, high recombination
+
+**Solutions:**
+
+- Improve contact metallization (thicker, lower ρ)
+- Edge isolation (laser scribing, plasma etch)
+- Optimize junction formation (better passivation)
+
+### Problem: Low Voc
+
+**Symptoms:**
+
+- Voc < 85% of theoretical maximum
+- Voc << Eg/q
+
+**Possible Causes:**
+
+1. **High recombination:** Poor material quality
+1. **Low doping:** Weak built-in field
+1. **Shunts:** Conductive paths
+
+**Solutions:**
+
+- Improve material quality (higher lifetime)
+- Optimize doping profile
+- Inspect for metallization shorts
+
+### Problem: Low Jsc
+
+**Symptoms:**
+
+- Jsc < expected for material
+
+**Possible Causes:**
+
+1. **Poor light absorption:** Reflective surface, thin absorber
+1. **High recombination:** Short diffusion length
+1. **Shadowing:** Excessive grid coverage
+
+**Solutions:**
+
+- Add anti-reflection coating
+- Increase absorber thickness
+- Optimize grid design
+
+### Problem: Hysteresis
+
+**Symptoms:**
+
+- Forward and reverse sweeps differ
+- Results depend on sweep history
+
+**Possible Causes:**
+
+1. **Ionic migration:** Perovskite cells especially
+1. **Capacitive effects:** Fast sweep rate
+1. **Charge trapping:** Defects at interfaces
+
+**Solutions:**
+
+- Slow sweep rate (<50 mV/s)
+- Light soak pre-conditioning
+- Stabilized tracking at MPP
+
+-----
+
+## 2.7 Reporting & Documentation
+
+### Platform Export
+
+**Standard Report Includes:**
+
+- I-V and P-V curves (single plot)
+- Summary table (Isc, Voc, FF, η, Rs, Rsh)
+- MPP marked on curves
+- Test conditions (irradiance, temperature, spectrum)
+- STC-normalized values
+- Quality score and pass/fail
+
+### Certification Data
+
+**For certified efficiency:**
+
+- Reference cell calibration certificate
+- Solar simulator classification
+- Temperature data
+- Uncertainty analysis (±2-3% typical)
+- Accredited lab signature (if applicable)
+
+-----
+
+# 3. C-V Profiling & Doping Analysis {#cv-profiling}
+
+## 3.1 Overview
+
+**Purpose:** Extract oxide properties and dopant profiles using capacitance-voltage measurements.
+
+**Applications:**
+
+- MOS capacitor characterization
+- Schottky barrier profiling
+- p-n junction analysis
+- Interface trap density (Dit)
+
+-----
+
+## 3.2 Theory & Background
+
+### MOS Capacitor
+
+**Three Regions:**
+
+1. **Accumulation:** Majority carriers accumulate at surface
+- C ≈ Cox (oxide capacitance)
+1. **Depletion:** Surface depleted of carriers
+- C = (Cox × Cdep) / (Cox + Cdep)
+- Depletion width grows with voltage
+1. **Inversion:** Minority carriers form inversion layer
+- Low frequency: C → Cox
+- High frequency: C < Cox
+
+### Mott-Schottky Analysis
+
+For Schottky diode or p-n junction:
+
+```
+1/C² = (2/q × ε × A²) × [(Vbi - V)/N]
+
+Where:
+- Vbi = built-in potential
+- N = doping concentration
+- Slope → N
+- Intercept → Vbi
+```
+
+### Doping Profile
+
+```
+N(x) = -C³ / (q × ε × A² × dC/dV)
+
+x = ε × A / C
+
+This gives N as function of depth x
+```
+
+-----
+
+## 3.3 Equipment Setup
+
+### Required Equipment
+
+1. **LCR Meter or Impedance Analyzer:**
+- Agilent 4284A or equivalent
+- Frequency range: 1 kHz - 1 MHz
+- Accuracy: <0.1%
+1. **DC Bias Source:**
+- ±20V typical range
+- 1 mV resolution
+- Low noise (<1 mV rms)
+1. **Probe Station:**
+- Shielded enclosure
+- Light-tight (for MOS)
+- Temperature control
+
+### Connection
+
+```
+LCR Meter
+  │
+  ├─ Hcur (high force)
+  ├─ Hpot (high sense) ──┐
+  │                       │
+  │                  ┌────┴────┐
+  │                  │ Device  │
+  │                  │  (DUT)  │
+  │                  └────┬────┘
+  ├─ Lpot (low sense) ───┘
+  ├─ Lcur (low force)
+  │
+DC Bias
+```
+
+**Critical:** Use 4-terminal configuration for accurate measurements.
+
+-----
+
+## 3.4 Measurement Procedure
+
+### MOS Capacitor
+
+**Step 1: Sample Preparation**
+
+1. Clean surface gently (N₂ blow)
+1. Verify gate and substrate contacts
+1. Light-tight enclosure (dark conditions)
+
+**Step 2: Configuration**
+
+```
+Platform: Dashboard → Electrical → C-V Profiling
+
+Device Type: MOS Capacitor
+Substrate: n-type or p-type (critical!)
+```
+
+|Parameter          |Value         |Notes              |
+|-------------------|--------------|-------------------|
+|**Frequency**      |100 kHz       |High-frequency C-V |
+|**AC Level**       |30 mV         |Small signal       |
+|**Voltage Start**  |-3V           |Strong accumulation|
+|**Voltage Stop**   |+3V           |Inversion          |
+|**Voltage Step**   |50 mV         |Good resolution    |
+|**Sweep Direction**|→ or ↔        |Single or dual     |
+|**Area**           |Measured (cm²)|For Cox calculation|
+
+**Step 3: Measurement**
+
+- Takes 2-5 minutes
+- Watch for breakdown
+- Should see clear C-V shape
+
+### Schottky Diode
+
+**Configuration:**
+
+```
+Device Type: Schottky Diode
+Substrate: n-type or p-type
+```
+
+|Parameter        |Value     |Notes                   |
+|-----------------|----------|------------------------|
+|**Frequency**    |10-100 kHz|Any reasonable value    |
+|**Voltage Start**|-5V       |Reverse bias            |
+|**Voltage Stop** |0V        |Zero bias               |
+|**Voltage Step** |50 mV     |Mott-Schottky resolution|
+
+**Important:** Do NOT forward bias beyond 0.3V (diode will conduct).
+
+-----
+
+## 3.5 Data Analysis
+
+### MOS Capacitor - Platform Extracts:
+
+1. **Oxide Capacitance (Cox):**
+- Maximum capacitance (accumulation)
+- Used to calculate tox
+1. **Oxide Thickness:**
+   
+   ```
+   tox = (εox × A) / Cox
+   εox = 3.9 × ε0 for SiO2
+   ```
+1. **Flat-Band Voltage (Vfb):**
+- Voltage where bands are flat
+- From capacitance inflection point
+1. **Threshold Voltage (Vth):**
+- Onset of strong inversion
+- Vth ≈ Vfb + 2φF
+1. **Interface Trap Density (Dit):**
+- From frequency dispersion
+- Or stretch-out method
+1. **Substrate Doping:**
+- From depletion capacitance
+- N = 2 / (q × ε × (dC/dV))
+
+### Schottky Diode - Platform Extracts:
+
+1. **Built-in Potential (Vbi):**
+- From Mott-Schottky intercept
+1. **Doping Concentration:**
+- From Mott-Schottky slope
+- Assumes uniform doping
+1. **Doping Profile N(x):**
+- From C-V derivative
+- Up to ~1 μm depth typically
+1. **Barrier Height:**
+- φB ≈ Vbi + Vn (for n-type)
+
+-----
+
+## 3.6 Common Issues & Solutions
+
+### Problem: Frequency Dispersion
+
+**Symptoms:**
+
+- C-V shape changes with frequency
+- Large hysteresis
+
+**Causes:**
+
+- Interface traps responding at low frequency
+- Poor oxide quality
+
+**Solutions:**
+
+- Measure at multiple frequencies
+- Forming gas anneal
+- Dit calculation from dispersion
+
+### Problem: No Clear C-V Shape
+
+**Symptoms:**
+
+- Flat capacitance vs voltage
+- Unexpected shape
+
+**Causes:**
+
+- Series resistance too high
+- Leaky dielectric
+- Wrong substrate type selected
+
+**Solutions:**
+
+- Check contact resistance
+- Verify no breakdown
+- Confirm substrate type (n vs p)
+
+-----
+
+## 3.7 Reporting
+
+**Platform PDF Report:**
+
+- C-V curve (linear scale)
+- 1/C² vs V (Mott-Schottky)
+- Doping profile N(x) vs depth
+- Summary table (Cox, tox, Vfb, Vth, Dit, N)
+- Quality score
+
+-----
+
+# 4. BJT Characterization {#bjt-characterization}
+
+## 4.1 Overview
+
+**Purpose:** Measure bipolar junction transistor current gain (β), Early voltage (VA), and junction ideality.
+
+**Key Parameters:**
+
+- Current gain (β or hFE)
+- Early voltage (VA)
+- Ideality factors (nC, nB)
+- Saturation current (I0)
+
+-----
+
+## 4.2 Theory
+
+### Gummel Plot
+
+**Collector Current:**
+
+```
+IC = IS × exp(VBE / (nC × Vt))
+```
+
+**Base Current:**
+
+```
+IB = (IS/β) × exp(VBE / (nB × Vt))
+```
+
+**Current Gain:**
+
+```
+β = IC / IB
+Should be constant in forward active region
+```
+
+### Output Characteristics
+
+**Early Effect:**
+
+```
+IC = β × IB × (1 + VCE / VA)
+
+Where VA = Early voltage (output resistance effect)
+```
+
+-----
+
+## 4.3 Measurement Procedure
+
+### Gummel Plot (5 minutes)
+
+**Platform:** Dashboard → Electrical → BJT Characterization
+
+```
+Transistor Type: npn or pnp
+Measurement: Gummel Plot
+
+Configuration:
+- VCE: 2V (constant, forward active)
+- VBE: 0.4 to 1.0V (sweep)
+- VBE Step: 10 mV
+- Compliance: 100 mA
+```
+
+**Plot:** Log(IC) and log(IB) vs VBE
+
+**What to Look For:**
+
+- Straight lines (exponential behavior)
+- Parallel lines
+- Constant β in middle region
+
+### Output Characteristics (5-10 minutes)
+
+```
+Measurement: Output Characteristics
+
+Configuration:
+- IB values: 5, 10, 15, 20, 25 μA
+- VCE: 0 to 10V (sweep)
+- VCE Step: 100 mV
+```
+
+**Plot:** IC vs VCE for each IB
+
+**What to Look For:**
+
+- Linear region (low VCE)
+- Saturation/forward active (higher VCE)
+- Slope indicates Early voltage
+
+-----
+
+## 4.4 Data Analysis
+
+**Platform Extracts:**
+
+1. **β (hFE):** From IC/IB ratio
+1. **VA:** From output curve slopes
+1. **nC, nB:** From Gummel slopes
+1. **I0:** Saturation current
+
+**Typical Values:**
+
+- β: 50-200 (npn), 20-100 (pnp)
+- VA: 30-100V
+- nC: 1.0-1.2 (ideal = 1.0)
+- nB: 1.5-2.0
+
+-----
+
+## 4.5 Common Issues
+
+### Low β
+
+- Check for junction damage
+- Verify base-emitter connection
+- May indicate high recombination
+
+### High Ideality Factors
+
+- Recombination in depletion regions
+- Surface effects
+- Consider passivation
+
+-----
+
+# 5. Troubleshooting Guide {#troubleshooting}
+
+## General Issues
+
+### Noisy Data
+
+**Causes:** EMI, poor grounding, probe vibration  
+**Solutions:** Faraday cage, shorter cables, averaging
+
+### Hysteresis
+
+**Causes:** Charge trapping, ionic migration  
+**Solutions:** Slower sweeps, pre-conditioning, anneal
+
+### Sudden Jumps
+
+**Causes:** Breakdown, arcing, probe shifting  
+**Solutions:** Lower voltage, check compliance, re-probe
+
+-----
+
+# 6. Safety Procedures {#safety}
+
+## Electrical Safety
+
+⚠️ **High Voltage Warning:**
+
+- Some measurements use >100V
+- Always check compliance settings
+- Never touch probes during measurement
+
+## Laser Safety (Solar Simulator)
+
+⚠️ **Class 3B/4 Lasers:**
+
+- Wear appropriate eye protection
+- Never look directly at beam
+- Use interlocks
+
+## Chemical Safety
+
+⚠️ **Cleaning Solvents:**
+
+- Use in fume hood
+- IPA, acetone are flammable
+- Proper waste disposal
+
+-----
+
+# Appendix: Quick Reference Cards
+
+## MOSFET Quick Card
+
+```
+1. Clean sample, mount on chuck
+2. Platform → Electrical → MOSFET
+3. Select n-MOS or p-MOS
+4. Enter W, L, tox
+5. Run Transfer (Vds=0.1V)
+6. Run Output (Vgs array)
+7. Export results
+Target: Vth ±50mV, SS <80mV/dec, Quality >80
+```
+
+## Solar Cell Quick Card
+
+```
+1. Calibrate solar simulator (1000 W/m²)
+2. Measure cell area precisely
+3. Platform → Electrical → Solar Cell
+4. Set area, irradiance, temperature
+5. Run I-V sweep (20s)
+6. Export: η, FF, Isc, Voc
+Target: η near record for material type
+```
+
+-----
+
+**END OF METHOD PLAYBOOKS**
+
+*Document Owner: Platform Engineering Team*  
+*Next Review: Quarterly*  
+*Questions: support@semiconductorlab.com*

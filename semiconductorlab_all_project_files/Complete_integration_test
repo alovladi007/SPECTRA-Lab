@@ -1,0 +1,675 @@
+# services/analysis/tests/integration/test_session5_workflows.py
+
+“””
+Session 5 Integration Tests: Complete End-to-End Workflows
+
+Tests all Session 5 analysis modules in realistic scenarios including:
+
+- MOSFET characterization (transfer + output)
+- Solar cell analysis with STC normalization
+- C-V profiling with doping extraction
+- BJT analysis with β and VA extraction
+- Multi-device batch processing
+- Report generation
+  “””
+
+import pytest
+import json
+import numpy as np
+from pathlib import Path
+from typing import Dict, Any
+from datetime import datetime
+
+# Import analysis modules
+
+from app.methods.electrical.mosfet_analysis import (
+analyze_mosfet_transfer,
+analyze_mosfet_output
+)
+from app.methods.electrical.solar_cell_analysis import analyze_solar_cell_iv
+from app.methods.electrical.cv_profiling import (
+analyze_mos_cv,
+analyze_schottky_cv
+)
+from app.methods.electrical.bjt_analysis import (
+analyze_bjt_gummel,
+analyze_bjt_output
+)
+
+# Test data directory
+
+TEST_DATA_DIR = Path(“data/test_data/electrical”)
+
+class TestMOSFETWorkflow:
+“”“Complete MOSFET characterization workflow tests”””
+
+```
+def test_mosfet_transfer_complete_workflow(self):
+    """Test n-MOS transfer characteristics end-to-end"""
+    
+    # 1. Load or generate test data
+    vgs = np.linspace(-1, 3, 200)
+    vth = 0.5
+    vds = 0.1
+    
+    # Realistic n-MOS transfer curve
+    ids = np.where(
+        vgs < vth,
+        1e-12 * np.exp((vgs - vth) / 0.065),  # Subthreshold
+        0.001 * (config.width / config.length) * ((vgs - vth) * vds - 0.5 * vds**2)  # Linear
+    )
+    
+    # 2. Run analysis
+    result = analyze_mosfet_transfer(
+        vgs=vgs,
+        ids=ids,
+        vds=vds,
+        config={
+            'width': 10e-6,  # 10 μm
+            'length': 1e-6,   # 1 μm
+            'oxide_thickness': 10e-9  # 10 nm
+        }
+    )
+    
+    # 3. Validate results
+    assert 'threshold_voltage' in result
+    assert abs(result['threshold_voltage']['value'] - vth) < 0.1
+    assert result['threshold_voltage']['method'] == 'linear_extrapolation'
+    
+    assert 'transconductance_max' in result
+    assert result['transconductance_max']['value'] > 0
+    
+    assert 'subthreshold_slope' in result
+    assert 60 < result['subthreshold_slope']['value'] < 150  # mV/dec
+    
+    assert 'quality_score' in result
+    assert 0 <= result['quality_score'] <= 100
+    
+    # 4. Verify all required parameters present
+    required_params = [
+        'threshold_voltage', 'transconductance_max', 'subthreshold_slope',
+        'ion_ioff_ratio', 'mobility', 'quality_score'
+    ]
+    for param in required_params:
+        assert param in result, f"Missing required parameter: {param}"
+    
+    print(f"✓ MOSFET transfer analysis: Vth={result['threshold_voltage']['value']:.3f}V")
+
+def test_mosfet_output_characteristics(self):
+    """Test n-MOS output curves analysis"""
+    
+    vds = np.linspace(0, 5, 100)
+    vgs_values = [0.5, 1.0, 1.5, 2.0, 2.5]
+    vth = 0.5
+    
+    curves = []
+    for vgs in vgs_values:
+        if vgs > vth:
+            # Linear and saturation regions
+            ids = np.where(
+                vds < (vgs - vth),
+                0.001 * (vgs - vth) * vds * (1 - 0.5 * vds / (vgs - vth)),  # Linear
+                0.0005 * (vgs - vth)**2  # Saturation
+            )
+        else:
+            ids = np.zeros_like(vds)
+        
+        curves.append({'vgs': vgs, 'vds': vds, 'ids': ids})
+    
+    result = analyze_mosfet_output(
+        curves=curves,
+        config={'width': 10e-6, 'length': 1e-6}
+    )
+    
+    assert 'on_resistance' in result
+    assert result['on_resistance']['value'] > 0
+    
+    assert 'channel_length_modulation' in result
+    
+    print(f"✓ MOSFET output analysis: Ron={result['on_resistance']['value']:.2f}Ω")
+
+def test_mosfet_pmos_workflow(self):
+    """Test p-MOS device (negative threshold)"""
+    
+    vgs = np.linspace(-3, 1, 200)
+    vth = -0.5  # Negative for p-MOS
+    vds = -0.1
+    
+    ids = np.where(
+        vgs > vth,
+        -1e-12 * np.exp((vth - vgs) / 0.065),
+        -0.001 * (vth - vgs) * abs(vds)
+    )
+    
+    result = analyze_mosfet_transfer(
+        vgs=vgs,
+        ids=np.abs(ids),  # Analyze magnitude
+        vds=abs(vds),
+        config={'device_type': 'p-mos'}
+    )
+    
+    assert result['threshold_voltage']['value'] < 0  # Should be negative
+    print(f"✓ p-MOS analysis: Vth={result['threshold_voltage']['value']:.3f}V")
+```
+
+class TestSolarCellWorkflow:
+“”“Solar cell I-V analysis workflow tests”””
+
+```
+def test_silicon_solar_cell_1sun(self):
+    """Test Si solar cell at standard 1 sun conditions"""
+    
+    # Generate realistic Si cell I-V curve
+    v = np.linspace(0, 0.7, 100)
+    isc = 5.0  # A
+    voc = 0.65  # V
+    
+    # Single diode model
+    i = isc * (1 - np.exp((v - voc) / 0.026))
+    
+    result = analyze_solar_cell_iv(
+        voltage=v,
+        current=i,
+        area=100,  # cm²
+        irradiance=1000,  # W/m²
+        temperature=25  # °C
+    )
+    
+    # Validate key parameters
+    assert abs(result['isc']['value'] - isc) < 0.1
+    assert abs(result['voc']['value'] - voc) < 0.05
+    
+    # Fill factor should be 70-85% for good cells
+    assert 0.70 < result['fill_factor']['value'] < 0.85
+    
+    # Efficiency for Si should be realistic
+    assert 15 < result['efficiency']['percent'] < 27
+    
+    assert result['quality_score'] > 60
+    
+    print(f"✓ Solar cell analysis: η={result['efficiency']['percent']:.2f}%, FF={result['fill_factor']['percent']:.1f}%")
+
+def test_solar_cell_low_light(self):
+    """Test solar cell at reduced irradiance (0.1 sun)"""
+    
+    v = np.linspace(0, 0.6, 100)
+    isc = 0.5  # Reduced by 10x
+    voc = 0.60  # Slightly lower
+    
+    i = isc * (1 - np.exp((v - voc) / 0.026))
+    
+    result = analyze_solar_cell_iv(
+        voltage=v,
+        current=i,
+        area=100,
+        irradiance=100,  # 0.1 sun
+        temperature=25
+    )
+    
+    # Isc should scale linearly with irradiance
+    assert abs(result['isc']['value'] - 0.5) < 0.05
+    
+    # Voc should decrease logarithmically
+    assert result['voc']['value'] < 0.65
+    
+    print(f"✓ Low-light analysis: Isc={result['isc']['value']:.3f}A, Voc={result['voc']['value']:.3f}V")
+
+def test_solar_cell_temperature_effects(self):
+    """Test temperature coefficient effects"""
+    
+    # Test at 60°C (hot cell)
+    v = np.linspace(0, 0.6, 100)
+    isc = 5.1  # Slightly higher (positive temp coeff for Isc)
+    voc = 0.58  # Lower (negative temp coeff for Voc)
+    
+    i = isc * (1 - np.exp((v - voc) / 0.030))  # Higher Vt at 60°C
+    
+    result = analyze_solar_cell_iv(
+        voltage=v,
+        current=i,
+        area=100,
+        irradiance=1000,
+        temperature=60  # Hot
+    )
+    
+    # Efficiency should decrease at higher temperature
+    assert result['efficiency']['percent'] < 24
+    
+    # Should provide STC-normalized values
+    assert 'stc_normalized' in result
+    
+    print(f"✓ Temperature test: η@60°C={result['efficiency']['percent']:.2f}%")
+
+def test_solar_cell_quality_scoring(self):
+    """Test quality score for different cell conditions"""
+    
+    # Poor cell (low FF)
+    v = np.linspace(0, 0.65, 100)
+    poor_i = 5.0 * (1 - np.exp((v - 0.65) / 0.040))  # High ideality → low FF
+    
+    poor_result = analyze_solar_cell_iv(v, poor_i, 100, 1000, 25)
+    
+    # Good cell
+    good_i = 5.0 * (1 - np.exp((v - 0.65) / 0.026))
+    good_result = analyze_solar_cell_iv(v, good_i, 100, 1000, 25)
+    
+    assert poor_result['quality_score'] < good_result['quality_score']
+    assert good_result['quality_score'] > 80
+    assert poor_result['quality_score'] < 70
+    
+    print(f"✓ Quality scoring: Good={good_result['quality_score']}, Poor={poor_result['quality_score']}")
+```
+
+class TestCVProfilingWorkflow:
+“”“C-V profiling workflow tests”””
+
+```
+def test_mos_capacitor_analysis(self):
+    """Test MOS capacitor C-V analysis"""
+    
+    # Generate realistic MOS C-V curve
+    v = np.linspace(-3, 3, 120)
+    Cox = 3.45e-8  # F (for 10nm SiO2, 1mm² area)
+    
+    # Simplified C-V shape
+    c = Cox * (0.4 + 0.5 * (1 + np.tanh((v + 0.5) / 0.5)))
+    
+    result = analyze_mos_cv(
+        voltage=v,
+        capacitance=c,
+        frequency=100000,  # 100 kHz
+        area=0.01,  # cm²
+        config={'substrate_type': 'p-type'}
+    )
+    
+    # Validate extracted parameters
+    assert 'oxide_capacitance' in result
+    assert abs(result['oxide_capacitance']['value'] - Cox) / Cox < 0.1
+    
+    assert 'oxide_thickness' in result
+    assert 5 < result['oxide_thickness']['value'] < 50  # nm
+    
+    assert 'flatband_voltage' in result
+    assert 'threshold_voltage' in result
+    
+    assert 'interface_trap_density' in result
+    assert result['interface_trap_density']['value'] < 1e12  # Good interface
+    
+    print(f"✓ MOS C-V: tox={result['oxide_thickness']['value']:.1f}nm, Vfb={result['flatband_voltage']['value']:.3f}V")
+
+def test_schottky_diode_cv(self):
+    """Test Schottky diode doping profile extraction"""
+    
+    v = np.linspace(-3, 0, 100)  # Reverse bias
+    Vbi = 0.7
+    ND = 1e16  # cm⁻³
+    
+    # Mott-Schottky: 1/C² ∝ (V - Vbi)
+    eps_si = 11.7 * 8.854e-14
+    A = 0.01
+    
+    c_sq = (2 * (Vbi - v)) / (1.602e-19 * eps_si * ND * A**2)
+    c = 1 / np.sqrt(c_sq)
+    
+    result = analyze_schottky_cv(
+        voltage=v,
+        capacitance=c,
+        area=A,
+        config={'substrate_type': 'n-type'}
+    )
+    
+    assert 'builtin_potential' in result
+    assert abs(result['builtin_potential']['value'] - Vbi) < 0.1
+    
+    assert 'doping_concentration' in result
+    extracted_ND = result['doping_concentration']['value']
+    assert abs(extracted_ND - ND) / ND < 0.2  # Within 20%
+    
+    assert 'doping_profile' in result
+    
+    print(f"✓ Schottky C-V: Vbi={result['builtin_potential']['value']:.2f}V, ND={extracted_ND:.2e}cm⁻³")
+
+def test_cv_frequency_dependence(self):
+    """Test C-V at multiple frequencies for Dit extraction"""
+    
+    frequencies = [1000, 10000, 100000, 1000000]  # 1kHz to 1MHz
+    results = []
+    
+    for freq in frequencies:
+        v = np.linspace(-3, 3, 120)
+        Cox = 3.45e-8
+        
+        # Frequency-dependent interface traps
+        c = Cox * (0.4 + 0.5 * (1 + np.tanh((v + 0.5) / 0.5)))
+        
+        if freq < 10000:
+            c *= 1.05  # Interface traps respond at low frequency
+        
+        result = analyze_mos_cv(v, c, freq, 0.01, {'substrate_type': 'p-type'})
+        results.append(result)
+    
+    # Dit should be extractable from frequency dispersion
+    assert all('interface_trap_density' in r for r in results)
+    
+    print(f"✓ Multi-frequency C-V analysis: {len(frequencies)} frequencies tested")
+```
+
+class TestBJTWorkflow:
+“”“BJT characterization workflow tests”””
+
+```
+def test_bjt_gummel_plot_npn(self):
+    """Test npn BJT Gummel plot analysis"""
+    
+    vbe = np.linspace(0.4, 1.0, 100)
+    Is = 1e-15
+    beta = 100
+    vt = 0.0259
+    
+    # Collector and base currents
+    ic = Is * np.exp(vbe / vt)
+    ib = ic / beta
+    
+    result = analyze_bjt_gummel(
+        vbe=vbe,
+        ic=ic,
+        ib=ib,
+        vce=2.0,
+        config={'transistor_type': 'npn'}
+    )
+    
+    # Validate β extraction
+    assert 'current_gain' in result
+    assert abs(result['current_gain']['value'] - beta) / beta < 0.1
+    
+    # Ideality factors
+    assert 'collector_ideality' in result
+    assert 0.95 < result['collector_ideality']['value'] < 1.2
+    
+    assert 'base_ideality' in result
+    
+    # Saturation current
+    assert 'saturation_current' in result
+    assert 1e-16 < result['saturation_current']['value'] < 1e-14
+    
+    print(f"✓ BJT Gummel: β={result['current_gain']['value']:.1f}, nC={result['collector_ideality']['value']:.2f}")
+
+def test_bjt_output_characteristics(self):
+    """Test BJT output curves and Early voltage extraction"""
+    
+    vce = np.linspace(0, 10, 100)
+    ib_values = [5e-6, 10e-6, 15e-6, 20e-6]  # μA
+    beta = 100
+    VA = 50  # Early voltage
+    
+    curves = []
+    for ib in ib_values:
+        # Forward active with Early effect
+        ic = beta * ib * (1 + vce / VA)
+        ic = np.where(vce < 0.2, 0, ic)  # Saturation region
+        
+        curves.append({'ib': ib, 'vce': vce, 'ic': ic})
+    
+    result = analyze_bjt_output(
+        curves=curves,
+        config={'transistor_type': 'npn'}
+    )
+    
+    assert 'early_voltage' in result
+    assert abs(result['early_voltage']['value'] - VA) / VA < 0.2
+    
+    assert 'output_resistance' in result
+    
+    print(f"✓ BJT output: VA={result['early_voltage']['value']:.1f}V")
+
+def test_bjt_pnp_transistor(self):
+    """Test pnp transistor (currents in opposite direction)"""
+    
+    vbe = np.linspace(-1.0, -0.4, 100)
+    Is = 1e-15
+    beta = 80
+    
+    ic = -Is * np.exp(-vbe / 0.0259)
+    ib = -ic / beta
+    
+    result = analyze_bjt_gummel(
+        vbe=vbe,
+        ic=np.abs(ic),
+        ib=np.abs(ib),
+        vce=-2.0,
+        config={'transistor_type': 'pnp'}
+    )
+    
+    assert result['current_gain']['value'] > 50
+    
+    print(f"✓ PNP BJT: β={result['current_gain']['value']:.1f}")
+```
+
+class TestBatchProcessing:
+“”“Test batch processing of multiple devices”””
+
+```
+def test_multi_device_mosfet_batch(self):
+    """Process 10 MOSFET devices in batch"""
+    
+    devices = []
+    for i in range(10):
+        # Slight parameter variation
+        vth = 0.5 + (i - 5) * 0.02  # 0.4 to 0.6V
+        vgs = np.linspace(-1, 3, 200)
+        ids = np.where(
+            vgs < vth,
+            1e-12 * np.exp((vgs - vth) / 0.065),
+            0.001 * (vgs - vth)**2
+        )
+        
+        result = analyze_mosfet_transfer(vgs, ids, 0.1, {'width': 10e-6, 'length': 1e-6})
+        devices.append(result)
+    
+    # Verify all processed successfully
+    assert len(devices) == 10
+    assert all(d['quality_score'] > 60 for d in devices)
+    
+    # Statistical analysis
+    vth_values = [d['threshold_voltage']['value'] for d in devices]
+    vth_mean = np.mean(vth_values)
+    vth_std = np.std(vth_values)
+    
+    assert 0.45 < vth_mean < 0.55
+    assert vth_std < 0.05  # Good uniformity
+    
+    print(f"✓ Batch processing: 10 devices, Vth={vth_mean:.3f}±{vth_std:.3f}V")
+
+def test_multi_method_device_suite(self):
+    """Test all methods on a single device"""
+    
+    # Simulate comprehensive device characterization
+    device_id = "TEST-DEVICE-001"
+    
+    results = {}
+    
+    # 1. MOSFET analysis
+    mosfet_result = analyze_mosfet_transfer(
+        vgs=np.linspace(-1, 3, 200),
+        ids=np.where(np.linspace(-1, 3, 200) < 0.5, 1e-12, 0.001),
+        vds=0.1,
+        config={'device_id': device_id}
+    )
+    results['mosfet'] = mosfet_result
+    
+    # 2. C-V profiling
+    cv_result = analyze_mos_cv(
+        voltage=np.linspace(-3, 3, 120),
+        capacitance=np.ones(120) * 3e-8,
+        frequency=100000,
+        area=0.01,
+        config={'device_id': device_id}
+    )
+    results['cv'] = cv_result
+    
+    # Verify consistency across methods
+    assert results['mosfet']['quality_score'] > 50
+    assert results['cv']['quality_score'] > 50
+    
+    print(f"✓ Multi-method suite: Device {device_id} passed all tests")
+```
+
+class TestReportGeneration:
+“”“Test report generation for all methods”””
+
+```
+def test_mosfet_report_generation(self):
+    """Generate complete MOSFET characterization report"""
+    
+    # Run analysis
+    vgs = np.linspace(-1, 3, 200)
+    ids = np.where(vgs < 0.5, 1e-12, 0.001 * (vgs - 0.5)**2)
+    
+    result = analyze_mosfet_transfer(vgs, ids, 0.1)
+    
+    # Generate report dict
+    report = {
+        'title': 'MOSFET Transfer Characteristics',
+        'timestamp': datetime.now().isoformat(),
+        'device_info': {'type': 'n-MOS', 'width': 10, 'length': 1},
+        'results': result,
+        'plots': ['transfer_linear', 'transfer_log'],
+        'pass_fail': result['quality_score'] > 80
+    }
+    
+    # Verify report structure
+    assert 'title' in report
+    assert 'timestamp' in report
+    assert 'results' in report
+    assert 'pass_fail' in report
+    
+    # Save report (in real implementation)
+    report_path = Path(f"reports/mosfet_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    
+    print(f"✓ Report generated: {report['title']}")
+
+def test_pdf_report_metadata(self):
+    """Test PDF report metadata generation"""
+    
+    metadata = {
+        'platform': 'SemiconductorLab v1.0',
+        'session': 'Session 5 - Electrical II',
+        'methods': ['MOSFET', 'Solar Cell', 'C-V', 'BJT'],
+        'total_devices': 15,
+        'pass_rate': 0.93,
+        'generated_at': datetime.now().isoformat()
+    }
+    
+    assert all(key in metadata for key in ['platform', 'session', 'methods'])
+    assert metadata['pass_rate'] > 0.9
+    
+    print(f"✓ PDF metadata: {metadata['total_devices']} devices, {metadata['pass_rate']*100:.0f}% pass rate")
+```
+
+class TestErrorHandling:
+“”“Test error handling and edge cases”””
+
+```
+def test_mismatched_array_lengths(self):
+    """Test error raised for mismatched arrays"""
+    
+    with pytest.raises(ValueError, match="length"):
+        analyze_mosfet_transfer(
+            vgs=np.array([0, 1, 2]),
+            ids=np.array([0, 1]),  # Wrong length
+            vds=0.1
+        )
+
+def test_negative_area(self):
+    """Test error for negative area"""
+    
+    with pytest.raises(ValueError, match="area"):
+        analyze_solar_cell_iv(
+            voltage=np.array([0, 0.1]),
+            current=np.array([5, 4.9]),
+            area=-100,  # Invalid
+            irradiance=1000,
+            temperature=25
+        )
+
+def test_invalid_temperature(self):
+    """Test error for invalid temperature"""
+    
+    with pytest.raises(ValueError, match="temperature"):
+        analyze_solar_cell_iv(
+            voltage=np.array([0, 0.1]),
+            current=np.array([5, 4.9]),
+            area=100,
+            irradiance=1000,
+            temperature=-50  # Too cold
+        )
+```
+
+# Performance tests
+
+class TestPerformance:
+“”“Test performance benchmarks”””
+
+```
+def test_mosfet_analysis_speed(self):
+    """Benchmark MOSFET analysis speed"""
+    
+    import time
+    
+    vgs = np.linspace(-1, 3, 200)
+    ids = np.where(vgs < 0.5, 1e-12, 0.001 * (vgs - 0.5)**2)
+    
+    start = time.time()
+    result = analyze_mosfet_transfer(vgs, ids, 0.1)
+    duration = time.time() - start
+    
+    assert duration < 1.0  # Should complete in <1s
+    print(f"✓ MOSFET analysis: {duration*1000:.1f}ms")
+
+def test_solar_cell_analysis_speed(self):
+    """Benchmark solar cell analysis speed"""
+    
+    import time
+    
+    v = np.linspace(0, 0.7, 100)
+    i = 5.0 * (1 - np.exp((v - 0.65) / 0.026))
+    
+    start = time.time()
+    result = analyze_solar_cell_iv(v, i, 100, 1000, 25)
+    duration = time.time() - start
+    
+    assert duration < 1.0
+    print(f"✓ Solar cell analysis: {duration*1000:.1f}ms")
+```
+
+# Pytest configuration
+
+@pytest.fixture(scope=“session”)
+def test_data_dir():
+“”“Ensure test data directory exists”””
+TEST_DATA_DIR.mkdir(parents=True, exist_ok=True)
+return TEST_DATA_DIR
+
+@pytest.fixture
+def sample_mosfet_data():
+“”“Generate sample MOSFET data for tests”””
+return {
+‘vgs’: np.linspace(-1, 3, 200),
+‘ids’: np.where(np.linspace(-1, 3, 200) < 0.5, 1e-12, 0.001),
+‘vds’: 0.1
+}
+
+if **name** == “**main**”:
+# Run all tests
+pytest.main([**file**, “-v”, “–tb=short”])
+
+```
+print("\n" + "="*60)
+print("SESSION 5 INTEGRATION TESTS COMPLETE")
+print("="*60)
+print("\nTo run specific test classes:")
+print("  pytest test_session5_workflows.py::TestMOSFETWorkflow -v")
+print("  pytest test_session5_workflows.py::TestSolarCellWorkflow -v")
+print("\nTo run with coverage:")
+print("  pytest test_session5_workflows.py --cov=app.methods.electrical --cov-report=html")
+```
