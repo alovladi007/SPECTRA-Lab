@@ -1,0 +1,1188 @@
+openapi: 3.0.3
+info:
+title: SemiconductorLab Platform API
+version: 1.0.0
+description: |
+Enterprise-grade semiconductor characterization platform API.
+
+```
+## Features
+- Instrument management and control
+- Experiment orchestration
+- Real-time data acquisition
+- Advanced analysis (SPC, ML, VM)
+- Reporting and compliance
+
+## Authentication
+Uses OAuth2/OIDC with JWT bearer tokens.
+```
+
+contact:
+name: Platform Team
+email: platform@semiconductorlab.com
+license:
+name: MIT
+url: https://opensource.org/licenses/MIT
+
+servers:
+
+- url: http://localhost:8000/api/v1
+  description: Local development
+- url: https://staging-api.semiconductorlab.com/api/v1
+  description: Staging environment
+- url: https://api.semiconductorlab.com/api/v1
+  description: Production environment
+
+tags:
+
+- name: auth
+  description: Authentication and authorization
+- name: users
+  description: User management
+- name: organizations
+  description: Organization management
+- name: projects
+  description: Project management
+- name: instruments
+  description: Instrument registry and control
+- name: calibrations
+  description: Calibration tracking
+- name: samples
+  description: Sample/wafer/die management
+- name: methods
+  description: Characterization methods
+- name: runs
+  description: Experiment runs
+- name: results
+  description: Analysis results
+- name: spc
+  description: Statistical Process Control
+- name: ml
+  description: Machine Learning / Virtual Metrology
+- name: reports
+  description: Report generation
+- name: eln
+  description: Electronic Lab Notebook
+
+security:
+
+- BearerAuth: []
+
+paths:
+
+# ============================================================================
+
+# Authentication
+
+# ============================================================================
+
+/auth/login:
+post:
+tags: [auth]
+summary: User login
+security: []
+requestBody:
+required: true
+content:
+application/json:
+schema:
+type: object
+required: [username, password]
+properties:
+username:
+type: string
+example: john.martinez@lab.com
+password:
+type: string
+format: password
+example: SecureP@ssw0rd
+responses:
+‘200’:
+description: Login successful
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/TokenResponse’
+‘401’:
+$ref: ‘#/components/responses/Unauthorized’
+
+/auth/refresh:
+post:
+tags: [auth]
+summary: Refresh access token
+requestBody:
+required: true
+content:
+application/json:
+schema:
+type: object
+required: [refresh_token]
+properties:
+refresh_token:
+type: string
+responses:
+‘200’:
+description: Token refreshed
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/TokenResponse’
+
+/auth/logout:
+post:
+tags: [auth]
+summary: User logout (revoke token)
+responses:
+‘200’:
+description: Logout successful
+
+# ============================================================================
+
+# Users
+
+# ============================================================================
+
+/users:
+get:
+tags: [users]
+summary: List users
+parameters:
+- $ref: ‘#/components/parameters/PageParam’
+- $ref: ‘#/components/parameters/PageSizeParam’
+responses:
+‘200’:
+description: User list
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/UserListResponse’
+
+```
+post:
+  tags: [users]
+  summary: Create user
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserCreate'
+  responses:
+    '201':
+      description: User created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/User'
+```
+
+/users/{user_id}:
+get:
+tags: [users]
+summary: Get user by ID
+parameters:
+- name: user_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: User details
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/User’
+‘404’:
+$ref: ‘#/components/responses/NotFound’
+
+/users/me:
+get:
+tags: [users]
+summary: Get current user profile
+responses:
+‘200’:
+description: Current user
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/User’
+
+# ============================================================================
+
+# Instruments
+
+# ============================================================================
+
+/instruments:
+get:
+tags: [instruments]
+summary: List instruments
+parameters:
+- name: status
+in: query
+schema:
+type: string
+enum: [online, offline, maintenance, error]
+- name: method
+in: query
+schema:
+type: string
+responses:
+‘200’:
+description: Instrument list
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/InstrumentListResponse’
+
+```
+post:
+  tags: [instruments]
+  summary: Register instrument
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/InstrumentCreate'
+  responses:
+    '201':
+      description: Instrument registered
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Instrument'
+```
+
+/instruments/{instrument_id}:
+get:
+tags: [instruments]
+summary: Get instrument details
+parameters:
+- name: instrument_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Instrument details
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/Instrument’
+
+```
+patch:
+  tags: [instruments]
+  summary: Update instrument
+  parameters:
+    - name: instrument_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/InstrumentUpdate'
+  responses:
+    '200':
+      description: Instrument updated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Instrument'
+```
+
+/instruments/{instrument_id}/connect:
+post:
+tags: [instruments]
+summary: Connect to instrument
+parameters:
+- name: instrument_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Connected successfully
+content:
+application/json:
+schema:
+type: object
+properties:
+status:
+type: string
+example: connected
+firmware_version:
+type: string
+example: 1.2.3
+
+/instruments/{instrument_id}/disconnect:
+post:
+tags: [instruments]
+summary: Disconnect from instrument
+parameters:
+- name: instrument_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Disconnected successfully
+
+# ============================================================================
+
+# Samples
+
+# ============================================================================
+
+/samples:
+get:
+tags: [samples]
+summary: List samples
+parameters:
+- name: project_id
+in: query
+schema:
+type: string
+format: uuid
+- $ref: ‘#/components/parameters/PageParam’
+- $ref: ‘#/components/parameters/PageSizeParam’
+responses:
+‘200’:
+description: Sample list
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/SampleListResponse’
+
+```
+post:
+  tags: [samples]
+  summary: Create sample
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SampleCreate'
+  responses:
+    '201':
+      description: Sample created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Sample'
+```
+
+/samples/{sample_id}:
+get:
+tags: [samples]
+summary: Get sample details
+parameters:
+- name: sample_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Sample details
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/Sample’
+
+# ============================================================================
+
+# Runs
+
+# ============================================================================
+
+/runs:
+get:
+tags: [runs]
+summary: List experiment runs
+parameters:
+- name: sample_id
+in: query
+schema:
+type: string
+format: uuid
+- name: method
+in: query
+schema:
+type: string
+- name: status
+in: query
+schema:
+type: string
+enum: [pending, running, completed, failed, aborted]
+- $ref: ‘#/components/parameters/PageParam’
+- $ref: ‘#/components/parameters/PageSizeParam’
+responses:
+‘200’:
+description: Run list
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/RunListResponse’
+
+```
+post:
+  tags: [runs]
+  summary: Create and start run
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RunCreate'
+  responses:
+    '202':
+      description: Run accepted (processing in background)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Run'
+```
+
+/runs/{run_id}:
+get:
+tags: [runs]
+summary: Get run details
+parameters:
+- name: run_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Run details
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/Run’
+
+/runs/{run_id}/stream:
+get:
+tags: [runs]
+summary: Stream real-time run data (SSE)
+parameters:
+- name: run_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Server-Sent Events stream
+content:
+text/event-stream:
+schema:
+type: string
+
+/runs/{run_id}/abort:
+post:
+tags: [runs]
+summary: Abort running experiment
+parameters:
+- name: run_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Run aborted
+
+/runs/{run_id}/data:
+get:
+tags: [runs]
+summary: Download raw data
+parameters:
+- name: run_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+- name: format
+in: query
+schema:
+type: string
+enum: [hdf5, csv, json]
+default: hdf5
+responses:
+‘200’:
+description: Raw data file
+content:
+application/octet-stream:
+schema:
+type: string
+format: binary
+
+# ============================================================================
+
+# Results
+
+# ============================================================================
+
+/results:
+get:
+tags: [results]
+summary: Query analysis results
+parameters:
+- name: run_id
+in: query
+schema:
+type: string
+format: uuid
+- name: metric
+in: query
+schema:
+type: string
+- $ref: ‘#/components/parameters/PageParam’
+- $ref: ‘#/components/parameters/PageSizeParam’
+responses:
+‘200’:
+description: Results list
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/ResultListResponse’
+
+/results/{result_id}:
+get:
+tags: [results]
+summary: Get result details
+parameters:
+- name: result_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Result details
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/Result’
+
+# ============================================================================
+
+# SPC
+
+# ============================================================================
+
+/spc/charts:
+get:
+tags: [spc]
+summary: Get control charts
+parameters:
+- name: metric
+in: query
+required: true
+schema:
+type: string
+- name: chart_type
+in: query
+schema:
+type: string
+enum: [xbar_r, ewma, cusum]
+default: xbar_r
+responses:
+‘200’:
+description: Control chart data
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/ControlChart’
+
+/spc/alerts:
+get:
+tags: [spc]
+summary: Get active SPC alerts
+parameters:
+- name: severity
+in: query
+schema:
+type: string
+enum: [low, medium, high, critical]
+responses:
+‘200’:
+description: Alert list
+content:
+application/json:
+schema:
+type: array
+items:
+$ref: ‘#/components/schemas/SPCAlert’
+
+# ============================================================================
+
+# Reports
+
+# ============================================================================
+
+/reports:
+post:
+tags: [reports]
+summary: Generate report
+requestBody:
+required: true
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/ReportRequest’
+responses:
+‘202’:
+description: Report generation started
+content:
+application/json:
+schema:
+type: object
+properties:
+report_id:
+type: string
+format: uuid
+status:
+type: string
+example: generating
+
+/reports/{report_id}:
+get:
+tags: [reports]
+summary: Download report
+parameters:
+- name: report_id
+in: path
+required: true
+schema:
+type: string
+format: uuid
+responses:
+‘200’:
+description: Report file
+content:
+application/pdf:
+schema:
+type: string
+format: binary
+
+# ==============================================================================
+
+# Components
+
+# ==============================================================================
+
+components:
+securitySchemes:
+BearerAuth:
+type: http
+scheme: bearer
+bearerFormat: JWT
+
+parameters:
+PageParam:
+name: page
+in: query
+schema:
+type: integer
+minimum: 1
+default: 1
+
+```
+PageSizeParam:
+  name: page_size
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 20
+```
+
+responses:
+Unauthorized:
+description: Unauthorized
+content:
+application/json:
+schema:
+$ref: ‘#/components/schemas/Error’
+example:
+error: unauthorized
+message: Invalid or expired token
+
+```
+NotFound:
+  description: Resource not found
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/Error'
+      example:
+        error: not_found
+        message: Resource not found
+```
+
+schemas:
+# Authentication
+TokenResponse:
+type: object
+required: [access_token, token_type, expires_in]
+properties:
+access_token:
+type: string
+refresh_token:
+type: string
+token_type:
+type: string
+example: Bearer
+expires_in:
+type: integer
+example: 900
+
+```
+# User
+User:
+  type: object
+  required: [id, email, first_name, last_name, role]
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+    first_name:
+      type: string
+    last_name:
+      type: string
+    role:
+      type: string
+      enum: [admin, pi, engineer, technician, viewer]
+    organization_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UserCreate:
+  type: object
+  required: [email, first_name, last_name, password, role]
+  properties:
+    email:
+      type: string
+      format: email
+    first_name:
+      type: string
+    last_name:
+      type: string
+    password:
+      type: string
+      format: password
+    role:
+      type: string
+      enum: [admin, pi, engineer, technician, viewer]
+
+UserListResponse:
+  type: object
+  required: [items, total, page, page_size]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+
+# Instrument
+Instrument:
+  type: object
+  required: [id, name, model, vendor, connection_type, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      example: SMU-001
+    model:
+      type: string
+      example: Keithley 2400
+    vendor:
+      type: string
+      example: Keithley
+    serial_number:
+      type: string
+    connection_type:
+      type: string
+      enum: [visa_usb, visa_gpib, visa_tcpip, serial, usb_raw]
+    connection_string:
+      type: string
+      example: USB0::0x05E6::0x2400::1234567::INSTR
+    driver:
+      type: string
+      example: keithley_2400
+    capabilities:
+      type: array
+      items:
+        type: string
+      example: [iv_sweep, cv_measurement]
+    status:
+      type: string
+      enum: [online, offline, maintenance, error]
+    last_calibration:
+      type: string
+      format: date-time
+    next_calibration:
+      type: string
+      format: date-time
+    metadata:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+InstrumentCreate:
+  type: object
+  required: [name, model, vendor, connection_type, connection_string, driver]
+  properties:
+    name:
+      type: string
+    model:
+      type: string
+    vendor:
+      type: string
+    serial_number:
+      type: string
+    connection_type:
+      type: string
+      enum: [visa_usb, visa_gpib, visa_tcpip, serial, usb_raw]
+    connection_string:
+      type: string
+    driver:
+      type: string
+    metadata:
+      type: object
+      additionalProperties: true
+
+InstrumentUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    status:
+      type: string
+      enum: [online, offline, maintenance, error]
+    metadata:
+      type: object
+      additionalProperties: true
+
+InstrumentListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/Instrument'
+    total:
+      type: integer
+
+# Sample
+Sample:
+  type: object
+  required: [id, name, type, project_id]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      example: Wafer-001
+    type:
+      type: string
+      enum: [wafer, die, device, coupon]
+    project_id:
+      type: string
+      format: uuid
+    material:
+      type: string
+      example: Silicon
+    barcode:
+      type: string
+    parent_id:
+      type: string
+      format: uuid
+    metadata:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+
+SampleCreate:
+  type: object
+  required: [name, type, project_id]
+  properties:
+    name:
+      type: string
+    type:
+      type: string
+      enum: [wafer, die, device, coupon]
+    project_id:
+      type: string
+      format: uuid
+    material:
+      type: string
+    barcode:
+      type: string
+    parent_id:
+      type: string
+      format: uuid
+    metadata:
+      type: object
+      additionalProperties: true
+
+SampleListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/Sample'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+
+# Run
+Run:
+  type: object
+  required: [id, method, sample_id, instrument_id, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    method:
+      type: string
+      example: iv_sweep
+    sample_id:
+      type: string
+      format: uuid
+    instrument_id:
+      type: string
+      format: uuid
+    operator_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [pending, running, completed, failed, aborted]
+    parameters:
+      type: object
+      additionalProperties: true
+    progress:
+      type: number
+      format: float
+      minimum: 0
+      maximum: 100
+    started_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+
+RunCreate:
+  type: object
+  required: [method, sample_id, instrument_id, parameters]
+  properties:
+    method:
+      type: string
+    sample_id:
+      type: string
+      format: uuid
+    instrument_id:
+      type: string
+      format: uuid
+    parameters:
+      type: object
+      additionalProperties: true
+
+RunListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/Run'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+
+# Result
+Result:
+  type: object
+  required: [id, run_id, metric, value, unit]
+  properties:
+    id:
+      type: string
+      format: uuid
+    run_id:
+      type: string
+      format: uuid
+    metric:
+      type: string
+      example: vth
+    value:
+      type: number
+      format: float
+      example: 0.65
+    unit:
+      type: string
+      example: V
+    uncertainty:
+      type: number
+      format: float
+    metadata:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+
+ResultListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/Result'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+
+# SPC
+ControlChart:
+  type: object
+  properties:
+    metric:
+      type: string
+    chart_type:
+      type: string
+    data_points:
+      type: array
+      items:
+        type: object
+        properties:
+          timestamp:
+            type: string
+            format: date-time
+          value:
+            type: number
+          subgroup:
+            type: string
+    control_limits:
+      type: object
+      properties:
+        ucl:
+          type: number
+        lcl:
+          type: number
+        centerline:
+          type: number
+
+SPCAlert:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    metric:
+      type: string
+    severity:
+      type: string
+      enum: [low, medium, high, critical]
+    rule_violated:
+      type: string
+    message:
+      type: string
+    timestamp:
+      type: string
+      format: date-time
+
+# Report
+ReportRequest:
+  type: object
+  required: [template, run_ids]
+  properties:
+    template:
+      type: string
+      enum: [single_run, batch, spc_summary]
+    run_ids:
+      type: array
+      items:
+        type: string
+        format: uuid
+    format:
+      type: string
+      enum: [pdf, html]
+      default: pdf
+
+# Error
+Error:
+  type: object
+  required: [error, message]
+  properties:
+    error:
+      type: string
+    message:
+      type: string
+    details:
+      type: object
+      additionalProperties: true
+```

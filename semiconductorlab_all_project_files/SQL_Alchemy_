@@ -1,0 +1,644 @@
+# services/instruments/app/models/**init**.py
+
+“””
+SQLAlchemy ORM Models for SemiconductorLab Platform
+
+This module defines the complete data model with:
+
+- Organizations, Users, Projects
+- Instruments, Calibrations
+- Materials, Samples
+- Methods, Recipes, Runs
+- Measurements, Results, Attachments
+- Notebook Entries, Approvals
+- Audit Logs, SPC Control Limits, ML Models
+  “””
+
+from datetime import datetime
+from typing import List, Optional
+from sqlalchemy import (
+Column, String, Integer, Float, Boolean, DateTime, Text,
+ForeignKey, Enum, JSON, ARRAY, CheckConstraint, Index, BigInteger,
+Numeric, TIMESTAMP
+)
+from sqlalchemy.dialects.postgresql import UUID, INET, JSONB
+from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.sql import func
+import uuid
+import enum
+
+# Create base class for all models
+
+Base = declarative_base()
+
+# ============================================================================
+
+# Enums
+
+# ============================================================================
+
+class UserRole(str, enum.Enum):
+ADMIN = “admin”
+PI = “pi”
+ENGINEER = “engineer”
+TECHNICIAN = “technician”
+VIEWER = “viewer”
+
+class ProjectStatus(str, enum.Enum):
+ACTIVE = “active”
+ON_HOLD = “on_hold”
+COMPLETED = “completed”
+ARCHIVED = “archived”
+
+class InstrumentStatus(str, enum.Enum):
+ONLINE = “online”
+OFFLINE = “offline”
+MAINTENANCE = “maintenance”
+ERROR = “error”
+
+class ConnectionType(str, enum.Enum):
+VISA_USB = “visa_usb”
+VISA_GPIB = “visa_gpib”
+VISA_TCPIP = “visa_tcpip”
+SERIAL = “serial”
+USB_RAW = “usb_raw”
+
+class CalibrationStatus(str, enum.Enum):
+VALID = “valid”
+DUE = “due”
+OVERDUE = “overdue”
+INVALID = “invalid”
+
+class SampleType(str, enum.Enum):
+WAFER = “wafer”
+DIE = “die”
+DEVICE = “device”
+COUPON = “coupon”
+TEST_STRUCTURE = “test_structure”
+
+class MethodCategory(str, enum.Enum):
+ELECTRICAL = “electrical”
+OPTICAL = “optical”
+STRUCTURAL = “structural”
+CHEMICAL = “chemical”
+
+class RunStatus(str, enum.Enum):
+PENDING = “pending”
+RUNNING = “running”
+COMPLETED = “completed”
+FAILED = “failed”
+ABORTED = “aborted”
+
+class AttachmentType(str, enum.Enum):
+RAW_DATA = “raw_data”
+IMAGE = “image”
+REPORT = “report”
+NOTEBOOK = “notebook”
+OTHER = “other”
+
+class ApprovalStatus(str, enum.Enum):
+PENDING = “pending”
+APPROVED = “approved”
+REJECTED = “rejected”
+
+class ModelStatus(str, enum.Enum):
+TRAINING = “training”
+DEPLOYED = “deployed”
+ARCHIVED = “archived”
+
+# ============================================================================
+
+# Base Mixin Classes
+
+# ============================================================================
+
+class TimestampMixin:
+“”“Mixin for created_at and updated_at timestamps”””
+created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+class UUIDMixin:
+“”“Mixin for UUID primary key”””
+id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+# ============================================================================
+
+# Core Entity Models
+
+# ============================================================================
+
+class Organization(Base, UUIDMixin, TimestampMixin):
+**tablename** = “organizations”
+
+```
+name = Column(String(255), nullable=False)
+slug = Column(String(100), nullable=False, unique=True, index=True)
+settings = Column(JSONB, default={})
+
+# Relationships
+users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
+projects = relationship("Project", back_populates="organization", cascade="all, delete-orphan")
+instruments = relationship("Instrument", back_populates="organization", cascade="all, delete-orphan")
+samples = relationship("Sample", back_populates="organization", cascade="all, delete-orphan")
+
+def __repr__(self):
+    return f"<Organization(name='{self.name}', slug='{self.slug}')>"
+```
+
+class User(Base, UUIDMixin, TimestampMixin):
+**tablename** = “users”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+email = Column(String(255), nullable=False, unique=True, index=True)
+password_hash = Column(String(255), nullable=False)
+first_name = Column(String(100), nullable=False)
+last_name = Column(String(100), nullable=False)
+role = Column(Enum(UserRole), nullable=False, default=UserRole.VIEWER, index=True)
+is_active = Column(Boolean, default=True)
+last_login = Column(TIMESTAMP(timezone=True))
+metadata = Column(JSONB, default={})
+
+# Relationships
+organization = relationship("Organization", back_populates="users")
+owned_projects = relationship("Project", back_populates="owner", foreign_keys="Project.owner_id")
+operated_runs = relationship("Run", back_populates="operator", foreign_keys="Run.operator_id")
+notebook_entries = relationship("NotebookEntry", back_populates="author", foreign_keys="NotebookEntry.author_id")
+
+@property
+def full_name(self):
+    return f"{self.first_name} {self.last_name}"
+
+def __repr__(self):
+    return f"<User(email='{self.email}', role='{self.role.value}')>"
+```
+
+class Project(Base, UUIDMixin, TimestampMixin):
+**tablename** = “projects”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+name = Column(String(255), nullable=False)
+description = Column(Text)
+owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, index=True)
+started_at = Column(TIMESTAMP(timezone=True))
+completed_at = Column(TIMESTAMP(timezone=True))
+metadata = Column(JSONB, default={})
+
+# Relationships
+organization = relationship("Organization", back_populates="projects")
+owner = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
+samples = relationship("Sample", back_populates="project", cascade="all, delete-orphan")
+runs = relationship("Run", back_populates="project", cascade="all, delete-orphan")
+notebook_entries = relationship("NotebookEntry", back_populates="project", cascade="all, delete-orphan")
+
+def __repr__(self):
+    return f"<Project(name='{self.name}', status='{self.status.value}')>"
+```
+
+# ============================================================================
+
+# Instrument Models
+
+# ============================================================================
+
+class Instrument(Base, UUIDMixin, TimestampMixin):
+**tablename** = “instruments”
+**table_args** = (
+Index(‘idx_instruments_org_name’, ‘organization_id’, ‘name’, unique=True),
+)
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+name = Column(String(255), nullable=False)
+model = Column(String(255), nullable=False)
+vendor = Column(String(255), nullable=False)
+serial_number = Column(String(255))
+connection_type = Column(Enum(ConnectionType), nullable=False)
+connection_string = Column(String(500), nullable=False)
+driver = Column(String(255), nullable=False)
+capabilities = Column(ARRAY(Text))
+status = Column(Enum(InstrumentStatus), default=InstrumentStatus.OFFLINE, index=True)
+firmware_version = Column(String(100))
+last_seen = Column(TIMESTAMP(timezone=True))
+metadata = Column(JSONB, default={})
+
+# Relationships
+organization = relationship("Organization", back_populates="instruments")
+calibrations = relationship("Calibration", back_populates="instrument", cascade="all, delete-orphan")
+runs = relationship("Run", back_populates="instrument")
+
+def __repr__(self):
+    return f"<Instrument(name='{self.name}', model='{self.model}', status='{self.status.value}')>"
+```
+
+class Calibration(Base, UUIDMixin):
+**tablename** = “calibrations”
+
+```
+instrument_id = Column(UUID(as_uuid=True), ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True)
+performed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+calibration_date = Column(TIMESTAMP(timezone=True), nullable=False)
+next_calibration_date = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+status = Column(Enum(CalibrationStatus), default=CalibrationStatus.VALID, index=True)
+certificate_number = Column(String(255))
+certificate_url = Column(Text)
+standards_used = Column(ARRAY(Text))
+uncertainty_budget = Column(JSONB)
+notes = Column(Text)
+metadata = Column(JSONB, default={})
+created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+# Relationships
+instrument = relationship("Instrument", back_populates="calibrations")
+
+def __repr__(self):
+    return f"<Calibration(instrument='{self.instrument.name if self.instrument else 'N/A'}', date='{self.calibration_date}')>"
+```
+
+# ============================================================================
+
+# Materials & Samples
+
+# ============================================================================
+
+class Material(Base, UUIDMixin, TimestampMixin):
+**tablename** = “materials”
+
+```
+name = Column(String(255), nullable=False, unique=True, index=True)
+chemical_formula = Column(String(255))
+crystal_structure = Column(String(100))
+lattice_constants = Column(JSONB)  # {a, b, c, alpha, beta, gamma}
+band_gap = Column(JSONB)  # {value, unit, temperature, type}
+refractive_index = Column(JSONB)  # {wavelength: n+ik}
+properties = Column(JSONB, default={})
+references = Column(ARRAY(Text))
+
+# Relationships
+samples = relationship("Sample", back_populates="material")
+
+def __repr__(self):
+    return f"<Material(name='{self.name}', formula='{self.chemical_formula}')>"
+```
+
+class Sample(Base, UUIDMixin, TimestampMixin):
+**tablename** = “samples”
+**table_args** = (
+Index(‘idx_samples_org_barcode’, ‘organization_id’, ‘barcode’, unique=True),
+)
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+parent_id = Column(UUID(as_uuid=True), ForeignKey("samples.id", ondelete="SET NULL"), index=True)
+name = Column(String(255), nullable=False)
+type = Column(Enum(SampleType), nullable=False, index=True)
+material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"))
+barcode = Column(String(255), index=True)
+qr_code = Column(String(500))
+location = Column(String(255))
+custodian_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+received_date = Column(TIMESTAMP(timezone=True))
+metadata = Column(JSONB, default={})
+
+# Relationships
+organization = relationship("Organization", back_populates="samples")
+project = relationship("Project", back_populates="samples")
+material = relationship("Material", back_populates="samples")
+parent = relationship("Sample", remote_side="Sample.id", backref="children")
+runs = relationship("Run", back_populates="sample")
+
+def __repr__(self):
+    return f"<Sample(name='{self.name}', type='{self.type.value}')>"
+```
+
+# ============================================================================
+
+# Methods & Recipes
+
+# ============================================================================
+
+class Method(Base, UUIDMixin, TimestampMixin):
+**tablename** = “methods”
+
+```
+name = Column(String(255), nullable=False, unique=True, index=True)
+display_name = Column(String(255), nullable=False)
+category = Column(Enum(MethodCategory), nullable=False, index=True)
+description = Column(Text)
+parameter_schema = Column(JSONB, nullable=False)  # JSON Schema
+default_parameters = Column(JSONB, default={})
+sop_document = Column(Text)  # URL or path
+required_capabilities = Column(ARRAY(Text))
+safety_warnings = Column(ARRAY(Text))
+estimated_duration_minutes = Column(Integer)
+
+# Relationships
+runs = relationship("Run", back_populates="method")
+recipes = relationship("Recipe", back_populates="method")
+
+def __repr__(self):
+    return f"<Method(name='{self.name}', category='{self.category.value}')>"
+```
+
+class Recipe(Base, UUIDMixin, TimestampMixin):
+**tablename** = “recipes”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+method_id = Column(UUID(as_uuid=True), ForeignKey("methods.id", ondelete="CASCADE"), nullable=False, index=True)
+name = Column(String(255), nullable=False)
+description = Column(Text)
+parameters = Column(JSONB, nullable=False)
+owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+is_public = Column(Boolean, default=False)
+
+# Relationships
+method = relationship("Method", back_populates="recipes")
+runs = relationship("Run", back_populates="recipe")
+
+def __repr__(self):
+    return f"<Recipe(name='{self.name}', method='{self.method.name if self.method else 'N/A'}')>"
+```
+
+# ============================================================================
+
+# Runs & Measurements
+
+# ============================================================================
+
+class Run(Base, UUIDMixin, TimestampMixin):
+**tablename** = “runs”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+method_id = Column(UUID(as_uuid=True), ForeignKey("methods.id"), nullable=False, index=True)
+sample_id = Column(UUID(as_uuid=True), ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+instrument_id = Column(UUID(as_uuid=True), ForeignKey("instruments.id"), nullable=False, index=True)
+operator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+recipe_id = Column(UUID(as_uuid=True), ForeignKey("recipes.id"))
+status = Column(Enum(RunStatus), default=RunStatus.PENDING, index=True)
+parameters = Column(JSONB, nullable=False)
+progress = Column(Numeric(5, 2), default=0.0)
+started_at = Column(TIMESTAMP(timezone=True), index=True)
+completed_at = Column(TIMESTAMP(timezone=True))
+duration_seconds = Column(Integer)
+error_message = Column(Text)
+raw_data_uri = Column(Text)  # S3/MinIO path
+raw_data_hash = Column(String(64))  # SHA256
+environmental_conditions = Column(JSONB)
+metadata = Column(JSONB, default={})
+
+# Relationships
+organization = relationship("Organization")
+project = relationship("Project", back_populates="runs")
+method = relationship("Method", back_populates="runs")
+sample = relationship("Sample", back_populates="runs")
+instrument = relationship("Instrument", back_populates="runs")
+operator = relationship("User", back_populates="operated_runs", foreign_keys=[operator_id])
+recipe = relationship("Recipe", back_populates="runs")
+measurements = relationship("Measurement", back_populates="run", cascade="all, delete-orphan")
+results = relationship("Result", back_populates="run", cascade="all, delete-orphan")
+attachments = relationship("Attachment", back_populates="run", cascade="all, delete-orphan")
+approvals = relationship("Approval", back_populates="run", cascade="all, delete-orphan")
+
+def __repr__(self):
+    return f"<Run(id='{self.id}', method='{self.method.name if self.method else 'N/A'}', status='{self.status.value}')>"
+```
+
+class Measurement(Base):
+“”“Time-series measurements during a run (TimescaleDB hypertable)”””
+**tablename** = “measurements”
+
+```
+time = Column(TIMESTAMP(timezone=True), nullable=False, primary_key=True)
+run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, primary_key=True, index=True)
+sequence_number = Column(Integer, nullable=False)
+values = Column(JSONB, nullable=False)  # {voltage: 1.5, current: 0.001, ...}
+metadata = Column(JSONB, default={})
+
+# Relationships
+run = relationship("Run", back_populates="measurements")
+
+def __repr__(self):
+    return f"<Measurement(run_id='{self.run_id}', seq={self.sequence_number})>"
+```
+
+class Result(Base, UUIDMixin):
+“”“Analyzed/derived metrics from runs (TimescaleDB hypertable)”””
+**tablename** = “results”
+
+```
+run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
+metric = Column(String(255), nullable=False, index=True)
+value = Column(Numeric, nullable=False)
+unit = Column(String(50), nullable=False)
+uncertainty = Column(Numeric)
+uncertainty_type = Column(String(50))
+fit_quality = Column(JSONB)  # {r_squared, rmse, chi_squared}
+analysis_method = Column(String(255))
+analysis_version = Column(String(50))
+metadata = Column(JSONB, default={})
+created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+# Relationships
+run = relationship("Run", back_populates="results")
+
+def __repr__(self):
+    return f"<Result(metric='{self.metric}', value={self.value} {self.unit})>"
+```
+
+class Attachment(Base, UUIDMixin):
+**tablename** = “attachments”
+
+```
+run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), index=True)
+filename = Column(String(500), nullable=False)
+mime_type = Column(String(100), nullable=False)
+file_size = Column(BigInteger, nullable=False)
+storage_uri = Column(Text, nullable=False)
+file_hash = Column(String(64), nullable=False)
+attachment_type = Column(Enum(AttachmentType), nullable=False, index=True)
+description = Column(Text)
+metadata = Column(JSONB, default={})
+created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+# Relationships
+run = relationship("Run", back_populates="attachments")
+
+def __repr__(self):
+    return f"<Attachment(filename='{self.filename}', type='{self.attachment_type.value}')>"
+```
+
+# ============================================================================
+
+# ELN & Approvals
+
+# ============================================================================
+
+class NotebookEntry(Base, UUIDMixin, TimestampMixin):
+**tablename** = “notebook_entries”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+title = Column(String(500), nullable=False)
+content = Column(Text, nullable=False)
+content_format = Column(String(20), default="markdown")
+run_ids = Column(ARRAY(UUID(as_uuid=True)))
+tags = Column(ARRAY(Text), index=True)
+version = Column(Integer, default=1)
+is_signed = Column(Boolean, default=False)
+signed_at = Column(TIMESTAMP(timezone=True))
+signed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+signature_reason = Column(Text)
+metadata = Column(JSONB, default={})
+
+# Relationships
+project = relationship("Project", back_populates="notebook_entries")
+author = relationship("User", back_populates="notebook_entries", foreign_keys=[author_id])
+approvals = relationship("Approval", back_populates="notebook_entry", cascade="all, delete-orphan")
+
+def __repr__(self):
+    return f"<NotebookEntry(title='{self.title}', author='{self.author.full_name if self.author else 'N/A'}')>"
+```
+
+class Approval(Base, UUIDMixin):
+**tablename** = “approvals”
+**table_args** = (
+CheckConstraint(
+“(run_id IS NOT NULL AND notebook_entry_id IS NULL) OR (run_id IS NULL AND notebook_entry_id IS NOT NULL)”,
+name=“approval_target_check”
+),
+)
+
+```
+run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id", ondelete="CASCADE"), index=True)
+notebook_entry_id = Column(UUID(as_uuid=True), ForeignKey("notebook_entries.id", ondelete="CASCADE"), index=True)
+approver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+status = Column(Enum(ApprovalStatus), default=ApprovalStatus.PENDING, index=True)
+comments = Column(Text)
+approved_at = Column(TIMESTAMP(timezone=True))
+metadata = Column(JSONB, default={})
+created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+# Relationships
+run = relationship("Run", back_populates="approvals")
+notebook_entry = relationship("NotebookEntry", back_populates="approvals")
+
+def __repr__(self):
+    return f"<Approval(status='{self.status.value}', approver_id='{self.approver_id}')>"
+```
+
+# ============================================================================
+
+# Audit & Compliance
+
+# ============================================================================
+
+class AuditLog(Base, UUIDMixin):
+“”“Immutable audit trail (TimescaleDB hypertable)”””
+**tablename** = “audit_log”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True)
+action = Column(String(100), nullable=False)
+resource_type = Column(String(100), nullable=False, index=True)
+resource_id = Column(UUID(as_uuid=True), index=True)
+changes = Column(JSONB)
+ip_address = Column(INET)
+user_agent = Column(Text)
+metadata = Column(JSONB, default={})
+timestamp = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+def __repr__(self):
+    return f"<AuditLog(action='{self.action}', resource='{self.resource_type}', timestamp='{self.timestamp}')>"
+```
+
+# ============================================================================
+
+# SPC & ML Models
+
+# ============================================================================
+
+class SPCControlLimit(Base, UUIDMixin, TimestampMixin):
+**tablename** = “spc_control_limits”
+
+```
+metric = Column(String(255), nullable=False, index=True)
+subgroup_column = Column(String(100))
+chart_type = Column(String(50), nullable=False)
+ucl = Column(Numeric, nullable=False)
+lcl = Column(Numeric, nullable=False)
+centerline = Column(Numeric, nullable=False)
+sigma = Column(Numeric)
+sample_size = Column(Integer)
+computed_from_runs = Column(ARRAY(UUID(as_uuid=True)))
+valid_from = Column(TIMESTAMP(timezone=True), server_default=func.now(), index=True)
+valid_until = Column(TIMESTAMP(timezone=True), index=True)
+metadata = Column(JSONB, default={})
+
+def __repr__(self):
+    return f"<SPCControlLimit(metric='{self.metric}', chart_type='{self.chart_type}')>"
+```
+
+class MLModel(Base, UUIDMixin, TimestampMixin):
+**tablename** = “ml_models”
+
+```
+organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+name = Column(String(255), nullable=False)
+description = Column(Text)
+model_type = Column(String(100), nullable=False, index=True)
+algorithm = Column(String(100))
+target_metric = Column(String(255))
+features = Column(ARRAY(Text))
+performance_metrics = Column(JSONB)
+training_runs = Column(ARRAY(UUID(as_uuid=True)))
+model_artifact_uri = Column(Text)
+version = Column(String(50))
+status = Column(Enum(ModelStatus), default=ModelStatus.TRAINING, index=True)
+deployed_at = Column(TIMESTAMP(timezone=True))
+trained_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+metadata = Column(JSONB, default={})
+
+def __repr__(self):
+    return f"<MLModel(name='{self.name}', type='{self.model_type}', status='{self.status.value}')>"
+```
+
+# ============================================================================
+
+# Helper Functions
+
+# ============================================================================
+
+def init_db(engine):
+“”“Initialize database tables”””
+Base.metadata.create_all(bind=engine)
+
+def drop_db(engine):
+“”“Drop all database tables (use with caution!)”””
+Base.metadata.drop_all(bind=engine)
+
+# Export all models
+
+**all** = [
+“Base”,
+“Organization”, “User”, “Project”,
+“Instrument”, “Calibration”,
+“Material”, “Sample”,
+“Method”, “Recipe”,
+“Run”, “Measurement”, “Result”, “Attachment”,
+“NotebookEntry”, “Approval”,
+“AuditLog”,
+“SPCControlLimit”, “MLModel”,
+# Enums
+“UserRole”, “ProjectStatus”, “InstrumentStatus”, “ConnectionType”,
+“CalibrationStatus”, “SampleType”, “MethodCategory”, “RunStatus”,
+“AttachmentType”, “ApprovalStatus”, “ModelStatus”,
+]

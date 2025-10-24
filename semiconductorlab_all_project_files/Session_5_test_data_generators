@@ -1,0 +1,654 @@
+# scripts/dev/generate_session5_test_data.py
+
+“””
+Test Data Generators for Session 5: Electrical II (I-V & C-V)
+
+Generates synthetic test datasets for:
+
+- MOSFET I-V (transfer and output characteristics)
+- Solar Cell I-V (illuminated characteristics)
+- C-V Profiling (MOS capacitors and Schottky diodes)
+- BJT I-V (Gummel plots and output characteristics)
+
+All datasets include realistic noise and physics-based models.
+“””
+
+import numpy as np
+from pathlib import Path
+import json
+from datetime import datetime
+import uuid
+from typing import Dict, List, Any, Tuple
+
+# Physical constants
+
+Q_E = 1.602176634e-19
+K_B = 1.380649e-23
+EPS_0 = 8.854187817e-12
+EPS_SI = 11.7
+EPS_SIOZ = 3.9
+
+class MOSFETDataGenerator:
+“”“Generate MOSFET test data”””
+
+```
+def __init__(self, device_type: str, noise_level: float = 0.02):
+    """
+    Parameters:
+    - device_type: 'n-mos' or 'p-mos'
+    - noise_level: Relative noise (default 2%)
+    """
+    self.device_type = device_type
+    self.noise_level = noise_level
+    
+    # Device parameters based on type
+    if device_type == 'n-mos':
+        self.vth = 0.5  # V
+        self.mobility = 400e-4  # m²/(V·s) = 400 cm²/(V·s)
+        self.polarity = 1
+    else:  # p-mos
+        self.vth = -0.5
+        self.mobility = 150e-4  # Lower for holes
+        self.polarity = -1
+    
+    self.width = 10e-6  # 10 µm
+    self.length = 1e-6  # 1 µm
+    self.tox = 10e-9  # 10 nm
+    self.cox = EPS_0 * EPS_SIOZ / self.tox
+    self.temperature = 300.0
+
+def generate_transfer_curve(
+    self, 
+    vds: float = 0.1,
+    num_points: int = 200
+) -> Dict[str, Any]:
+    """Generate Id-Vgs transfer characteristics"""
+    
+    if self.device_type == 'n-mos':
+        vgs = np.linspace(-1, 3, num_points)
+    else:
+        vgs = np.linspace(-3, 1, num_points)
+    
+    vt = K_B * self.temperature / Q_E
+    
+    # Subthreshold region
+    subth_mask = np.abs(vgs - self.vth) < 0
+    ids_subth = 1e-12 * np.exp(self.polarity * (vgs - self.vth) / (1.5 * vt))
+    
+    # Above threshold (square law)
+    above_mask = self.polarity * (vgs - self.vth) > 0
+    k_prime = self.mobility * self.cox
+    ids_above = k_prime * (self.width / self.length) * (vgs - self.vth)**2
+    
+    ids = np.where(above_mask, ids_above, ids_subth)
+    
+    # Add noise
+    ids += np.random.normal(0, np.max(np.abs(ids)) * self.noise_level, len(ids))
+    ids = np.maximum(np.abs(ids), 1e-15)  # Floor at 1 fA
+    
+    return {
+        'voltage_gate': vgs.tolist(),
+        'current_drain': ids.tolist(),
+        'voltage_drain': vds,
+        'device_type': self.device_type,
+        'width': self.width,
+        'length': self.length,
+        'oxide_thickness': self.tox,
+        'temperature': self.temperature,
+        'measurement_type': 'transfer',
+        'units': {
+            'vgs': 'V',
+            'ids': 'A',
+            'vds': 'V'
+        }
+    }
+
+def generate_output_curves(
+    self,
+    vgs_values: List[float],
+    num_points: int = 100
+) -> Dict[str, Any]:
+    """Generate Id-Vds output characteristics"""
+    
+    if self.device_type == 'n-mos':
+        vds = np.linspace(0, 5, num_points)
+    else:
+        vds = np.linspace(-5, 0, num_points)
+    
+    k_prime = self.mobility * self.cox
+    ids_curves = []
+    
+    for vgs in vgs_values:
+        if self.polarity * (vgs - self.vth) <= 0:
+            # Off
+            ids = np.ones(num_points) * 1e-12
+        else:
+            vds_sat = vgs - self.vth
+            
+            # Linear and saturation regions
+            ids = np.where(
+                np.abs(vds) < np.abs(vds_sat),
+                # Linear
+                k_prime * (self.width / self.length) * (
+                    (vgs - self.vth) * vds - 0.5 * vds**2
+                ),
+                # Saturation (with channel length modulation)
+                k_prime * (self.width / self.length) * 0.5 * vds_sat**2 * (
+                    1 + 0.05 * (vds - vds_sat)
+                )
+            )
+        
+        # Add noise
+        ids += np.random.normal(0, np.max(np.abs(ids)) * self.noise_level, num_points)
+        ids = np.maximum(np.abs(ids), 1e-15)
+        ids_curves.append(ids.tolist())
+    
+    return {
+        'voltage_drain': vds.tolist(),
+        'current_drain_curves': ids_curves,
+        'voltage_gate_values': vgs_values,
+        'device_type': self.device_type,
+        'width': self.width,
+        'length': self.length,
+        'temperature': self.temperature,
+        'measurement_type': 'output',
+        'units': {
+            'vds': 'V',
+            'ids': 'A',
+            'vgs': 'V'
+        }
+    }
+```
+
+class SolarCellDataGenerator:
+“”“Generate solar cell test data”””
+
+```
+def __init__(self, cell_type: str, noise_level: float = 0.015):
+    """
+    Parameters:
+    - cell_type: 'silicon', 'gaas', 'perovskite', 'organic'
+    - noise_level: Relative noise
+    """
+    self.cell_type = cell_type
+    self.noise_level = noise_level
+    
+    # Cell parameters by type
+    params = {
+        'silicon': {
+            'area': 100e-4,  # 100 cm² = 0.01 m²
+            'isc': 5.0,  # A
+            'voc': 0.60,  # V
+            'ff': 0.78,
+            'rs': 0.5,  # Ω
+            'rsh': 1000,  # Ω
+            'n': 1.2,
+            'efficiency': 0.18
+        },
+        'gaas': {
+            'area': 4e-4,  # 4 cm²
+            'isc': 0.15,
+            'voc': 1.0,
+            'ff': 0.85,
+            'rs': 1.0,
+            'rsh': 5000,
+            'n': 1.1,
+            'efficiency': 0.28
+        },
+        'perovskite': {
+            'area': 1e-4,  # 1 cm²
+            'isc': 0.025,
+            'voc': 1.1,
+            'ff': 0.75,
+            'rs': 2.0,
+            'rsh': 500,
+            'n': 1.5,
+            'efficiency': 0.22
+        },
+        'organic': {
+            'area': 1e-4,
+            'isc': 0.015,
+            'voc': 0.85,
+            'ff': 0.65,
+            'rs': 5.0,
+            'rsh': 200,
+            'n': 1.8,
+            'efficiency': 0.12
+        }
+    }
+    
+    self.params = params[cell_type]
+    self.temperature = 298.15  # 25°C
+
+def generate_iv_curve(
+    self,
+    irradiance: float = 1000.0,
+    num_points: int = 200
+) -> Dict[str, Any]:
+    """Generate illuminated I-V curve"""
+    
+    voltage = np.linspace(0, self.params['voc'] * 1.1, num_points)
+    
+    # Single diode model
+    vt = K_B * self.temperature / Q_E
+    i0 = self.params['isc'] / (np.exp(self.params['voc'] / (self.params['n'] * vt)) - 1)
+    
+    # Solve implicit equation for current
+    current = np.zeros_like(voltage)
+    
+    for i, v in enumerate(voltage):
+        # Simple approximation (explicit)
+        iph = self.params['isc'] * (irradiance / 1000.0)
+        
+        # I = Iph - I0*exp((V+I*Rs)/(n*Vt)) - (V+I*Rs)/Rsh
+        # Approximate: ignore I*Rs in exponential for initial guess
+        i_guess = iph - i0 * (np.exp(v / (self.params['n'] * vt)) - 1) - v / self.params['rsh']
+        
+        # Refine with one iteration
+        v_diode = v + i_guess * self.params['rs']
+        current[i] = iph - i0 * (np.exp(v_diode / (self.params['n'] * vt)) - 1) - v_diode / self.params['rsh']
+    
+    # Add noise
+    current += np.random.normal(0, np.max(current) * self.noise_level, len(current))
+    current = np.maximum(current, 0)
+    
+    return {
+        'voltage': voltage.tolist(),
+        'current': current.tolist(),
+        'area': self.params['area'],
+        'cell_type': self.cell_type,
+        'irradiance': irradiance,
+        'temperature': self.temperature,
+        'spectrum': 'AM1.5G',
+        'expected_metrics': {
+            'isc': self.params['isc'] * (irradiance / 1000.0),
+            'voc': self.params['voc'],
+            'fill_factor': self.params['ff'],
+            'efficiency': self.params['efficiency'] * (irradiance / 1000.0)
+        },
+        'units': {
+            'voltage': 'V',
+            'current': 'A',
+            'irradiance': 'W/m^2',
+            'area': 'm^2'
+        }
+    }
+```
+
+class CVProfilingDataGenerator:
+“”“Generate C-V profiling test data”””
+
+```
+def __init__(self, device_type: str, noise_level: float = 0.02):
+    """
+    Parameters:
+    - device_type: 'mos_n_substrate', 'mos_p_substrate', 'schottky_n', 'schottky_p'
+    - noise_level: Relative noise
+    """
+    self.device_type = device_type
+    self.noise_level = noise_level
+    self.temperature = 300.0
+
+def generate_mos_cv(
+    self,
+    substrate_doping: float = 1e16,  # cm⁻³
+    oxide_thickness: float = 10e-9,  # m
+    area: float = 100e-12,  # m² (100 µm²)
+    num_points: int = 200
+) -> Dict[str, Any]:
+    """Generate MOS C-V curve"""
+    
+    is_p_substrate = 'p_substrate' in self.device_type
+    
+    # Calculate Cox
+    cox = EPS_0 * EPS_SIOZ * area / oxide_thickness
+    
+    # Flat-band voltage (simplified)
+    vfb = -0.9 if is_p_substrate else 0.9
+    
+    # Voltage sweep
+    if is_p_substrate:
+        voltage = np.linspace(-2, 2, num_points)
+    else:
+        voltage = np.linspace(-2, 2, num_points)
+    
+    capacitance = np.zeros_like(voltage)
+    
+    eps_s = EPS_0 * EPS_SI
+    
+    for i, v in enumerate(voltage):
+        if is_p_substrate:
+            if v < vfb - 0.5:
+                # Accumulation
+                capacitance[i] = cox
+            elif v < vfb + 1.5:
+                # Depletion
+                wd = np.sqrt(2 * eps_s * abs(v - vfb) / (Q_E * substrate_doping * 1e6))
+                c_depl = eps_s * area / wd
+                capacitance[i] = (1/cox + 1/c_depl)**-1
+            else:
+                # Inversion (weak)
+                c_min = np.min(capacitance[capacitance > 0]) if np.any(capacitance > 0) else cox * 0.3
+                capacitance[i] = c_min + (cox - c_min) * 0.1 * (v - vfb - 1.5)
+        else:
+            # n-substrate (mirror)
+            if v > vfb + 0.5:
+                capacitance[i] = cox
+            elif v > vfb - 1.5:
+                wd = np.sqrt(2 * eps_s * abs(v - vfb) / (Q_E * substrate_doping * 1e6))
+                c_depl = eps_s * area / wd
+                capacitance[i] = (1/cox + 1/c_depl)**-1
+            else:
+                c_min = np.min(capacitance[capacitance > 0]) if np.any(capacitance > 0) else cox * 0.3
+                capacitance[i] = c_min + (cox - c_min) * 0.1 * abs(v - vfb + 1.5)
+    
+    # Add noise
+    capacitance += np.random.normal(0, cox * self.noise_level, len(capacitance))
+    capacitance = np.maximum(capacitance, cox * 0.1)
+    
+    return {
+        'voltage': voltage.tolist(),
+        'capacitance': capacitance.tolist(),
+        'area': area,
+        'device_type': self.device_type,
+        'substrate_doping': substrate_doping,
+        'oxide_thickness': oxide_thickness,
+        'temperature': self.temperature,
+        'frequency': 1e6,  # 1 MHz
+        'expected_params': {
+            'cox': cox,
+            'vfb': vfb,
+            'tox': oxide_thickness * 1e9  # nm
+        },
+        'units': {
+            'voltage': 'V',
+            'capacitance': 'F',
+            'area': 'm^2',
+            'doping': 'cm^-3'
+        }
+    }
+
+def generate_schottky_cv(
+    self,
+    doping: float = 5e16,  # cm⁻³
+    area: float = 1e-8,  # m² (100 µm diameter)
+    num_points: int = 100
+) -> Dict[str, Any]:
+    """Generate Schottky diode C-V (Mott-Schottky plot)"""
+    
+    is_n_type = 'n' in self.device_type
+    
+    # Built-in potential
+    vbi = 0.8  # V
+    
+    # Voltage sweep (reverse bias)
+    if is_n_type:
+        voltage = np.linspace(-5, 0, num_points)
+    else:
+        voltage = np.linspace(0, 5, num_points)
+    
+    eps_s = EPS_0 * EPS_SI
+    
+    # Mott-Schottky: 1/C² = (2/(q*ε_s*N*A²)) * (V - Vbi - kT/q)
+    slope = 2.0 / (Q_E * eps_s * doping * 1e6 * area**2)
+    
+    vt = K_B * self.temperature / Q_E
+    inv_c_sq = slope * (voltage - vbi - vt)
+    inv_c_sq = np.maximum(inv_c_sq, 1e18)  # Floor
+    
+    capacitance = 1.0 / np.sqrt(inv_c_sq)
+    
+    # Add noise
+    capacitance += np.random.normal(0, np.mean(capacitance) * self.noise_level, len(capacitance))
+    capacitance = np.maximum(capacitance, 1e-13)
+    
+    return {
+        'voltage': voltage.tolist(),
+        'capacitance': capacitance.tolist(),
+        'area': area,
+        'device_type': self.device_type,
+        'doping': doping,
+        'temperature': self.temperature,
+        'frequency': 1e6,
+        'expected_params': {
+            'doping': doping,
+            'vbi': vbi
+        },
+        'units': {
+            'voltage': 'V',
+            'capacitance': 'F',
+            'doping': 'cm^-3'
+        }
+    }
+```
+
+class BJTDataGenerator:
+“”“Generate BJT test data”””
+
+```
+def __init__(self, transistor_type: str, noise_level: float = 0.02):
+    """
+    Parameters:
+    - transistor_type: 'npn' or 'pnp'
+    - noise_level: Relative noise
+    """
+    self.transistor_type = transistor_type
+    self.noise_level = noise_level
+    self.temperature = 300.0
+    
+    # Transistor parameters
+    self.beta_f = 100 if transistor_type == 'npn' else 50
+    self.is_c = 1e-16  # A
+    self.is_b = 1e-15  # A
+    self.va = 50.0  # Early voltage (V)
+    self.polarity = 1 if transistor_type == 'npn' else -1
+
+def generate_gummel_plot(
+    self,
+    vce: float = 2.0,
+    num_points: int = 200
+) -> Dict[str, Any]:
+    """Generate Gummel plot (Ic, Ib vs Vbe)"""
+    
+    if self.transistor_type == 'npn':
+        vbe = np.linspace(0.3, 0.9, num_points)
+    else:
+        vbe = np.linspace(-0.9, -0.3, num_points)
+    
+    vt = K_B * self.temperature / Q_E
+    
+    # Ideal diode equations
+    ic = self.is_c * (np.exp(self.polarity * vbe / vt) - 1)
+    ib = self.is_b * (np.exp(self.polarity * vbe / vt) - 1)
+    
+    # Add noise
+    ic += np.random.normal(0, np.max(ic) * self.noise_level, len(ic))
+    ib += np.random.normal(0, np.max(ib) * self.noise_level, len(ib))
+    
+    ic = np.maximum(np.abs(ic), 1e-15)
+    ib = np.maximum(np.abs(ib), 1e-15)
+    
+    return {
+        'voltage_base_emitter': vbe.tolist(),
+        'current_collector': ic.tolist(),
+        'current_base': ib.tolist(),
+        'voltage_collector_emitter': vce,
+        'transistor_type': self.transistor_type,
+        'temperature': self.temperature,
+        'expected_params': {
+            'beta': self.beta_f,
+            'is_collector': self.is_c,
+            'is_base': self.is_b
+        },
+        'units': {
+            'vbe': 'V',
+            'ic': 'A',
+            'ib': 'A'
+        }
+    }
+
+def generate_output_characteristics(
+    self,
+    ib_values: List[float],
+    num_points: int = 100
+) -> Dict[str, Any]:
+    """Generate output characteristics (Ic vs Vce at multiple Ib)"""
+    
+    if self.transistor_type == 'npn':
+        vce = np.linspace(0, 10, num_points)
+    else:
+        vce = np.linspace(-10, 0, num_points)
+    
+    vce_sat = 0.2  # V
+    ic_curves = []
+    
+    for ib in ib_values:
+        # Ic = β * Ib * (1 + Vce / VA) in active
+        # Linear in saturation
+        ic = np.where(
+            np.abs(vce) < vce_sat,
+            self.beta_f * ib * (np.abs(vce) / vce_sat),
+            self.beta_f * ib * (1 + (np.abs(vce) - vce_sat) / self.va)
+        )
+        
+        # Add noise
+        ic += np.random.normal(0, np.max(ic) * self.noise_level, num_points)
+        ic = np.maximum(ic, 1e-15)
+        ic_curves.append(ic.tolist())
+    
+    return {
+        'voltage_collector_emitter': vce.tolist(),
+        'current_collector_curves': ic_curves,
+        'current_base_values': ib_values,
+        'transistor_type': self.transistor_type,
+        'temperature': self.temperature,
+        'expected_params': {
+            'beta': self.beta_f,
+            'early_voltage': self.va
+        },
+        'units': {
+            'vce': 'V',
+            'ic': 'A',
+            'ib': 'A'
+        }
+    }
+```
+
+def save_dataset(data: Dict[str, Any], filepath: Path):
+“”“Save dataset to JSON file”””
+filepath.parent.mkdir(parents=True, exist_ok=True)
+
+```
+# Add metadata
+data['metadata'] = {
+    'generated_at': datetime.now().isoformat(),
+    'generator_version': '2.0.0',
+    'session': 'S5',
+    'dataset_id': str(uuid.uuid4())
+}
+
+with open(filepath, 'w') as f:
+    json.dump(data, f, indent=2)
+
+print(f"✓ Saved: {filepath}")
+```
+
+def generate_all_session5_data():
+“”“Generate all test data for Session 5”””
+
+```
+print("=" * 70)
+print("Session 5 Test Data Generator")
+print("=" * 70)
+
+base_path = Path("data/test_data/electrical")
+
+# MOSFET datasets
+print("\n1. MOSFET Test Data")
+print("-" * 70)
+
+mosfet_types = ['n-mos', 'p-mos']
+for mos_type in mosfet_types:
+    gen = MOSFETDataGenerator(mos_type)
+    
+    # Transfer curve
+    transfer = gen.generate_transfer_curve()
+    save_dataset(transfer, base_path / "mosfet_iv" / f"{mos_type}_transfer.json")
+    
+    # Output curves
+    if mos_type == 'n-mos':
+        vgs_vals = [0.5, 1.0, 1.5, 2.0, 2.5]
+    else:
+        vgs_vals = [-2.5, -2.0, -1.5, -1.0, -0.5]
+    
+    output = gen.generate_output_curves(vgs_vals)
+    save_dataset(output, base_path / "mosfet_iv" / f"{mos_type}_output.json")
+
+# Solar cell datasets
+print("\n2. Solar Cell Test Data")
+print("-" * 70)
+
+solar_types = ['silicon', 'gaas', 'perovskite', 'organic']
+for cell_type in solar_types:
+    gen = SolarCellDataGenerator(cell_type)
+    
+    # Standard conditions
+    iv_stc = gen.generate_iv_curve(irradiance=1000.0)
+    save_dataset(iv_stc, base_path / "solar_cell_iv" / f"{cell_type}_1sun.json")
+    
+    # Low light if silicon (0.5 sun)
+    if cell_type == 'silicon':
+        iv_low = gen.generate_iv_curve(irradiance=500.0)
+        save_dataset(iv_low, base_path / "solar_cell_iv" / f"{cell_type}_0.5sun.json")
+
+# C-V profiling datasets
+print("\n3. C-V Profiling Test Data")
+print("-" * 70)
+
+cv_types = ['mos_n_substrate', 'mos_p_substrate', 'schottky_n', 'schottky_p']
+for cv_type in cv_types:
+    gen = CVProfilingDataGenerator(cv_type)
+    
+    if 'mos' in cv_type:
+        cv_data = gen.generate_mos_cv()
+    else:
+        cv_data = gen.generate_schottky_cv()
+    
+    save_dataset(cv_data, base_path / "cv_profiling" / f"{cv_type}.json")
+
+# BJT datasets
+print("\n4. BJT Test Data")
+print("-" * 70)
+
+bjt_types = ['npn', 'pnp']
+for bjt_type in bjt_types:
+    gen = BJTDataGenerator(bjt_type)
+    
+    # Gummel plot
+    gummel = gen.generate_gummel_plot()
+    save_dataset(gummel, base_path / "bjt_iv" / f"{bjt_type}_gummel.json")
+    
+    # Output characteristics
+    if bjt_type == 'npn':
+        ib_vals = [1e-6, 5e-6, 10e-6, 20e-6, 50e-6]
+    else:
+        ib_vals = [1e-6, 5e-6, 10e-6, 20e-6]
+    
+    output = gen.generate_output_characteristics(ib_vals)
+    save_dataset(output, base_path / "bjt_iv" / f"{bjt_type}_output.json")
+
+print("\n" + "=" * 70)
+print("✓ Session 5 test data generation complete!")
+print("=" * 70)
+print("\nSummary:")
+print("  - MOSFET: 4 datasets (2 transfer + 2 output)")
+print("  - Solar Cell: 5 datasets")
+print("  - C-V Profiling: 4 datasets")
+print("  - BJT: 4 datasets (2 Gummel + 2 output)")
+print(f"\nTotal: 17 datasets")
+print(f"Location: {base_path}")
+print("\n")
+```
+
+if **name** == “**main**”:
+generate_all_session5_data()
