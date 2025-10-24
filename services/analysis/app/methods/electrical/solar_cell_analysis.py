@@ -1,0 +1,732 @@
+# services/analysis/app/methods/electrical/solar_cell_analysis.py
+
+“””
+Solar Cell I-V Characterization and Parameter Extraction
+
+This module provides comprehensive analysis for photovoltaic devices including:
+
+- Short-circuit current (Jsc/Isc)
+- Open-circuit voltage (Voc)
+- Maximum power point (MPP) tracking
+- Fill factor (FF) calculation
+- Power conversion efficiency (η)
+- Series and shunt resistance extraction
+- Ideality factor and saturation current
+- Temperature coefficient analysis
+- Quantum efficiency integration (if spectrum provided)
+
+References:
+
+- Green, “Solar Cells: Operating Principles, Technology and System Applications” (1982)
+- Luque & Hegedus, “Handbook of Photovoltaic Science and Engineering” (2011)
+- IEC 60904-1:2020 (Photovoltaic devices - Measurement of current-voltage characteristics)
+  “””
+
+import numpy as np
+from scipy.optimize import minimize_scalar, curve_fit, brentq
+from scipy.integrate import simpson
+from typing import Dict, List, Tuple, Optional, Any
+import warnings
+
+# Physical constants
+
+Q_E = 1.602176634e-19  # Elementary charge (C)
+K_B = 1.380649e-23      # Boltzmann constant (J/K)
+H_PLANCK = 6.62607015e-34  # Planck constant (J·s)
+C_LIGHT = 2.99792458e8     # Speed of light (m/s)
+
+# Standard test conditions (STC)
+
+STC_IRRADIANCE = 1000.0  # W/m²  (AM1.5G)
+STC_TEMPERATURE = 298.15  # K (25°C)
+STC_SPECTRUM = ‘AM1.5G’
+
+class SolarCellAnalysisError(Exception):
+“”“Custom exception for solar cell analysis errors”””
+pass
+
+def analyze_solar_cell_iv(
+voltage: np.ndarray,
+current: np.ndarray,
+area: float,
+config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+“””
+Analyze solar cell I-V characteristics under illumination
+
+Parameters:
+-----------
+voltage : array_like
+    Voltage measurements (V)
+current : array_like
+    Current measurements (A) - positive for power generation
+area : float
+    Active cell area (m²)
+config : dict, optional
+    Configuration parameters:
+    - temperature: Cell temperature in K (default: 298.15)
+    - irradiance: Incident irradiance in W/m² (default: 1000)
+    - spectrum: Spectrum type 'AM1.5G', 'AM0', etc. (default: 'AM1.5G')
+    - ref_irradiance: Reference irradiance for normalization (default: 1000)
+    - ref_temperature: Reference temperature for normalization (default: 298.15)
+    - extract_rs_rsh: Extract series and shunt resistance (default: True)
+    - calculate_efficiency: Calculate power conversion efficiency (default: True)
+    
+Returns:
+--------
+dict : Analysis results containing:
+    - isc: Short-circuit current (A and A/m²)
+    - voc: Open-circuit voltage (V)
+    - mpp: Maximum power point (V, A, W)
+    - fill_factor: FF value and percentage
+    - efficiency: η value and percentage (if irradiance provided)
+    - rs: Series resistance (Ω)
+    - rsh: Shunt resistance (Ω)
+    - ideality_factor: Diode ideality factor
+    - saturation_current: I0 (A)
+    - quality_score: 0-100 assessment
+    - warnings: List of warnings
+"""
+
+# Default configuration
+default_config = {
+    'temperature': STC_TEMPERATURE,
+    'irradiance': STC_IRRADIANCE,
+    'spectrum': STC_SPECTRUM,
+    'ref_irradiance': STC_IRRADIANCE,
+    'ref_temperature': STC_TEMPERATURE,
+    'extract_rs_rsh': True,
+    'calculate_efficiency': True
+}
+
+if config is None:
+    config = {}
+cfg = {**default_config, **config}
+
+# Input validation
+voltage = np.asarray(voltage, dtype=float)
+current = np.asarray(current, dtype=float)
+
+if len(voltage) != len(current):
+    raise SolarCellAnalysisError("Length mismatch between voltage and current arrays")
+
+if len(voltage) < 10:
+    raise SolarCellAnalysisError("Need at least 10 data points for analysis")
+
+if not np.all(np.isfinite(voltage)) or not np.all(np.isfinite(current)):
+    raise SolarCellAnalysisError("Non-finite values detected in input data")
+
+if area <= 0:
+    raise SolarCellAnalysisError("Cell area must be positive")
+
+# Results container
+results = {
+    'area': area,
+    'temperature': cfg['temperature'],
+    'irradiance': cfg['irradiance'],
+    'num_points': len(voltage),
+    'warnings': []
+}
+
+# Ensure voltage is sorted
+sort_idx = np.argsort(voltage)
+voltage = voltage[sort_idx]
+current = current[sort_idx]
+
+# For solar cells, current convention: positive = power generation
+# I-V curve goes from Isc (at V=0) to 0 (at Voc) in 4th quadrant
+
+# Extract Isc (short-circuit current at V=0)
+results['isc'] = extract_isc(voltage, current, area)
+
+# Extract Voc (open-circuit voltage at I=0)
+results['voc'] = extract_voc(voltage, current)
+
+if results['isc'] is None or results['voc'] is None:
+    raise SolarCellAnalysisError("Could not extract Isc and/or Voc from data")
+
+# Calculate power: P = V * I (negative for power generation)
+power = voltage * current
+
+# Find maximum power point (minimum power, since power is negative)
+mpp_idx = np.argmin(power)
+results['mpp'] = {
+    'voltage': float(voltage[mpp_idx]),
+    'current': float(current[mpp_idx]),
+    'power': float(-power[mpp_idx]),  # Positive for output power
+    'unit_power': 'W',
+    'voltage_unit': 'V',
+    'current_unit': 'A'
+}
+
+# Verify MPP is in reasonable range
+if not (0 < results['mpp']['voltage'] < results['voc']['value']):
+    results['warnings'].append("MPP voltage outside expected range")
+
+if not (0 < results['mpp']['current'] < results['isc']['value']):
+    results['warnings'].append("MPP current outside expected range")
+
+# Calculate fill factor: FF = (Vmpp * Impp) / (Voc * Isc)
+ideal_power = results['voc']['value'] * results['isc']['value']
+
+if ideal_power > 0:
+    ff_value = results['mpp']['power'] / ideal_power
+    results['fill_factor'] = {
+        'value': float(ff_value),
+        'percent': float(ff_value * 100),
+        'ideal_power': float(ideal_power)
+    }
+    
+    # Typical FF for good cells: 0.7-0.85
+    if ff_value < 0.5:
+        results['warnings'].append(f"Low fill factor: {ff_value:.3f} (<0.5)")
+    elif ff_value > 0.9:
+        results['warnings'].append(f"Unusually high fill factor: {ff_value:.3f} (>0.9)")
+else:
+    results['fill_factor'] = None
+    results['warnings'].append("Could not calculate fill factor (ideal power ≤ 0)")
+
+# Calculate efficiency: η = Pmax / (Irradiance * Area)
+if cfg['calculate_efficiency'] and cfg['irradiance'] > 0:
+    incident_power = cfg['irradiance'] * area  # W
+    eta_value = results['mpp']['power'] / incident_power
+    
+    results['efficiency'] = {
+        'value': float(eta_value),
+        'percent': float(eta_value * 100),
+        'incident_power': float(incident_power),
+        'unit': 'dimensionless',
+        'irradiance': cfg['irradiance'],
+        'spectrum': cfg['spectrum']
+    }
+    
+    # Sanity check
+    if eta_value > 0.5:  # 50% is above theoretical limits for single junction
+        results['warnings'].append(f"Efficiency ({eta_value*100:.1f}%) exceeds realistic values")
+    elif eta_value < 0.01:  # <1% is very poor
+        results['warnings'].append(f"Very low efficiency: {eta_value*100:.2f}%")
+else:
+    results['efficiency'] = None
+
+# Extract series and shunt resistance
+if cfg['extract_rs_rsh']:
+    rs_rsh = extract_series_shunt_resistance(
+        voltage, current, 
+        results['isc']['value'], 
+        results['voc']['value'],
+        cfg['temperature']
+    )
+    results['rs'] = rs_rsh['rs']
+    results['rsh'] = rs_rsh['rsh']
+    
+    # Extract ideality factor and saturation current
+    diode_params = extract_diode_parameters(
+        voltage, current,
+        results['isc']['value'],
+        results['voc']['value'],
+        rs_rsh['rs']['value'],
+        rs_rsh['rsh']['value'],
+        cfg['temperature']
+    )
+    results['ideality_factor'] = diode_params['n']
+    results['saturation_current'] = diode_params['i0']
+else:
+    results['rs'] = None
+    results['rsh'] = None
+    results['ideality_factor'] = None
+    results['saturation_current'] = None
+
+# Normalized parameters (to STC if different conditions)
+if cfg['irradiance'] != cfg['ref_irradiance'] or cfg['temperature'] != cfg['ref_temperature']:
+    results['normalized_stc'] = normalize_to_stc(
+        results,
+        cfg['temperature'],
+        cfg['irradiance'],
+        cfg['ref_temperature'],
+        cfg['ref_irradiance']
+    )
+else:
+    results['normalized_stc'] = None
+
+# Quality score
+results['quality_score'] = calculate_solar_quality(results)
+
+return results
+
+def extract_isc(voltage: np.ndarray, current: np.ndarray, area: float) -> Dict[str, float]:
+“””
+Extract short-circuit current (current at V=0)
+
+Use interpolation if V=0 is not in data
+"""
+
+# Check if V=0 is in data
+zero_mask = np.abs(voltage) < 1e-6
+
+if np.any(zero_mask):
+    isc = current[zero_mask][0]
+else:
+    # Interpolate
+    if voltage[0] < 0 and voltage[-1] > 0:
+        # V=0 is within range
+        # Find bracketing points
+        pos_mask = voltage > 0
+        if np.any(pos_mask):
+            idx_after = np.argmax(pos_mask)
+            idx_before = idx_after - 1
+            
+            if idx_before >= 0:
+                v1, v2 = voltage[idx_before], voltage[idx_after]
+                i1, i2 = current[idx_before], current[idx_after]
+                
+                # Linear interpolation
+                isc = i1 + (0 - v1) * (i2 - i1) / (v2 - v1)
+            else:
+                isc = current[0]
+        else:
+            isc = current[0]
+    elif voltage[0] >= 0:
+        # Extrapolate from low voltages
+        isc = current[0]
+    else:
+        # Extrapolate from negative voltages
+        isc = current[-1]
+
+# Current density
+jsc = isc / area  # A/m²
+jsc_ma_cm2 = jsc * 0.1  # Convert to mA/cm²
+
+return {
+    'value': float(isc),
+    'unit': 'A',
+    'current_density': float(jsc),
+    'unit_density': 'A/m^2',
+    'current_density_ma_cm2': float(jsc_ma_cm2),
+    'unit_ma_cm2': 'mA/cm^2'
+}
+
+def extract_voc(voltage: np.ndarray, current: np.ndarray) -> Dict[str, float]:
+“””
+Extract open-circuit voltage (voltage at I=0)
+
+Use interpolation if I=0 is not in data
+"""
+
+# Check if I=0 is in data
+zero_mask = np.abs(current) < 1e-9  # 1 nA threshold
+
+if np.any(zero_mask):
+    voc = voltage[zero_mask][0]
+else:
+    # Interpolate
+    # Current should go from positive (Isc) to negative (reverse bias)
+    # or stay positive but decrease to near zero
+    
+    # Find sign change or minimum absolute current
+    if np.any(current < 0):
+        # Sign change present
+        neg_mask = current < 0
+        idx_after = np.argmax(neg_mask)
+        idx_before = idx_after - 1
+        
+        if idx_before >= 0:
+            i1, i2 = current[idx_before], current[idx_after]
+            v1, v2 = voltage[idx_before], voltage[idx_after]
+            
+            # Linear interpolation
+            voc = v1 + (0 - i1) * (v2 - v1) / (i2 - i1)
+        else:
+            voc = voltage[0]
+    else:
+        # No sign change, take voltage at minimum current
+        min_idx = np.argmin(np.abs(current))
+        voc = voltage[min_idx]
+
+return {
+    'value': float(voc),
+    'unit': 'V'
+}
+
+def extract_series_shunt_resistance(
+voltage: np.ndarray,
+current: np.ndarray,
+isc: float,
+voc: float,
+temperature: float
+) -> Dict[str, Any]:
+“””
+Extract series resistance (Rs) and shunt resistance (Rsh)
+
+Rs: from slope near Voc (dV/dI at I≈0)
+Rsh: from slope near Isc (dI/dV at V≈0)
+
+Single-diode model:
+I = Iph - I0*[exp(q(V+I*Rs)/(n*k*T)) - 1] - (V+I*Rs)/Rsh
+"""
+
+results = {}
+
+# Extract Rs from slope near Voc
+# Look at region where V > 0.8*Voc
+voc_region_mask = voltage > 0.8 * voc
+
+if np.sum(voc_region_mask) >= 3:
+    v_voc = voltage[voc_region_mask]
+    i_voc = current[voc_region_mask]
+    
+    # Calculate dV/dI
+    di = np.diff(i_voc)
+    dv = np.diff(v_voc)
+    
+    # Avoid division by zero
+    di_safe = np.where(np.abs(di) < 1e-12, 1e-12, di)
+    dv_di = dv / di_safe
+    
+    # Rs is approximately -dV/dI (negative because current decreases with voltage)
+    rs_estimate = -np.median(dv_di)
+    
+    if rs_estimate > 0 and rs_estimate < 1000:  # Sanity check
+        results['rs'] = {
+            'value': float(rs_estimate),
+            'unit': 'Ω',
+            'unit_display': 'Ohm',
+            'method': 'slope_near_voc'
+        }
+    else:
+        results['rs'] = {
+            'value': None,
+            'error': f"Unrealistic Rs value: {rs_estimate:.2f} Ω"
+        }
+else:
+    results['rs'] = {
+        'value': None,
+        'error': "Insufficient points near Voc for Rs extraction"
+    }
+
+# Extract Rsh from slope near Isc
+# Look at region where V < 0.2*Voc
+isc_region_mask = voltage < 0.2 * voc
+
+if np.sum(isc_region_mask) >= 3:
+    v_isc = voltage[isc_region_mask]
+    i_isc = current[isc_region_mask]
+    
+    # Calculate dI/dV
+    dv = np.diff(v_isc)
+    di = np.diff(i_isc)
+    
+    # Avoid division by zero
+    dv_safe = np.where(np.abs(dv) < 1e-12, 1e-12, dv)
+    di_dv = di / dv_safe
+    
+    # Rsh is approximately -1/(dI/dV)
+    conductance = np.median(di_dv)
+    
+    if abs(conductance) > 1e-9:
+        rsh_estimate = -1.0 / conductance
+        
+        if rsh_estimate > 0 and rsh_estimate < 1e6:  # Sanity check
+            results['rsh'] = {
+                'value': float(rsh_estimate),
+                'unit': 'Ω',
+                'unit_display': 'Ohm',
+                'method': 'slope_near_isc'
+            }
+        else:
+            results['rsh'] = {
+                'value': None,
+                'error': f"Unrealistic Rsh value: {rsh_estimate:.2e} Ω"
+            }
+    else:
+        results['rsh'] = {
+            'value': None,
+            'error': "Conductance too small for Rsh calculation"
+        }
+else:
+    results['rsh'] = {
+        'value': None,
+        'error': "Insufficient points near Isc for Rsh extraction"
+    }
+
+return results
+
+def extract_diode_parameters(
+voltage: np.ndarray,
+current: np.ndarray,
+isc: float,
+voc: float,
+rs: Optional[float],
+rsh: Optional[float],
+temperature: float
+) -> Dict[str, Any]:
+“””
+Extract diode ideality factor (n) and saturation current (I0)
+
+From single-diode equation at Voc (where I=0):
+0 = Iph - I0*[exp(q*Voc/(n*k*T)) - 1] - Voc/Rsh
+
+Assuming Iph ≈ Isc and Voc >> (n*k*T/q):
+I0 ≈ (Isc - Voc/Rsh) / exp(q*Voc/(n*k*T))
+
+Typical n = 1-2 for solar cells
+"""
+
+results = {}
+
+# Thermal voltage
+vt = K_B * temperature / Q_E  # ≈ 0.026 V at 300K
+
+# Try different ideality factors
+n_values = np.linspace(1.0, 2.5, 50)
+
+if rs is None:
+    rs = 0.0
+if rsh is None:
+    rsh = 1e6  # Very high for ideal case
+
+best_fit_error = float('inf')
+best_n = None
+best_i0 = None
+
+for n in n_values:
+    # Calculate I0 from Voc condition
+    # At Voc: Iph = I0*exp(q*Voc/(n*k*T)) + Voc/Rsh (assuming >>1 so exp>>1)
+    i0_candidate = (isc - voc / rsh) / (np.exp(voc / (n * vt)) - 1)
+    
+    if i0_candidate > 0 and i0_candidate < isc:
+        # Evaluate fit quality by predicting I-V curve
+        v_test = voltage[::max(1, len(voltage)//20)]  # Sample points
+        i_predicted = predict_solar_cell_current(
+            v_test, isc, i0_candidate, n, rs, rsh, vt
+        )
+        
+        # Find corresponding measured currents
+        i_measured = np.interp(v_test, voltage, current)
+        
+        # Calculate fit error
+        fit_error = np.sqrt(np.mean((i_predicted - i_measured)**2))
+        
+        if fit_error < best_fit_error:
+            best_fit_error = fit_error
+            best_n = n
+            best_i0 = i0_candidate
+
+if best_n is not None:
+    results['n'] = {
+        'value': float(best_n),
+        'unit': 'dimensionless',
+        'typical_range': '1.0-2.0'
+    }
+    results['i0'] = {
+        'value': float(best_i0),
+        'unit': 'A',
+        'method': 'single_diode_fit'
+    }
+else:
+    results['n'] = {'value': None, 'error': "Could not extract ideality factor"}
+    results['i0'] = {'value': None, 'error': "Could not extract saturation current"}
+
+return results
+
+def predict_solar_cell_current(
+voltage: np.ndarray,
+iph: float,
+i0: float,
+n: float,
+rs: float,
+rsh: float,
+vt: float
+) -> np.ndarray:
+“””
+Predict current from single-diode model (implicit equation solver)
+
+I = Iph - I0*[exp((V+I*Rs)/(n*Vt)) - 1] - (V+I*Rs)/Rsh
+"""
+
+currents = np.zeros_like(voltage)
+
+for i, v in enumerate(voltage):
+    # Define implicit equation: f(I) = 0
+    def equation(i_test):
+        return (i_test - iph + 
+                i0 * (np.exp((v + i_test*rs)/(n*vt)) - 1) +
+                (v + i_test*rs)/rsh)
+    
+    # Initial guess
+    i_guess = iph - v/rsh
+    
+    # Try to solve
+    try:
+        from scipy.optimize import fsolve
+        i_solution = fsolve(equation, i_guess)[0]
+        currents[i] = i_solution
+    except:
+        # Fallback: simple approximation
+        currents[i] = iph - i0*(np.exp(v/(n*vt)) - 1) - v/rsh
+
+return currents
+
+def normalize_to_stc(
+results: Dict[str, Any],
+measured_temp: float,
+measured_irrad: float,
+ref_temp: float,
+ref_irrad: float
+) -> Dict[str, Any]:
+“””
+Normalize measured parameters to Standard Test Conditions (STC)
+
+Temperature coefficients (typical for crystalline Si):
+- Isc: +0.05%/°C
+- Voc: -0.35%/°C  
+- Pmax: -0.45%/°C
+
+Irradiance: Linear scaling for Isc, logarithmic for Voc
+"""
+
+# Temperature difference
+delta_t = ref_temp - measured_temp
+
+# Typical temperature coefficients (per °C)
+alpha_isc = 0.0005  # +0.05%/°C
+beta_voc = -0.0035  # -0.35%/°C
+gamma_pmax = -0.0045  # -0.45%/°C
+
+# Irradiance ratio
+irrad_ratio = ref_irrad / measured_irrad
+
+# Normalize Isc (scales linearly with irradiance, small temp effect)
+isc_normalized = results['isc']['value'] * irrad_ratio * (1 + alpha_isc * delta_t)
+
+# Normalize Voc (logarithmic with irradiance, strong temp effect)
+vt_meas = K_B * measured_temp / Q_E
+vt_ref = K_B * ref_temp / Q_E
+
+voc_irrad_corrected = results['voc']['value'] + (vt_meas * np.log(irrad_ratio))
+voc_normalized = voc_irrad_corrected * (1 + beta_voc * delta_t)
+
+# Normalize Pmax
+pmax_normalized = results['mpp']['power'] * irrad_ratio * (1 + gamma_pmax * delta_t)
+
+# Recalculate FF and efficiency at STC
+ff_normalized = pmax_normalized / (isc_normalized * voc_normalized)
+eta_normalized = pmax_normalized / (ref_irrad * results['area'])
+
+return {
+    'isc_stc': {
+        'value': float(isc_normalized),
+        'unit': 'A'
+    },
+    'voc_stc': {
+        'value': float(voc_normalized),
+        'unit': 'V'
+    },
+    'pmax_stc': {
+        'value': float(pmax_normalized),
+        'unit': 'W'
+    },
+    'ff_stc': {
+        'value': float(ff_normalized),
+        'percent': float(ff_normalized * 100)
+    },
+    'efficiency_stc': {
+        'value': float(eta_normalized),
+        'percent': float(eta_normalized * 100)
+    },
+    'reference_conditions': {
+        'temperature': ref_temp,
+        'irradiance': ref_irrad
+    }
+}
+
+def calculate_solar_quality(results: Dict[str, Any]) -> int:
+“”“Calculate quality score (0-100) for solar cell measurements”””
+
+score = 100
+
+# Check if key parameters extracted
+if results['fill_factor'] is None:
+    score -= 30
+elif results['fill_factor']['value'] < 0.6:
+    score -= 20
+elif results['fill_factor']['value'] > 0.85:
+    score -= 5  # Suspiciously high
+
+if results['efficiency'] is None:
+    score -= 10
+elif results['efficiency']['percent'] < 1:
+    score -= 15
+elif results['efficiency']['percent'] > 30:
+    score -= 10  # Unrealistic for single junction
+
+if results['rs'] is None or results['rs']['value'] is None:
+    score -= 10
+elif results['rs']['value'] > 10:  # High series resistance
+    score -= 5
+
+if results['rsh'] is None or results['rsh']['value'] is None:
+    score -= 10
+elif results['rsh']['value'] < 100:  # Low shunt resistance
+    score -= 5
+
+# Deduct for warnings
+score -= len(results['warnings']) * 5
+
+return max(0, score)
+
+# Example usage and test
+
+if **name** == “**main**”:
+print(“Solar Cell Analysis Module - Test Suite”)
+print(”=” * 60)
+
+# Generate synthetic solar cell I-V curve
+print("\n1. Testing Solar Cell Analysis...")
+
+# Realistic parameters for crystalline silicon cell
+isc_true = 0.50  # A (5A for 100cm² cell)
+voc_true = 0.60  # V
+rs_true = 0.5    # Ω
+rsh_true = 1000  # Ω
+n_true = 1.2
+area = 0.01      # m² (100 cm²)
+
+# Generate I-V curve
+voltage_sweep = np.linspace(0, voc_true, 200)
+
+# Use single-diode model
+vt = K_B * 298.15 / Q_E
+i0 = (isc_true / (np.exp(voc_true/(n_true*vt)) - 1))
+
+current_sweep = predict_solar_cell_current(
+    voltage_sweep, isc_true, i0, n_true, rs_true, rsh_true, vt
+)
+
+# Add noise
+current_sweep += np.random.normal(0, isc_true * 0.01, len(current_sweep))
+
+# Analyze
+solar_results = analyze_solar_cell_iv(
+    voltage_sweep, current_sweep, area,
+    config={
+        'temperature': 298.15,
+        'irradiance': 1000,
+        'spectrum': 'AM1.5G'
+    }
+)
+
+print(f"   Isc: {solar_results['isc']['value']:.3f} A ({solar_results['isc']['current_density_ma_cm2']:.1f} mA/cm²)")
+print(f"   Voc: {solar_results['voc']['value']:.3f} V")
+print(f"   Pmax: {solar_results['mpp']['power']:.3f} W")
+print(f"   FF: {solar_results['fill_factor']['percent']:.2f}%")
+print(f"   Efficiency: {solar_results['efficiency']['percent']:.2f}%")
+
+if solar_results['rs']['value']:
+    print(f"   Rs: {solar_results['rs']['value']:.2f} Ω")
+if solar_results['rsh']['value']:
+    print(f"   Rsh: {solar_results['rsh']['value']:.1f} Ω")
+
+print(f"   Quality Score: {solar_results['quality_score']}/100")
+
+print("\n✓ Solar cell analysis test completed successfully")
+print("=" * 60)

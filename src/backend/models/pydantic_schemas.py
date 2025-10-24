@@ -1,0 +1,670 @@
+# services/instruments/app/schemas/**init**.py
+
+“””
+Pydantic Schemas for Request/Response Validation
+
+These schemas provide:
+
+- Type validation for API requests
+- Serialization of database models to JSON
+- Documentation for OpenAPI spec
+- Separation of concerns (API vs DB layer)
+  “””
+
+from datetime import datetime
+from typing import List, Optional, Dict, Any, Union
+from pydantic import BaseModel, Field, EmailStr, UUID4, field_validator, ConfigDict
+from decimal import Decimal
+from enum import Enum
+
+# Import enums from models
+
+from ..models import (
+UserRole, ProjectStatus, InstrumentStatus, ConnectionType,
+CalibrationStatus, SampleType, MethodCategory, RunStatus,
+AttachmentType, ApprovalStatus, ModelStatus
+)
+
+# ============================================================================
+
+# Base Schemas
+
+# ============================================================================
+
+class BaseSchema(BaseModel):
+“”“Base schema with common config”””
+model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+class TimestampSchema(BaseSchema):
+“”“Mixin for timestamps”””
+created_at: datetime
+updated_at: datetime
+
+# ============================================================================
+
+# Organization Schemas
+
+# ============================================================================
+
+class OrganizationBase(BaseSchema):
+name: str = Field(…, max_length=255)
+slug: str = Field(…, max_length=100, pattern=r’^[a-z0-9-]+$’)
+settings: Dict[str, Any] = Field(default_factory=dict)
+
+class OrganizationCreate(OrganizationBase):
+pass
+
+class OrganizationUpdate(BaseSchema):
+name: Optional[str] = Field(None, max_length=255)
+settings: Optional[Dict[str, Any]] = None
+
+class OrganizationResponse(OrganizationBase, TimestampSchema):
+id: UUID4
+
+# ============================================================================
+
+# User Schemas
+
+# ============================================================================
+
+class UserBase(BaseSchema):
+email: EmailStr
+first_name: str = Field(…, min_length=1, max_length=100)
+last_name: str = Field(…, min_length=1, max_length=100)
+role: UserRole = Field(default=UserRole.VIEWER)
+is_active: bool = True
+
+class UserCreate(UserBase):
+password: str = Field(…, min_length=8, max_length=100)
+organization_id: UUID4
+
+class UserUpdate(BaseSchema):
+first_name: Optional[str] = Field(None, max_length=100)
+last_name: Optional[str] = Field(None, max_length=100)
+role: Optional[UserRole] = None
+is_active: Optional[bool] = None
+
+class UserResponse(UserBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+last_login: Optional[datetime] = None
+full_name: str
+
+class UserLogin(BaseSchema):
+email: EmailStr
+password: str
+
+class TokenResponse(BaseSchema):
+access_token: str
+refresh_token: str
+token_type: str = “Bearer”
+expires_in: int
+
+# ============================================================================
+
+# Project Schemas
+
+# ============================================================================
+
+class ProjectBase(BaseSchema):
+name: str = Field(…, max_length=255)
+description: Optional[str] = None
+status: ProjectStatus = Field(default=ProjectStatus.ACTIVE)
+started_at: Optional[datetime] = None
+completed_at: Optional[datetime] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ProjectCreate(ProjectBase):
+organization_id: UUID4
+owner_id: UUID4
+
+class ProjectUpdate(BaseSchema):
+name: Optional[str] = Field(None, max_length=255)
+description: Optional[str] = None
+status: Optional[ProjectStatus] = None
+completed_at: Optional[datetime] = None
+metadata: Optional[Dict[str, Any]] = None
+
+class ProjectResponse(ProjectBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+owner_id: UUID4
+
+# ============================================================================
+
+# Instrument Schemas
+
+# ============================================================================
+
+class InstrumentBase(BaseSchema):
+name: str = Field(…, max_length=255)
+model: str = Field(…, max_length=255)
+vendor: str = Field(…, max_length=255)
+serial_number: Optional[str] = Field(None, max_length=255)
+connection_type: ConnectionType
+connection_string: str = Field(…, max_length=500)
+driver: str = Field(…, max_length=255)
+capabilities: List[str] = Field(default_factory=list)
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class InstrumentCreate(InstrumentBase):
+organization_id: UUID4
+
+class InstrumentUpdate(BaseSchema):
+name: Optional[str] = Field(None, max_length=255)
+status: Optional[InstrumentStatus] = None
+firmware_version: Optional[str] = None
+metadata: Optional[Dict[str, Any]] = None
+
+class InstrumentResponse(InstrumentBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+status: InstrumentStatus
+firmware_version: Optional[str] = None
+last_seen: Optional[datetime] = None
+
+class InstrumentConnectionResponse(BaseSchema):
+status: str
+firmware_version: Optional[str] = None
+message: str
+
+# ============================================================================
+
+# Calibration Schemas
+
+# ============================================================================
+
+class CalibrationBase(BaseSchema):
+calibration_date: datetime
+next_calibration_date: datetime
+certificate_number: Optional[str] = None
+certificate_url: Optional[str] = None
+standards_used: List[str] = Field(default_factory=list)
+uncertainty_budget: Optional[Dict[str, Any]] = None
+notes: Optional[str] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class CalibrationCreate(CalibrationBase):
+instrument_id: UUID4
+performed_by: UUID4
+
+class CalibrationResponse(CalibrationBase):
+id: UUID4
+instrument_id: UUID4
+performed_by: UUID4
+status: CalibrationStatus
+created_at: datetime
+
+# ============================================================================
+
+# Material Schemas
+
+# ============================================================================
+
+class MaterialBase(BaseSchema):
+name: str = Field(…, max_length=255)
+chemical_formula: Optional[str] = None
+crystal_structure: Optional[str] = None
+lattice_constants: Optional[Dict[str, float]] = None
+band_gap: Optional[Dict[str, Any]] = None
+refractive_index: Optional[Dict[str, Any]] = None
+properties: Dict[str, Any] = Field(default_factory=dict)
+references: List[str] = Field(default_factory=list)
+
+class MaterialCreate(MaterialBase):
+pass
+
+class MaterialUpdate(BaseSchema):
+chemical_formula: Optional[str] = None
+properties: Optional[Dict[str, Any]] = None
+references: Optional[List[str]] = None
+
+class MaterialResponse(MaterialBase, TimestampSchema):
+id: UUID4
+
+# ============================================================================
+
+# Sample Schemas
+
+# ============================================================================
+
+class SampleBase(BaseSchema):
+name: str = Field(…, max_length=255)
+type: SampleType
+material_id: Optional[UUID4] = None
+barcode: Optional[str] = None
+qr_code: Optional[str] = None
+location: Optional[str] = None
+custodian_id: Optional[UUID4] = None
+received_date: Optional[datetime] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class SampleCreate(SampleBase):
+organization_id: UUID4
+project_id: UUID4
+parent_id: Optional[UUID4] = None
+
+class SampleUpdate(BaseSchema):
+name: Optional[str] = None
+location: Optional[str] = None
+custodian_id: Optional[UUID4] = None
+metadata: Optional[Dict[str, Any]] = None
+
+class SampleResponse(SampleBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+project_id: UUID4
+parent_id: Optional[UUID4] = None
+
+# ============================================================================
+
+# Method & Recipe Schemas
+
+# ============================================================================
+
+class MethodBase(BaseSchema):
+name: str = Field(…, max_length=255)
+display_name: str = Field(…, max_length=255)
+category: MethodCategory
+description: Optional[str] = None
+parameter_schema: Dict[str, Any]
+default_parameters: Dict[str, Any] = Field(default_factory=dict)
+sop_document: Optional[str] = None
+required_capabilities: List[str] = Field(default_factory=list)
+safety_warnings: List[str] = Field(default_factory=list)
+estimated_duration_minutes: Optional[int] = None
+
+class MethodCreate(MethodBase):
+pass
+
+class MethodUpdate(BaseSchema):
+description: Optional[str] = None
+default_parameters: Optional[Dict[str, Any]] = None
+sop_document: Optional[str] = None
+
+class MethodResponse(MethodBase, TimestampSchema):
+id: UUID4
+
+class RecipeBase(BaseSchema):
+name: str = Field(…, max_length=255)
+description: Optional[str] = None
+parameters: Dict[str, Any]
+is_public: bool = False
+
+class RecipeCreate(RecipeBase):
+organization_id: UUID4
+method_id: UUID4
+owner_id: UUID4
+
+class RecipeUpdate(BaseSchema):
+name: Optional[str] = None
+description: Optional[str] = None
+parameters: Optional[Dict[str, Any]] = None
+is_public: Optional[bool] = None
+
+class RecipeResponse(RecipeBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+method_id: UUID4
+owner_id: UUID4
+
+# ============================================================================
+
+# Run Schemas
+
+# ============================================================================
+
+class RunBase(BaseSchema):
+parameters: Dict[str, Any]
+environmental_conditions: Optional[Dict[str, Any]] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class RunCreate(RunBase):
+method_id: UUID4
+sample_id: UUID4
+instrument_id: UUID4
+recipe_id: Optional[UUID4] = None
+
+class RunUpdate(BaseSchema):
+status: Optional[RunStatus] = None
+progress: Optional[Decimal] = Field(None, ge=0, le=100)
+error_message: Optional[str] = None
+
+class RunResponse(RunBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+project_id: UUID4
+method_id: UUID4
+sample_id: UUID4
+instrument_id: UUID4
+operator_id: UUID4
+recipe_id: Optional[UUID4] = None
+status: RunStatus
+progress: Decimal
+started_at: Optional[datetime] = None
+completed_at: Optional[datetime] = None
+duration_seconds: Optional[int] = None
+raw_data_uri: Optional[str] = None
+raw_data_hash: Optional[str] = None
+
+class RunDataDownload(BaseSchema):
+format: str = Field(default=“hdf5”, pattern=r’^(hdf5|csv|json)$’)
+
+# ============================================================================
+
+# Measurement Schemas
+
+# ============================================================================
+
+class MeasurementBase(BaseSchema):
+sequence_number: int
+values: Dict[str, Any]
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class MeasurementCreate(MeasurementBase):
+run_id: UUID4
+
+class MeasurementResponse(MeasurementBase):
+time: datetime
+run_id: UUID4
+
+# ============================================================================
+
+# Result Schemas
+
+# ============================================================================
+
+class ResultBase(BaseSchema):
+metric: str = Field(…, max_length=255)
+value: Decimal
+unit: str = Field(…, max_length=50)
+uncertainty: Optional[Decimal] = None
+uncertainty_type: Optional[str] = None
+fit_quality: Optional[Dict[str, Any]] = None
+analysis_method: Optional[str] = None
+analysis_version: Optional[str] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ResultCreate(ResultBase):
+run_id: UUID4
+
+class ResultResponse(ResultBase):
+id: UUID4
+run_id: UUID4
+created_at: datetime
+
+# ============================================================================
+
+# Attachment Schemas
+
+# ============================================================================
+
+class AttachmentBase(BaseSchema):
+filename: str = Field(…, max_length=500)
+mime_type: str = Field(…, max_length=100)
+attachment_type: AttachmentType
+description: Optional[str] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class AttachmentCreate(AttachmentBase):
+run_id: Optional[UUID4] = None
+file_size: int
+storage_uri: str
+file_hash: str
+
+class AttachmentResponse(AttachmentBase):
+id: UUID4
+run_id: Optional[UUID4] = None
+file_size: int
+storage_uri: str
+file_hash: str
+created_at: datetime
+
+# ============================================================================
+
+# Notebook Schemas
+
+# ============================================================================
+
+class NotebookEntryBase(BaseSchema):
+title: str = Field(…, max_length=500)
+content: str
+content_format: str = Field(default=“markdown”, pattern=r’^(markdown|html)$’)
+run_ids: List[UUID4] = Field(default_factory=list)
+tags: List[str] = Field(default_factory=list)
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class NotebookEntryCreate(NotebookEntryBase):
+organization_id: UUID4
+project_id: UUID4
+
+class NotebookEntryUpdate(BaseSchema):
+title: Optional[str] = None
+content: Optional[str] = None
+tags: Optional[List[str]] = None
+metadata: Optional[Dict[str, Any]] = None
+
+class NotebookEntryResponse(NotebookEntryBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+project_id: UUID4
+author_id: UUID4
+version: int
+is_signed: bool
+signed_at: Optional[datetime] = None
+signed_by: Optional[UUID4] = None
+
+# ============================================================================
+
+# Approval Schemas
+
+# ============================================================================
+
+class ApprovalBase(BaseSchema):
+comments: Optional[str] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ApprovalCreate(ApprovalBase):
+run_id: Optional[UUID4] = None
+notebook_entry_id: Optional[UUID4] = None
+approver_id: UUID4
+
+@field_validator('run_id', 'notebook_entry_id')
+@classmethod
+def check_one_target(cls, v, info):
+    # Ensure exactly one of run_id or notebook_entry_id is set
+    values = info.data
+    run_id = values.get('run_id')
+    notebook_id = values.get('notebook_entry_id')
+    if not ((run_id is None) ^ (notebook_id is None)):
+        raise ValueError('Must specify exactly one of run_id or notebook_entry_id')
+    return v
+
+class ApprovalUpdate(BaseSchema):
+status: ApprovalStatus
+comments: Optional[str] = None
+
+class ApprovalResponse(ApprovalBase):
+id: UUID4
+run_id: Optional[UUID4] = None
+notebook_entry_id: Optional[UUID4] = None
+approver_id: UUID4
+status: ApprovalStatus
+approved_at: Optional[datetime] = None
+created_at: datetime
+
+# ============================================================================
+
+# SPC Schemas
+
+# ============================================================================
+
+class SPCControlLimitBase(BaseSchema):
+metric: str = Field(…, max_length=255)
+subgroup_column: Optional[str] = None
+chart_type: str = Field(…, max_length=50)
+ucl: Decimal
+lcl: Decimal
+centerline: Decimal
+sigma: Optional[Decimal] = None
+sample_size: Optional[int] = None
+computed_from_runs: List[UUID4] = Field(default_factory=list)
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class SPCControlLimitCreate(SPCControlLimitBase):
+valid_from: datetime
+valid_until: Optional[datetime] = None
+
+class SPCControlLimitResponse(SPCControlLimitBase, TimestampSchema):
+id: UUID4
+valid_from: datetime
+valid_until: Optional[datetime] = None
+
+class ControlChartData(BaseSchema):
+metric: str
+chart_type: str
+data_points: List[Dict[str, Any]]
+control_limits: Dict[str, Decimal]
+
+class SPCAlert(BaseSchema):
+id: UUID4
+metric: str
+severity: str
+rule_violated: str
+message: str
+timestamp: datetime
+
+# ============================================================================
+
+# ML Model Schemas
+
+# ============================================================================
+
+class MLModelBase(BaseSchema):
+name: str = Field(…, max_length=255)
+description: Optional[str] = None
+model_type: str = Field(…, max_length=100)
+algorithm: Optional[str] = None
+target_metric: Optional[str] = None
+features: List[str] = Field(default_factory=list)
+performance_metrics: Optional[Dict[str, Any]] = None
+training_runs: List[UUID4] = Field(default_factory=list)
+version: Optional[str] = None
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class MLModelCreate(MLModelBase):
+organization_id: UUID4
+trained_by: UUID4
+
+class MLModelUpdate(BaseSchema):
+description: Optional[str] = None
+status: Optional[ModelStatus] = None
+performance_metrics: Optional[Dict[str, Any]] = None
+model_artifact_uri: Optional[str] = None
+
+class MLModelResponse(MLModelBase, TimestampSchema):
+id: UUID4
+organization_id: UUID4
+status: ModelStatus
+deployed_at: Optional[datetime] = None
+trained_by: UUID4
+model_artifact_uri: Optional[str] = None
+
+# ============================================================================
+
+# Report Schemas
+
+# ============================================================================
+
+class ReportRequest(BaseSchema):
+template: str = Field(…, pattern=r’^(single_run|batch|spc_summary)$’)
+run_ids: List[UUID4]
+format: str = Field(default=“pdf”, pattern=r’^(pdf|html)$’)
+metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ReportResponse(BaseSchema):
+report_id: UUID4
+status: str
+download_url: Optional[str] = None
+
+# ============================================================================
+
+# Pagination Schemas
+
+# ============================================================================
+
+class PaginationParams(BaseSchema):
+page: int = Field(default=1, ge=1)
+page_size: int = Field(default=20, ge=1, le=100)
+
+class PaginatedResponse(BaseSchema):
+items: List[Any]
+total: int
+page: int
+page_size: int
+pages: int
+
+@classmethod
+def create(cls, items: List[Any], total: int, page: int, page_size: int):
+    return cls(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+# ============================================================================
+
+# Error Schemas
+
+# ============================================================================
+
+class ErrorResponse(BaseSchema):
+error: str
+message: str
+details: Optional[Dict[str, Any]] = None
+
+# ============================================================================
+
+# Export All Schemas
+
+# ============================================================================
+
+**all** = [
+# Organizations
+“OrganizationCreate”, “OrganizationUpdate”, “OrganizationResponse”,
+# Users
+“UserCreate”, “UserUpdate”, “UserResponse”, “UserLogin”, “TokenResponse”,
+# Projects
+“ProjectCreate”, “ProjectUpdate”, “ProjectResponse”,
+# Instruments
+“InstrumentCreate”, “InstrumentUpdate”, “InstrumentResponse”, “InstrumentConnectionResponse”,
+# Calibrations
+“CalibrationCreate”, “CalibrationResponse”,
+# Materials
+“MaterialCreate”, “MaterialUpdate”, “MaterialResponse”,
+# Samples
+“SampleCreate”, “SampleUpdate”, “SampleResponse”,
+# Methods & Recipes
+“MethodCreate”, “MethodUpdate”, “MethodResponse”,
+“RecipeCreate”, “RecipeUpdate”, “RecipeResponse”,
+# Runs
+“RunCreate”, “RunUpdate”, “RunResponse”, “RunDataDownload”,
+# Measurements & Results
+“MeasurementCreate”, “MeasurementResponse”,
+“ResultCreate”, “ResultResponse”,
+# Attachments
+“AttachmentCreate”, “AttachmentResponse”,
+# Notebook & Approvals
+“NotebookEntryCreate”, “NotebookEntryUpdate”, “NotebookEntryResponse”,
+“ApprovalCreate”, “ApprovalUpdate”, “ApprovalResponse”,
+# SPC
+“SPCControlLimitCreate”, “SPCControlLimitResponse”, “ControlChartData”, “SPCAlert”,
+# ML Models
+“MLModelCreate”, “MLModelUpdate”, “MLModelResponse”,
+# Reports
+“ReportRequest”, “ReportResponse”,
+# Pagination & Errors
+“PaginationParams”, “PaginatedResponse”, “ErrorResponse”,
+]
