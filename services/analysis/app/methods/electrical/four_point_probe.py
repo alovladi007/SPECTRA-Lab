@@ -1,0 +1,505 @@
+# services/analysis/app/methods/electrical/four_point_probe.py
+
+“””
+Four-Point Probe (Van der Pauw) Analysis
+
+Implements:
+
+- Van der Pauw method for arbitrary sample shapes
+- Sheet resistance calculation
+- Contact resistance checks
+- Temperature compensation
+- Uniformity mapping (wafer-level scans)
+- Statistical analysis with outlier rejection
+
+References:
+
+- Van der Pauw, L. J. (1958). “A method of measuring specific resistivity
+  and Hall effect of discs of arbitrary shape”. Philips Research Reports 13: 1–9.
+- ASTM F76 - Standard Test Methods for Measuring Resistivity and Hall
+  Coefficient and Determining Hall Mobility in Single-Crystal Semiconductors
+  “””
+
+import numpy as np
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
+from scipy.optimize import fsolve
+from scipy.interpolate import Rbf
+import logging
+
+logger = logging.getLogger(**name**)
+
+# ============================================================================
+
+# Configuration
+
+# ============================================================================
+
+@dataclass
+class FourPointProbeConfig:
+“”“Configuration for 4PP measurements”””
+# Measurement parameters
+current: float = 1e-3  # A (test current)
+compliance_voltage: float = 10.0  # V
+nplc: float = 1.0  # Number of power line cycles
+
+# Van der Pauw parameters
+num_configurations: int = 4  # Minimum 2, recommended 4
+symmetry_tolerance: float = 0.05  # Max relative difference
+
+# Contact resistance check
+check_contacts: bool = True
+max_contact_resistance: float = 1000.0  # Ohms
+
+# Temperature compensation
+temperature: Optional[float] = None  # K
+reference_temperature: float = 300.0  # K
+temperature_coefficient: Optional[float] = None  # 1/K
+
+# Statistical analysis
+outlier_rejection: bool = True
+outlier_method: str = "chauvenet"  # or "zscore", "iqr"
+outlier_threshold: float = 3.0
+
+# Sample geometry
+sample_thickness: Optional[float] = None  # cm
+sample_shape: str = "arbitrary"  # or "square", "circular"
+
+# Wafer mapping (if applicable)
+is_wafer_map: bool = False
+wafer_diameter: Optional[float] = None  # mm
+die_size: Optional[float] = None  # mm
+
+# ============================================================================
+
+# Van der Pauw Analysis
+
+# ============================================================================
+
+class VanDerPauwAnalyzer:
+“””
+Van der Pauw method for sheet resistance measurement
+
+The Van der Pauw method allows resistivity measurement on samples of
+arbitrary shape with four small contacts on the periphery.
+"""
+
+def __init__(self, config: FourPointProbeConfig):
+    self.config = config
+    self.logger = logging.getLogger(__name__)
+
+def analyze(self, measurements: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Main analysis pipeline
+    
+    Args:
+        measurements: Dictionary containing:
+            - voltages: List of voltage measurements (V)
+            - currents: List of current values (A)
+            - configurations: List of probe configurations
+            - positions: Optional list of (x, y) coordinates
+            - temperature: Optional temperature (K)
+            
+    Returns:
+        Dictionary with analysis results
+    """
+    self.logger.info("Starting Van der Pauw analysis")
+    
+    # Extract data
+    voltages = np.array(measurements['voltages'])
+    currents = np.array(measurements['currents'])
+    configs = measurements.get('configurations', [])
+    positions = measurements.get('positions', None)
+    temperature = measurements.get('temperature', self.config.temperature)
+    
+    # 1. Contact resistance check
+    if self.config.check_contacts:
+        contact_check = self._check_contact_resistance(voltages, currents)
+        if not contact_check['passed']:
+            self.logger.warning(f"Contact resistance check failed: {contact_check}")
+    else:
+        contact_check = {'passed': True}
+    
+    # 2. Calculate resistances for each configuration
+    resistances = self._calculate_resistances(voltages, currents, configs)
+    
+    # 3. Outlier rejection
+    if self.config.outlier_rejection:
+        resistances_clean, outlier_mask = self._reject_outliers(resistances)
+    else:
+        resistances_clean = resistances
+        outlier_mask = np.zeros(len(resistances), dtype=bool)
+    
+    # 4. Van der Pauw equation solution
+    sheet_resistance = self._solve_van_der_pauw(resistances_clean)
+    
+    # 5. Temperature compensation
+    if temperature and self.config.temperature_coefficient:
+        sheet_resistance = self._temperature_compensate(
+            sheet_resistance, 
+            temperature,
+            self.config.temperature_coefficient
+        )
+    
+    # 6. Calculate resistivity (if thickness known)
+    resistivity = None
+    if self.config.sample_thickness:
+        resistivity = sheet_resistance * self.config.sample_thickness
+    
+    # 7. Statistical summary
+    stats = self._calculate_statistics(resistances_clean)
+    
+    # 8. Wafer map (if applicable)
+    wafer_map = None
+    if self.config.is_wafer_map and positions is not None:
+        wafer_map = self._generate_wafer_map(positions, resistances_clean)
+    
+    # Compile results
+    results = {
+        'sheet_resistance': {
+            'value': sheet_resistance,
+            'unit': 'Ω/sq',
+            'uncertainty': stats['std']
+        },
+        'resistivity': {
+            'value': resistivity,
+            'unit': 'Ω·cm',
+        } if resistivity else None,
+        'statistics': stats,
+        'contact_check': contact_check,
+        'outliers': {
+            'count': int(np.sum(outlier_mask)),
+            'indices': np.where(outlier_mask)[0].tolist()
+        },
+        'temperature': {
+            'measured': temperature,
+            'reference': self.config.reference_temperature,
+            'compensated': temperature is not None and self.config.temperature_coefficient is not None
+        },
+        'wafer_map': wafer_map,
+        'raw_resistances': resistances.tolist(),
+        'cleaned_resistances': resistances_clean.tolist()
+    }
+    
+    self.logger.info(f"Analysis complete: Rs = {sheet_resistance:.2f} Ω/sq")
+    return results
+
+def _calculate_resistances(
+    self, 
+    voltages: np.ndarray, 
+    currents: np.ndarray,
+    configs: List[str]
+) -> np.ndarray:
+    """Calculate resistance for each measurement"""
+    resistances = voltages / currents
+    return resistances
+
+def _check_contact_resistance(
+    self, 
+    voltages: np.ndarray, 
+    currents: np.ndarray
+) -> Dict[str, Any]:
+    """
+    Check for excessive contact resistance
+    
+    Uses four-terminal sensing principle: if contact resistance is low,
+    voltage should be linear with current.
+    """
+    # Simple check: V/I should be consistent
+    resistances = voltages / currents
+    avg_resistance = np.mean(resistances)
+    
+    # Check if any resistance exceeds threshold
+    max_resistance = np.max(resistances)
+    passed = max_resistance < self.config.max_contact_resistance
+    
+    return {
+        'passed': passed,
+        'max_resistance': float(max_resistance),
+        'avg_resistance': float(avg_resistance),
+        'threshold': self.config.max_contact_resistance
+    }
+
+def _solve_van_der_pauw(self, resistances: np.ndarray) -> float:
+    """
+    Solve Van der Pauw equation for sheet resistance
+    
+    For arbitrary shape with 4 contacts (A, B, C, D):
+    exp(-π·R_AB,CD / R_s) + exp(-π·R_BC,DA / R_s) = 1
+    
+    where:
+    - R_AB,CD = V_CD / I_AB (resistance measured between CD with current through AB)
+    - R_s = sheet resistance
+    """
+    # For simplicity, assume we have measurements in standard configurations
+    # Configuration 1: R_AB,CD
+    # Configuration 2: R_BC,DA
+    
+    if len(resistances) >= 2:
+        R1 = resistances[0]  # R_AB,CD
+        R2 = resistances[1]  # R_BC,DA
+    else:
+        # Fallback: use average
+        R1 = R2 = np.mean(resistances)
+    
+    # Solve: exp(-π·R1/Rs) + exp(-π·R2/Rs) = 1
+    def van_der_pauw_equation(Rs):
+        return np.exp(-np.pi * R1 / Rs) + np.exp(-np.pi * R2 / Rs) - 1
+    
+    # Initial guess: average of measured resistances
+    Rs_initial = (R1 + R2) / 2
+    
+    try:
+        Rs_solution = fsolve(van_der_pauw_equation, Rs_initial)[0]
+        
+        # Sanity check
+        if Rs_solution <= 0 or Rs_solution > 1e10:
+            self.logger.warning(f"Unusual sheet resistance: {Rs_solution}")
+            # Fallback to average
+            Rs_solution = np.mean(resistances)
+        
+        return float(Rs_solution)
+    
+    except Exception as e:
+        self.logger.error(f"Van der Pauw equation failed: {e}")
+        # Fallback: use average of resistances
+        return float(np.mean(resistances))
+
+def _temperature_compensate(
+    self, 
+    resistance: float, 
+    T_measured: float,
+    alpha: float
+) -> float:
+    """
+    Compensate resistance for temperature
+    
+    R(T) = R(T_ref) · [1 + α·(T - T_ref)]
+    
+    Args:
+        resistance: Measured resistance at T_measured
+        T_measured: Measurement temperature (K)
+        alpha: Temperature coefficient (1/K)
+        
+    Returns:
+        Resistance at reference temperature
+    """
+    T_ref = self.config.reference_temperature
+    delta_T = T_measured - T_ref
+    
+    # Back-calculate to reference temperature
+    R_ref = resistance / (1 + alpha * delta_T)
+    
+    return R_ref
+
+def _reject_outliers(
+    self, 
+    data: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Reject outliers using specified method
+    
+    Returns:
+        (cleaned_data, outlier_mask)
+    """
+    if self.config.outlier_method == "chauvenet":
+        return self._chauvenet_criterion(data)
+    elif self.config.outlier_method == "zscore":
+        return self._zscore_method(data)
+    elif self.config.outlier_method == "iqr":
+        return self._iqr_method(data)
+    else:
+        return data, np.zeros(len(data), dtype=bool)
+
+def _chauvenet_criterion(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Chauvenet's criterion for outlier rejection"""
+    mean = np.mean(data)
+    std = np.std(data, ddof=1)
+    n = len(data)
+    
+    # Maximum allowable deviation
+    t_max = np.sqrt(2 * np.log(n))
+    
+    # Calculate z-scores
+    z_scores = np.abs((data - mean) / std)
+    
+    # Identify outliers
+    outlier_mask = z_scores > t_max
+    cleaned_data = data[~outlier_mask]
+    
+    return cleaned_data, outlier_mask
+
+def _zscore_method(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Z-score method"""
+    mean = np.mean(data)
+    std = np.std(data, ddof=1)
+    z_scores = np.abs((data - mean) / std)
+    
+    outlier_mask = z_scores > self.config.outlier_threshold
+    cleaned_data = data[~outlier_mask]
+    
+    return cleaned_data, outlier_mask
+
+def _iqr_method(self, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Interquartile range (IQR) method"""
+    q1 = np.percentile(data, 25)
+    q3 = np.percentile(data, 75)
+    iqr = q3 - q1
+    
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    
+    outlier_mask = (data < lower_bound) | (data > upper_bound)
+    cleaned_data = data[~outlier_mask]
+    
+    return cleaned_data, outlier_mask
+
+def _calculate_statistics(self, data: np.ndarray) -> Dict[str, float]:
+    """Calculate statistical summary"""
+    return {
+        'mean': float(np.mean(data)),
+        'std': float(np.std(data, ddof=1)),
+        'min': float(np.min(data)),
+        'max': float(np.max(data)),
+        'range': float(np.max(data) - np.min(data)),
+        'cv_percent': float(100 * np.std(data, ddof=1) / np.mean(data)),
+        'count': int(len(data))
+    }
+
+def _generate_wafer_map(
+    self, 
+    positions: List[Tuple[float, float]], 
+    values: np.ndarray
+) -> Dict[str, Any]:
+    """
+    Generate wafer map using interpolation
+    
+    Args:
+        positions: List of (x, y) coordinates in mm
+        values: Sheet resistance values
+        
+    Returns:
+        Dictionary with interpolated map data
+    """
+    positions_array = np.array(positions)
+    x = positions_array[:, 0]
+    y = positions_array[:, 1]
+    
+    # Create interpolation grid
+    grid_resolution = 100
+    xi = np.linspace(x.min(), x.max(), grid_resolution)
+    yi = np.linspace(y.min(), y.max(), grid_resolution)
+    xi_grid, yi_grid = np.meshgrid(xi, yi)
+    
+    # Radial basis function interpolation (Kriging-like)
+    rbf = Rbf(x, y, values, function='multiquadric', smooth=0.1)
+    zi = rbf(xi_grid, yi_grid)
+    
+    # Mask out regions outside wafer
+    if self.config.wafer_diameter:
+        radius = self.config.wafer_diameter / 2
+        center_x = (x.max() + x.min()) / 2
+        center_y = (y.max() + y.min()) / 2
+        
+        distances = np.sqrt(
+            (xi_grid - center_x)**2 + (yi_grid - center_y)**2
+        )
+        zi[distances > radius] = np.nan
+    
+    return {
+        'x': xi.tolist(),
+        'y': yi.tolist(),
+        'values': zi.tolist(),
+        'original_points': {
+            'x': x.tolist(),
+            'y': y.tolist(),
+            'values': values.tolist()
+        },
+        'statistics': {
+            'uniformity': float(100 * np.nanstd(zi) / np.nanmean(zi)),
+            'min': float(np.nanmin(zi)),
+            'max': float(np.nanmax(zi)),
+            'mean': float(np.nanmean(zi))
+        }
+    }
+
+# ============================================================================
+
+# Helper Functions
+
+# ============================================================================
+
+def calculate_sheet_resistance_simple(
+voltage: float,
+current: float,
+geometry_factor: float = 4.53
+) -> float:
+“””
+Simple sheet resistance calculation for uniform samples
+
+For linear 4PP: Rs = (V/I) · k
+where k is geometry factor (4.53 for semi-infinite sample)
+
+Args:
+    voltage: Measured voltage (V)
+    current: Applied current (A)
+    geometry_factor: Correction factor for sample geometry
+    
+Returns:
+    Sheet resistance (Ω/sq)
+"""
+resistance = voltage / current
+sheet_resistance = resistance * geometry_factor
+return sheet_resistance
+
+def estimate_conductivity(
+sheet_resistance: float,
+thickness: float
+) -> float:
+“””
+Calculate conductivity from sheet resistance and thickness
+
+σ = 1 / (Rs · t)
+
+Args:
+    sheet_resistance: Sheet resistance (Ω/sq)
+    thickness: Sample thickness (cm)
+    
+Returns:
+    Conductivity (S/cm)
+"""
+resistivity = sheet_resistance * thickness  # Ω·cm
+conductivity = 1 / resistivity  # S/cm
+return conductivity
+
+# ============================================================================
+
+# API Function
+
+# ============================================================================
+
+def analyze_four_point_probe(
+measurements: Dict[str, Any],
+config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+“””
+High-level API for four-point probe analysis
+
+Args:
+    measurements: Raw measurement data
+    config: Optional configuration dictionary
+    
+Returns:
+    Analysis results dictionary
+"""
+# Create config
+if config:
+    fpp_config = FourPointProbeConfig(**config)
+else:
+    fpp_config = FourPointProbeConfig()
+
+# Run analysis
+analyzer = VanDerPauwAnalyzer(fpp_config)
+results = analyzer.analyze(measurements)
+
+return results
