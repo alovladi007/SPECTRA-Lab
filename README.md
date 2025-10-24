@@ -142,6 +142,10 @@ make format          # Format code
 
 ### Structural Characterization
 - ✅ **X-Ray Diffraction (XRD)** - Crystal structure and phase analysis
+- ✅ **SEM (Scanning Electron Microscopy)** - High-resolution surface imaging
+- ✅ **TEM (Transmission Electron Microscopy)** - Atomic-scale imaging
+- ✅ **AFM (Atomic Force Microscopy)** - Surface topography and roughness
+- ✅ **Optical Microscopy** - Multi-scale imaging and inspection
 
 ## Project Status
 
@@ -153,9 +157,10 @@ make format          # Format code
 - ✅ Session 6: Electrical III (DLTS, EBIC, PCD)
 - ✅ Session 7: Optical I (UV-Vis-NIR, FTIR)
 - ✅ Session 8: Optical Advanced (Ellipsometry, PL, Raman)
-- ✅ Session 9: Structural (X-Ray Diffraction)
+- ✅ Session 9: Structural I (X-Ray Diffraction)
+- ✅ Session 10: Structural II (Microscopy & Imaging)
 
-**Total Files:** 121 integrated files
+**Total Files:** 127 integrated files
 **Status:** Production Ready ✅
 
 ## Contributing
