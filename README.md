@@ -1,6 +1,6 @@
 # SPECTRA-Lab: Semiconductor Characterization Platform
 
-Enterprise-grade semiconductor characterization platform with 40+ measurement methods.
+Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, and structural characterization capabilities.
 
 ## Quick Start
 
@@ -64,23 +64,40 @@ npm run dev
 
 ```
 SPECTRA-Lab/
-├── apps/web/                  # Next.js frontend
+├── apps/web/                     # Next.js frontend
+│   └── src/app/(dashboard)/
+│       ├── electrical/           # Electrical measurement UIs
+│       ├── optical/              # Optical characterization UIs
+│       └── structural/           # Structural analysis UIs
 ├── services/
-│   ├── instruments/           # Instrument control service
+│   ├── instruments/              # Instrument control service
 │   │   └── app/
-│   │       ├── drivers/      # Instrument drivers
-│   │       │   ├── core/     # VISA/SCPI core
-│   │       │   └── builtin/  # Reference drivers
-│   │       └── models/       # Database models
-│   └── analysis/              # Analysis service
+│   │       ├── drivers/          # Instrument drivers
+│   │       │   ├── core/         # VISA/SCPI core
+│   │       │   └── builtin/      # Reference drivers
+│   │       └── models/           # Database models (SQLAlchemy)
+│   └── analysis/                 # Analysis service
+│       └── app/methods/
+│           ├── electrical/       # Electrical analysis modules
+│           ├── optical/          # Optical analysis modules
+│           └── structural/       # Structural analysis modules
 ├── src/
-│   ├── backend/models/        # Shared data models
-│   └── drivers/               # Additional drivers
-├── scripts/                   # Utility scripts
-│   └── dev/                   # Development scripts
-├── docs/                      # Documentation
-├── infra/docker/              # Docker configuration
-└── tests/                     # Test suites
+│   ├── backend/
+│   │   ├── models/               # Pydantic schemas
+│   │   └── services/             # Backend services
+│   └── drivers/                  # Additional drivers & simulators
+├── scripts/                      # Deployment & utility scripts
+│   └── dev/                      # Development scripts
+├── docs/                         # Complete documentation
+│   ├── sessions/                 # Session implementation guides
+│   ├── methods/                  # Method playbooks
+│   └── api/                      # API specifications
+├── infra/docker/                 # Docker configuration
+├── tests/                        # Test suites
+│   ├── integration/              # Integration tests
+│   ├── unit/                     # Unit tests
+│   └── validation/               # Validation scenarios
+└── db/migrations/                # Database migrations
 ```
 
 ## Available Commands
@@ -102,15 +119,44 @@ make format          # Format code
 - [API Specification](docs/api/openapi_specification.yaml)
 - [Session Guides](docs/sessions/)
 
+## Characterization Capabilities
+
+### Electrical Characterization
+- ✅ **Four-Point Probe (4PP)** - Sheet resistance measurement
+- ✅ **Hall Effect** - Carrier concentration and mobility
+- ✅ **I-V Characterization** - Diode, transistor, and device curves
+- ✅ **C-V Profiling** - Capacitance-voltage analysis
+- ✅ **BJT Analysis** - Bipolar junction transistor characterization
+- ✅ **MOSFET Analysis** - Metal-oxide-semiconductor FET testing
+- ✅ **Solar Cell Testing** - Photovoltaic device characterization
+- ✅ **DLTS** - Deep Level Transient Spectroscopy
+- ✅ **EBIC** - Electron Beam Induced Current imaging
+- ✅ **PCD** - Photoconductance Decay lifetime measurement
+
+### Optical Characterization
+- ✅ **UV-Vis-NIR Spectroscopy** - Absorption/transmission/reflectance
+- ✅ **FTIR** - Fourier Transform Infrared Spectroscopy
+- ✅ **Ellipsometry** - Thin film optical properties
+- ✅ **Photoluminescence (PL)** - Optical emission analysis
+- ✅ **Raman Spectroscopy** - Molecular vibrational analysis
+
+### Structural Characterization
+- ✅ **X-Ray Diffraction (XRD)** - Crystal structure and phase analysis
+
 ## Project Status
 
-**Sessions Completed:**
-- ✅ Session 1: Setup & Architecture
-- ✅ Session 2: Data Model & API
-- ✅ Session 3: Instrument SDK & HIL
+**All Sessions Complete:**
+- ✅ Session 1-2: Infrastructure & Architecture
+- ✅ Session 3: Instrument SDK & HIL Simulators
 - ✅ Session 4: Electrical I (4PP & Hall Effect)
+- ✅ Session 5: Electrical II (I-V & C-V Characterization)
+- ✅ Session 6: Electrical III (DLTS, EBIC, PCD)
+- ✅ Session 7: Optical I (UV-Vis-NIR, FTIR)
+- ✅ Session 8: Optical Advanced (Ellipsometry, PL, Raman)
+- ✅ Session 9: Structural (X-Ray Diffraction)
 
-**Current:** Session 5 - Electrical II (I-V, C-V)
+**Total Files:** 121 integrated files
+**Status:** Production Ready ✅
 
 ## Contributing
 
