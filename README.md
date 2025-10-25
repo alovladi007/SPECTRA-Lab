@@ -68,7 +68,8 @@ SPECTRA-Lab/
 │   └── src/app/(dashboard)/
 │       ├── electrical/           # Electrical measurement UIs
 │       ├── optical/              # Optical characterization UIs
-│       └── structural/           # Structural analysis UIs
+│       ├── structural/           # Structural analysis UIs
+│       └── chemical/             # Chemical analysis UIs
 ├── services/
 │   ├── instruments/              # Instrument control service
 │   │   └── app/
@@ -80,7 +81,8 @@ SPECTRA-Lab/
 │       └── app/methods/
 │           ├── electrical/       # Electrical analysis modules
 │           ├── optical/          # Optical analysis modules
-│           └── structural/       # Structural analysis modules
+│           ├── structural/       # Structural analysis modules
+│           └── chemical/         # Chemical analysis modules
 ├── src/
 │   ├── backend/
 │   │   ├── models/               # Pydantic schemas
@@ -148,8 +150,16 @@ make format          # Format code
 - ✅ **Optical Microscopy** - Multi-scale imaging and inspection
 
 ### Chemical Characterization
+
+#### Surface Analysis
 - ✅ **XPS (X-ray Photoelectron Spectroscopy)** - Surface chemistry and chemical states
 - ✅ **XRF (X-ray Fluorescence)** - Elemental composition analysis
+
+#### Bulk Analysis
+- ✅ **SIMS (Secondary Ion Mass Spectrometry)** - Depth profiling and dopant quantification
+- ✅ **RBS (Rutherford Backscattering)** - Multi-layer composition and thickness
+- ✅ **NAA (Neutron Activation Analysis)** - Trace element detection
+- ✅ **Chemical Etch Analysis** - Loading effect characterization
 
 ## Project Status
 
@@ -163,9 +173,11 @@ make format          # Format code
 - ✅ Session 8: Optical Advanced (Ellipsometry, PL, Raman)
 - ✅ Session 9: Structural I (X-Ray Diffraction)
 - ✅ Session 10: Structural II (Microscopy & Imaging)
-- ✅ Session 11: Chemical Analysis (XPS & XRF)
+- ✅ Session 11: Chemical I - Surface Analysis (XPS & XRF)
+- ✅ Session 12: Chemical II - Bulk Analysis (SIMS, RBS, NAA, Etch)
 
-**Total Files:** 141 integrated files
+**Total Files:** 155 integrated files
+**Total Methods:** 26 characterization techniques
 **Status:** Production Ready ✅
 
 ## Contributing
