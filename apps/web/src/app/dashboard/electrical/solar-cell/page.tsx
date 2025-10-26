@@ -9,12 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Sun, PlayCircle, Download, Zap, TrendingUp, AlertCircle } from 'lucide-react';
+import { Sun, PlayCircle, Download, Zap, TrendingUp } from 'lucide-react';
+
+type SolarCellResults = {
+  isc: { value: number; current_density_ma_cm2: number };
+  voc: { value: number };
+  mpp: { voltage: number; current: number; power: number };
+  fill_factor: { value: number; percent: number };
+  efficiency: { value: number; percent: number };
+  rs: { value: number };
+  rsh: { value: number };
+  quality_score: { value: number; level: string };
+  ivCurve?: Array<{ voltage: number; current: number; power: number }>;
+};
 
 const SolarCellCharacterization = () => {
 const [cellType, setCellType] = useState('silicon');
 const [isRunning, setIsRunning] = useState(false);
-const [results, setResults] = useState(null);
+const [results, setResults] = useState<SolarCellResults | null>(null);
 
 const [config, setConfig] = useState({
 area: 100, // cm²
@@ -24,8 +36,8 @@ spectrum: 'AM1.5G'
 });
 
 // Mock I-V data
-const ivData = results?.ivCurve || Array.from({length: 100}, (_, i) => {
-const v = i * 0.007; // 0 to ~0.7V
+const ivData = results?.ivCurve || Array.from({length: 100}, (_, idx) => {
+const v = idx * 0.007; // 0 to ~0.7V
 const isc = 5.0;
 const voc = 0.60;
 const i = isc * (1 - Math.exp((v - voc) / 0.026));
@@ -49,7 +61,7 @@ setTimeout(() => {
     efficiency: { value: 0.235, percent: 23.5 },
     rs: { value: 0.52 },
     rsh: { value: 1250 },
-    quality_score: 92
+    quality_score: { value: 92, level: 'excellent' }
   });
   setIsRunning(false);
 }, 2000);
@@ -380,17 +392,17 @@ Solar Cell I-V Characterization
 
             {/* Quality Score */}
             <Alert className={
-              results.quality_score >= 80 ? 'border-green-200 bg-green-50' :
-              results.quality_score >= 60 ? 'border-yellow-200 bg-yellow-50' :
+              results.quality_score.value >= 80 ? 'border-green-200 bg-green-50' :
+              results.quality_score.value >= 60 ? 'border-yellow-200 bg-yellow-50' :
               'border-red-200 bg-red-50'
             }>
               <TrendingUp className="h-4 w-4" />
               <AlertDescription>
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold">Quality Score: {results.quality_score}/100</span>
-                  {results.quality_score >= 80 ? (
+                  <span className="font-semibold">Quality Score: {results.quality_score.value}/100</span>
+                  {results.quality_score.value >= 80 ? (
                     <Badge className="bg-green-600">Excellent</Badge>
-                  ) : results.quality_score >= 60 ? (
+                  ) : results.quality_score.value >= 60 ? (
                     <Badge className="bg-yellow-600">Good</Badge>
                   ) : (
                     <Badge className="bg-red-600">Needs Review</Badge>
