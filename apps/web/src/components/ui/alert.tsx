@@ -20,6 +20,14 @@ export const Alert = ({ children, className = '', variant = 'default', ...props 
   )
 }
 
+export const AlertTitle = ({ children, className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+  return (
+    <h5 className={`font-medium mb-1 ${className}`} {...props}>
+      {children}
+    </h5>
+  )
+}
+
 export const AlertDescription = ({ children, className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => {
   return (
     <p className={`text-sm ${className}`} {...props}>

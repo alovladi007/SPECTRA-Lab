@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -455,36 +454,42 @@ const MicroscopyInterface: React.FC = () => {
                   <>
                     <div className="space-y-2">
                       <Label>Accelerating Voltage (kV)</Label>
-                      <Slider
-                        value={[semParams.voltage]}
-                        onValueChange={(v) => setSemParams({ ...semParams, voltage: v[0] })}
+                      <input
+                        type="range"
+                        value={semParams.voltage}
+                        onChange={(e) => setSemParams({ ...semParams, voltage: parseFloat(e.target.value) })}
                         min={1}
                         max={30}
                         step={0.5}
+                        className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{semParams.voltage} kV</span>
                     </div>
                     
                     <div className="space-y-2">
                       <Label>Beam Current (nA)</Label>
-                      <Slider
-                        value={[semParams.current]}
-                        onValueChange={(v) => setSemParams({ ...semParams, current: v[0] })}
+                      <input
+                        type="range"
+                        value={semParams.current}
+                        onChange={(e) => setSemParams({ ...semParams, current: parseFloat(e.target.value) })}
                         min={0.1}
                         max={10}
                         step={0.1}
+                        className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{semParams.current} nA</span>
                     </div>
                     
                     <div className="space-y-2">
                       <Label>Working Distance (mm)</Label>
-                      <Slider
-                        value={[semParams.workingDistance]}
-                        onValueChange={(v) => setSemParams({ ...semParams, workingDistance: v[0] })}
+                      <input
+                        type="range"
+                        value={semParams.workingDistance}
+                        onChange={(e) => setSemParams({ ...semParams, workingDistance: parseFloat(e.target.value) })}
                         min={3}
                         max={25}
                         step={0.5}
+                        className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{semParams.workingDistance} mm</span>
                     </div>
@@ -548,12 +553,14 @@ const MicroscopyInterface: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label>Objective Aperture (μm)</Label>
-                      <Slider
-                        value={[temParams.objectiveAperture]}
-                        onValueChange={(v) => setTemParams({ ...temParams, objectiveAperture: v[0] })}
+                      <input
+                        type="range"
+                        value={temParams.objectiveAperture}
+                        onChange={(e) => setTemParams({ ...temParams, objectiveAperture: parseFloat(e.target.value) })}
                         min={10}
                         max={100}
                         step={10}
+                        className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{temParams.objectiveAperture} μm</span>
                     </div>
@@ -604,12 +611,14 @@ const MicroscopyInterface: React.FC = () => {
                     
                     <div className="space-y-2">
                       <Label>Scan Rate (Hz)</Label>
-                      <Slider
-                        value={[afmParams.scanRate]}
-                        onValueChange={(v) => setAfmParams({ ...afmParams, scanRate: v[0] })}
+                      <input
+                        type="range"
+                        value={afmParams.scanRate}
+                        onChange={(e) => setAfmParams({ ...afmParams, scanRate: parseFloat(e.target.value) })}
                         min={0.1}
                         max={2}
                         step={0.1}
+                        className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{afmParams.scanRate} Hz</span>
                     </div>
@@ -711,7 +720,7 @@ const MicroscopyInterface: React.FC = () => {
                         <Card>
                           <CardContent className="pt-4">
                             <div className="text-2xl font-bold">
-                              {analysisResults.particles.reduce((sum: number, p: any) => sum + p.diameter, 0) / analysisResults.particles.length:.1f}
+                              {(analysisResults.particles.reduce((sum: number, p: any) => sum + p.diameter, 0) / analysisResults.particles.length).toFixed(1)}
                             </div>
                             <p className="text-xs text-muted-foreground">Mean Diameter (nm)</p>
                           </CardContent>
