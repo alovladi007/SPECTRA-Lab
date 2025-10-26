@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # Analysis Service - Port 8001
+  analysis:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: spectralab-analysis
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=analysis
+      - PORT=8001
+    volumes:
+      - ./services/analysis:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    networks:
+      - spectralab-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # LIMS Service - Port 8002
+  lims:
+    build:
+      context: ./services/lims
+      dockerfile: Dockerfile
+    container_name: spectralab-lims
+    ports:
+      - "8002:8002"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=lims
+      - PORT=8002
+    volumes:
+      - ./services/lims:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+    networks:
+      - spectralab-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Instruments Service - Port 8003
+  instruments:
+    build:
+      context: ./services/instruments
+      dockerfile: Dockerfile
+    container_name: spectralab-instruments
+    ports:
+      - "8003:8003"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=instruments
+      - PORT=8003
+    volumes:
+      - ./services/instruments:/app
+    privileged: true  # For USB/GPIB device access
+    networks:
+      - spectralab-network
+
+  # Platform Service - Port 8004
+  platform:
+    build:
+      context: ./services/platform
+      dockerfile: Dockerfile
+    container_name: spectralab-platform
+    ports:
+      - "8004:8004"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=platform
+      - PORT=8004
+    volumes:
+      - ./services/platform:/app
+    networks:
+      - spectralab-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: spectralab-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=spectralab
+      - POSTGRES_PASSWORD=spectralab_dev_password
+      - POSTGRES_DB=spectralab
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - spectralab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectralab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: spectralab-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - spectralab-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Web Application - Port 3012
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: spectralab-web
+    ports:
+      - "3012:3012"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_ANALYSIS_API_URL=http://localhost:8001
+      - NEXT_PUBLIC_LIMS_API_URL=http://localhost:8002
+      - NEXT_PUBLIC_INSTRUMENTS_API_URL=http://localhost:8003
+      - NEXT_PUBLIC_PLATFORM_API_URL=http://localhost:8004
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev:3012
+    networks:
+      - spectralab-network
+    depends_on:
+      - analysis
+      - lims
+
+networks:
+  spectralab-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
