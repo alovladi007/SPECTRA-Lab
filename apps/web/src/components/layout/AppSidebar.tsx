@@ -30,27 +30,27 @@ const navigation: NavItem[] = [
       {
         name: 'Resistance & Mobility',
         children: [
-          { name: 'Four-Point Probe (4PP)', href: '/electrical/four-point-probe' },
-          { name: 'Hall Effect', href: '/electrical/hall-effect' },
+          { name: 'Four-Point Probe (4PP)', href: '/dashboard/electrical/four-point-probe' },
+          { name: 'Hall Effect', href: '/dashboard/electrical/hall-effect' },
         ]
       },
       {
         name: 'Device Characterization',
         children: [
-          { name: 'BJT Analysis', href: '/electrical/bjt' },
-          { name: 'BJT Advanced', href: '/electrical/bjt-advanced' },
-          { name: 'MOSFET Analysis', href: '/electrical/mosfet' },
-          { name: 'MOSFET Advanced', href: '/electrical/mosfet-advanced' },
-          { name: 'Solar Cell Testing', href: '/electrical/solar-cell' },
-          { name: 'C-V Profiling', href: '/electrical/cv-profiling' },
+          { name: 'BJT Analysis', href: '/dashboard/electrical/bjt' },
+          { name: 'BJT Advanced', href: '/dashboard/electrical/bjt-advanced' },
+          { name: 'MOSFET Analysis', href: '/dashboard/electrical/mosfet' },
+          { name: 'MOSFET Advanced', href: '/dashboard/electrical/mosfet-advanced' },
+          { name: 'Solar Cell Testing', href: '/dashboard/electrical/solar-cell' },
+          { name: 'C-V Profiling', href: '/dashboard/electrical/cv-profiling' },
         ]
       },
       {
         name: 'Advanced Electrical',
         children: [
-          { name: 'DLTS', href: '/electrical/advanced', badge: 'DLTS' },
-          { name: 'EBIC', href: '/electrical/advanced', badge: 'EBIC' },
-          { name: 'PCD', href: '/electrical/advanced', badge: 'PCD' },
+          { name: 'DLTS', href: '/dashboard/electrical/advanced', badge: 'DLTS' },
+          { name: 'EBIC', href: '/dashboard/electrical/advanced', badge: 'EBIC' },
+          { name: 'PCD', href: '/dashboard/electrical/advanced', badge: 'PCD' },
         ]
       },
     ],
@@ -62,16 +62,16 @@ const navigation: NavItem[] = [
       {
         name: 'Spectroscopy',
         children: [
-          { name: 'UV-Vis-NIR', href: '/optical/uv-vis-nir' },
-          { name: 'FTIR', href: '/optical/ftir' },
-          { name: 'Raman', href: '/optical/raman' },
+          { name: 'UV-Vis-NIR', href: '/dashboard/optical/uv-vis-nir' },
+          { name: 'FTIR', href: '/dashboard/optical/ftir' },
+          { name: 'Raman', href: '/dashboard/optical/raman' },
         ]
       },
       {
         name: 'Advanced Optical',
         children: [
-          { name: 'Ellipsometry', href: '/optical/ellipsometry' },
-          { name: 'Photoluminescence (PL)', href: '/optical/photoluminescence' },
+          { name: 'Ellipsometry', href: '/dashboard/optical/ellipsometry' },
+          { name: 'Photoluminescence (PL)', href: '/dashboard/optical/photoluminescence' },
         ]
       },
     ],
@@ -83,16 +83,16 @@ const navigation: NavItem[] = [
       {
         name: 'Diffraction',
         children: [
-          { name: 'X-Ray Diffraction (XRD)', href: '/structural/xrd' },
+          { name: 'X-Ray Diffraction (XRD)', href: '/dashboard/structural/xrd' },
         ]
       },
       {
         name: 'Microscopy',
         children: [
-          { name: 'SEM', href: '/structural/microscopy', badge: 'SEM' },
-          { name: 'TEM', href: '/structural/microscopy', badge: 'TEM' },
-          { name: 'AFM', href: '/structural/microscopy', badge: 'AFM' },
-          { name: 'Optical Microscopy', href: '/structural/microscopy', badge: 'Optical' },
+          { name: 'SEM', href: '/dashboard/structural/microscopy', badge: 'SEM' },
+          { name: 'TEM', href: '/dashboard/structural/microscopy', badge: 'TEM' },
+          { name: 'AFM', href: '/dashboard/structural/microscopy', badge: 'AFM' },
+          { name: 'Optical Microscopy', href: '/dashboard/structural/microscopy', badge: 'Optical' },
         ]
       },
     ],
@@ -104,17 +104,17 @@ const navigation: NavItem[] = [
       {
         name: 'Surface Analysis',
         children: [
-          { name: 'XPS', href: '/chemical/surface-analysis', badge: 'XPS' },
-          { name: 'XRF', href: '/chemical/surface-analysis', badge: 'XRF' },
+          { name: 'XPS', href: '/dashboard/chemical/surface-analysis', badge: 'XPS' },
+          { name: 'XRF', href: '/dashboard/chemical/surface-analysis', badge: 'XRF' },
         ]
       },
       {
         name: 'Bulk Analysis',
         children: [
-          { name: 'SIMS', href: '/chemical/bulk-analysis', badge: 'SIMS' },
-          { name: 'RBS', href: '/chemical/bulk-analysis', badge: 'RBS' },
-          { name: 'NAA', href: '/chemical/bulk-analysis', badge: 'NAA' },
-          { name: 'Chemical Etch', href: '/chemical/bulk-analysis', badge: 'Etch' },
+          { name: 'SIMS', href: '/dashboard/chemical/bulk-analysis', badge: 'SIMS' },
+          { name: 'RBS', href: '/dashboard/chemical/bulk-analysis', badge: 'RBS' },
+          { name: 'NAA', href: '/dashboard/chemical/bulk-analysis', badge: 'NAA' },
+          { name: 'Chemical Etch', href: '/dashboard/chemical/bulk-analysis', badge: 'Etch' },
         ]
       },
     ],
@@ -123,24 +123,24 @@ const navigation: NavItem[] = [
     name: 'Statistical Process Control',
     icon: TrendingUp,
     children: [
-      { name: 'SPC Dashboard', href: '/spc' },
-      { name: 'Control Charts', href: '/spc/charts' },
-      { name: 'Capability Analysis', href: '/spc/capability' },
-      { name: 'Alerts & Violations', href: '/spc/alerts' },
+      { name: 'SPC Dashboard', href: '/dashboard/spc' },
+      { name: 'Control Charts', href: '/dashboard/spc/charts' },
+      { name: 'Capability Analysis', href: '/dashboard/spc/capability' },
+      { name: 'Alerts & Violations', href: '/dashboard/spc/alerts' },
     ],
   },
   {
     name: 'ML & Virtual Metrology',
     icon: Brain,
     children: [
-      { name: 'Virtual Metrology Models', href: '/ml/vm-models' },
-      { name: 'Model Training', href: '/ml/training' },
-      { name: 'AutoML', href: '/ml/automl' },
-      { name: 'Anomaly Detection', href: '/ml/anomaly' },
-      { name: 'Drift Monitoring', href: '/ml/monitoring' },
-      { name: 'Time Series Forecast', href: '/ml/forecast' },
-      { name: 'Model Explainability', href: '/ml/explainability' },
-      { name: 'A/B Testing', href: '/ml/ab-testing' },
+      { name: 'Virtual Metrology Models', href: '/dashboard/ml/vm-models' },
+      { name: 'Model Training', href: '/dashboard/ml/training' },
+      { name: 'AutoML', href: '/dashboard/ml/automl' },
+      { name: 'Anomaly Detection', href: '/dashboard/ml/anomaly' },
+      { name: 'Drift Monitoring', href: '/dashboard/ml/monitoring' },
+      { name: 'Time Series Forecast', href: '/dashboard/ml/forecast' },
+      { name: 'Model Explainability', href: '/dashboard/ml/explainability' },
+      { name: 'A/B Testing', href: '/dashboard/ml/ab-testing' },
     ],
   },
   {
@@ -157,13 +157,13 @@ const navigation: NavItem[] = [
     name: 'LIMS & ELN',
     icon: ClipboardCheck,
     children: [
-      { name: 'Sample Tracking', href: '/lims/samples' },
-      { name: 'Chain of Custody', href: '/lims/custody' },
-      { name: 'Lab Notebook', href: '/lims/eln' },
-      { name: 'E-Signatures', href: '/lims/signatures' },
-      { name: 'SOP Management', href: '/lims/sops' },
-      { name: 'Report Generator', href: '/lims/reports' },
-      { name: 'FAIR Export', href: '/lims/fair-export' },
+      { name: 'Sample Tracking', href: '/dashboard/lims/samples' },
+      { name: 'Chain of Custody', href: '/dashboard/lims/custody' },
+      { name: 'Lab Notebook', href: '/dashboard/lims/eln' },
+      { name: 'E-Signatures', href: '/dashboard/lims/signatures' },
+      { name: 'SOP Management', href: '/dashboard/lims/sops' },
+      { name: 'Report Generator', href: '/dashboard/lims/reports' },
+      { name: 'FAIR Export', href: '/dashboard/lims/fair-export' },
     ],
   },
   {
