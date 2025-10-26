@@ -1,3 +1,5 @@
+'use client'
+
 // Session 6: Electrical III - UI Components (Continued)
 // Completing EBIC and PCD Measurement Interfaces
 

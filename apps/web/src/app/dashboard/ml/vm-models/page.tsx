@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * SESSION 14: ML/VM HUB - UI COMPONENTS
  * 

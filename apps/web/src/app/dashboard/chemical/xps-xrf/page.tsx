@@ -1,3 +1,5 @@
+'use client'
+
 // Session 11: XPS/XRF Analysis - React UI Components
 // Complete interface for surface and elemental analysis
 

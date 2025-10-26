@@ -1,18 +1,20 @@
-import React, { useState } from ‘react’;
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from ‘@/components/ui/card’;
-import { Button } from ‘@/components/ui/button’;
-import { Input } from ‘@/components/ui/input’;
-import { Label } from ‘@/components/ui/label’;
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ‘@/components/ui/select’;
-import { Tabs, TabsContent, TabsList, TabsTrigger } from ‘@/components/ui/tabs’;
-import { Badge } from ‘@/components/ui/badge’;
-import { Alert, AlertDescription } from ‘@/components/ui/alert’;
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from ‘recharts’;
-import { PlayCircle, Download, Zap, CheckCircle, Settings, Info } from ‘lucide-react’;
+'use client'
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { PlayCircle, Download, Zap, CheckCircle, Settings, Info } from 'lucide-react';
 
 const BJTCharacterization = () => {
-const [transistorType, setTransistorType] = useState(‘npn’);
-const [measurementType, setMeasurementType] = useState(‘gummel’);
+const [transistorType, setTransistorType] = useState('npn');
+const [measurementType, setMeasurementType] = useState('gummel');
 const [isRunning, setIsRunning] = useState(false);
 const [results, setResults] = useState(null);
 
@@ -41,7 +43,7 @@ const points = [];
 const Is = 1e-15; // Saturation current
 const nF = 1.0; // Forward ideality factor
 const nR = 2.0; // Reverse ideality factor
-const beta = transistorType === ‘npn’ ? 100 : 80;
+const beta = transistorType === 'npn' ? 100 : 80;
 const vt = 0.0259; // Thermal voltage at 300K
 
 for (let i = 0; i <= 100; i++) {
@@ -70,7 +72,7 @@ return points;
 const generateOutputData = () => {
 const curves = [];
 const Is = 1e-15;
-const beta = transistorType === ‘npn’ ? 100 : 80;
+const beta = transistorType === 'npn' ? 100 : 80;
 const VA = 50; // Early voltage
 const vt = 0.0259;
 
@@ -208,7 +210,7 @@ BJT Characterization
 <p className="text-gray-600 mt-2">Bipolar Junction Transistor Analysis</p>
 </div>
 <div className="flex gap-2 items-center">
-<Badge variant=“outline” className={`text-lg px-4 py-2 ${transistorType === 'npn' ? 'bg-blue-500' : 'bg-pink-500'} text-white border-none`}>
+<Badge variant="outline" className={`text-lg px-4 py-2 ${transistorType === 'npn' ? 'bg-blue-500' : 'bg-pink-500'} text-white border-none`}>
 {transistorType.toUpperCase()}
 </Badge>
 {results && (

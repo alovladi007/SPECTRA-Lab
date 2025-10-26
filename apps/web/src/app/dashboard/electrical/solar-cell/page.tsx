@@ -1,16 +1,18 @@
-import React, { useState } from ‘react’;
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from ‘@/components/ui/card’;
-import { Button } from ‘@/components/ui/button’;
-import { Input } from ‘@/components/ui/input’;
-import { Label } from ‘@/components/ui/label’;
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ‘@/components/ui/select’;
-import { Badge } from ‘@/components/ui/badge’;
-import { Alert, AlertDescription } from ‘@/components/ui/alert’;
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from ‘recharts’;
-import { Sun, PlayCircle, Download, Zap, TrendingUp, AlertCircle } from ‘lucide-react’;
+'use client'
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Sun, PlayCircle, Download, Zap, TrendingUp, AlertCircle } from 'lucide-react';
 
 const SolarCellCharacterization = () => {
-const [cellType, setCellType] = useState(‘silicon’);
+const [cellType, setCellType] = useState('silicon');
 const [isRunning, setIsRunning] = useState(false);
 const [results, setResults] = useState(null);
 
@@ -18,7 +20,7 @@ const [config, setConfig] = useState({
 area: 100, // cm²
 irradiance: 1000, // W/m²
 temperature: 25, // °C
-spectrum: ‘AM1.5G’
+spectrum: 'AM1.5G'
 });
 
 // Mock I-V data
@@ -56,10 +58,10 @@ setTimeout(() => {
 
 const getCellTypeInfo = (type) => {
 const info = {
-silicon: { name: ‘Crystalline Silicon’, maxEff: ‘26%’, color: ‘blue’ },
-gaas: { name: ‘Gallium Arsenide’, maxEff: ‘29%’, color: ‘purple’ },
-perovskite: { name: ‘Perovskite’, maxEff: ‘25%’, color: ‘pink’ },
-organic: { name: ‘Organic’, maxEff: ‘18%’, color: ‘green’ }
+silicon: { name: 'Crystalline Silicon', maxEff: '26%', color: 'blue' },
+gaas: { name: 'Gallium Arsenide', maxEff: '29%', color: 'purple' },
+perovskite: { name: 'Perovskite', maxEff: '25%', color: 'pink' },
+organic: { name: 'Organic', maxEff: '18%', color: 'green' }
 };
 return info[type] || info.silicon;
 };

@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Session 13: SPC Hub - Complete UI Components
  * 

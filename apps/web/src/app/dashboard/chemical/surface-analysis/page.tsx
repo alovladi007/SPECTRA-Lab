@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Session 11: Surface Analysis (XPS/XRF) - UI Components
  * =======================================================

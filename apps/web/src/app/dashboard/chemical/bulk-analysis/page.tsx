@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Session 12: Chemical II (SIMS/RBS/NAA, Chemical Etch) - UI Components
  * ======================================================================

@@ -1,43 +1,45 @@
-import React, { useState, useEffect } from ‘react’;
-import { Card, CardContent, CardHeader, CardTitle } from ‘@/components/ui/card’;
-import { Button } from ‘@/components/ui/button’;
-import { Input } from ‘@/components/ui/input’;
-import { Label } from ‘@/components/ui/label’;
-import { Alert, AlertDescription } from ‘@/components/ui/alert’;
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ‘@/components/ui/select’;
-import { Play, Square, Download, AlertTriangle, CheckCircle, TrendingUp, Zap } from ‘lucide-react’;
+'use client'
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, Square, Download, AlertTriangle, CheckCircle, TrendingUp, Zap } from 'lucide-react';
 
 // Mock data for demonstration
 const MOCK_RESULT = {
 hall_coefficient: {
 value: -125.3,
-unit: ‘cm³/C’,
+unit: 'cm³/C',
 r_squared: 0.9987
 },
-carrier_type: ‘n-type’,
+carrier_type: 'n-type',
 carrier_concentration: {
 value: 4.98e18,
-unit: ‘cm⁻³’,
-in_scientific: ‘4.98×10¹⁸’
+unit: 'cm⁻³',
+in_scientific: '4.98×10¹⁸'
 },
 hall_mobility: {
 value: 1185.3,
-unit: ‘cm²/(V·s)’
+unit: 'cm²/(V·s)'
 },
 conductivity: {
 value: 94.2,
-unit: ‘S/cm’
+unit: 'S/cm'
 },
 sheet_resistance: {
 value: 0.201,
-unit: ‘Ω/sq’
+unit: 'Ω/sq'
 },
 temperature: {
 value: 300,
-unit: ‘K’
+unit: 'K'
 },
 measurement: {
-type: ‘multi_field’,
+type: 'multi_field',
 num_points: 11,
 field_range: [-1.0, 1.0]
 },
@@ -48,7 +50,7 @@ cv_percent: 2.99
 },
 quality: {
 score: 95.5,
-level: ‘excellent’,
+level: 'excellent',
 warnings: []
 }
 };
@@ -63,15 +65,15 @@ const [currentField, setCurrentField] = useState(0);
 
 // Configuration state
 const [config, setConfig] = useState({
-current: ‘0.001’,
-magneticField: ‘0.5’,
-measurementType: ‘multi_field’,
-fieldMin: ‘-1.0’,
-fieldMax: ‘1.0’,
-numFields: ‘11’,
-sampleThickness: ‘0.05’,
-temperature: ‘300’,
-sheetResistance: ‘’,
+current: '0.001',
+magneticField: '0.5',
+measurementType: 'multi_field',
+fieldMin: '-1.0',
+fieldMax: '1.0',
+numFields: '11',
+sampleThickness: '0.05',
+temperature: '300',
+sheetResistance: '',
 useExternalRs: false
 });
 
@@ -131,7 +133,7 @@ const interval = setInterval(() => {
 
 const handleStop = () => {
 setIsRunning(false);
-setError(‘Measurement stopped by user’);
+setError('Measurement stopped by user');
 };
 
 const handleExport = () => {
@@ -148,16 +150,16 @@ a.click();
 };
 
 const getCarrierTypeColor = (type) => {
-if (type === ‘n-type’) return ‘text-blue-600 bg-blue-50’;
-if (type === ‘p-type’) return ‘text-red-600 bg-red-50’;
-return ‘text-gray-600 bg-gray-50’;
+if (type === 'n-type') return 'text-blue-600 bg-blue-50';
+if (type === 'p-type') return 'text-red-600 bg-red-50';
+return 'text-gray-600 bg-gray-50';
 };
 
 const getQualityColor = (level) => {
-if (level === ‘excellent’) return ‘text-green-600 bg-green-50’;
-if (level === ‘good’) return ‘text-blue-600 bg-blue-50’;
-if (level === ‘acceptable’) return ‘text-yellow-600 bg-yellow-50’;
-return ‘text-red-600 bg-red-50’;
+if (level === 'excellent') return 'text-green-600 bg-green-50';
+if (level === 'good') return 'text-blue-600 bg-blue-50';
+if (level === 'acceptable') return 'text-yellow-600 bg-yellow-50';
+return 'text-red-600 bg-red-50';
 };
 
 return (

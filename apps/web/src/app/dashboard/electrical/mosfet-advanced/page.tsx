@@ -1,18 +1,20 @@
-import React, { useState } from ‘react’;
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from ‘@/components/ui/card’;
-import { Button } from ‘@/components/ui/button’;
-import { Input } from ‘@/components/ui/input’;
-import { Label } from ‘@/components/ui/label’;
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ‘@/components/ui/select’;
-import { Tabs, TabsContent, TabsList, TabsTrigger } from ‘@/components/ui/tabs’;
-import { Badge } from ‘@/components/ui/badge’;
-import { Alert, AlertDescription } from ‘@/components/ui/alert’;
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from ‘recharts’;
-import { PlayCircle, Download, CheckCircle, AlertTriangle, TrendingUp } from ‘lucide-react’;
+'use client'
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PlayCircle, Download, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const MOSFETCharacterization = () => {
-const [deviceType, setDeviceType] = useState(‘n-mos’);
-const [measurementType, setMeasurementType] = useState(‘transfer’);
+const [deviceType, setDeviceType] = useState('n-mos');
+const [measurementType, setMeasurementType] = useState('transfer');
 const [isRunning, setIsRunning] = useState(false);
 const [results, setResults] = useState(null);
 
@@ -28,7 +30,7 @@ vgs_step: 0.02,
 vds_start: 0,
 vds_stop: 5,
 vds_step: 0.05,
-vgs_values: ‘0.5, 1.0, 1.5, 2.0, 2.5’,
+vgs_values: '0.5, 1.0, 1.5, 2.0, 2.5',
 temperature: 300
 });
 
@@ -68,9 +70,9 @@ setTimeout(() => {
 };
 
 const getQualityColor = (score) => {
-if (score >= 80) return ‘text-green-600 bg-green-50’;
-if (score >= 60) return ‘text-yellow-600 bg-yellow-50’;
-return ‘text-red-600 bg-red-50’;
+if (score >= 80) return 'text-green-600 bg-green-50';
+if (score >= 60) return 'text-yellow-600 bg-yellow-50';
+return 'text-red-600 bg-red-50';
 };
 
 return (
@@ -82,7 +84,7 @@ return (
 <p className="text-gray-600 mt-1">Transfer and output characteristics analysis</p>
 </div>
 <Badge className="text-lg px-4 py-2" variant="outline">
-{deviceType === ‘n-mos’ ? ‘n-Channel’ : ‘p-Channel’}
+{deviceType === 'n-mos' ? 'n-Channel' : 'p-Channel'}
 </Badge>
 </div>
 
