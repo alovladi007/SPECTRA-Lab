@@ -4,9 +4,9 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Home, Zap, Waves, Layers, Flask, TrendingUp, Brain,
+  Home, Zap, Waves, Layers, Beaker, TrendingUp, Brain,
   ChevronDown, ChevronRight, Activity, BarChart3,
-  Microscope, Atom, Sparkles, Database, Settings
+  Microscope, Atom, Sparkles, Database, Settings, FileText, ClipboardCheck
 } from 'lucide-react'
 
 interface NavItem {
@@ -99,7 +99,7 @@ const navigation: NavItem[] = [
   },
   {
     name: 'Chemical Analysis',
-    icon: Flask,
+    icon: Beaker,
     children: [
       {
         name: 'Surface Analysis',
@@ -151,6 +151,19 @@ const navigation: NavItem[] = [
       { name: 'Experiments', href: '/experiments' },
       { name: 'Results Browser', href: '/results' },
       { name: 'Data Export', href: '/data/export' },
+    ],
+  },
+  {
+    name: 'LIMS & ELN',
+    icon: ClipboardCheck,
+    children: [
+      { name: 'Sample Tracking', href: '/lims/samples' },
+      { name: 'Chain of Custody', href: '/lims/custody' },
+      { name: 'Lab Notebook', href: '/lims/eln' },
+      { name: 'E-Signatures', href: '/lims/signatures' },
+      { name: 'SOP Management', href: '/lims/sops' },
+      { name: 'Report Generator', href: '/lims/reports' },
+      { name: 'FAIR Export', href: '/lims/fair-export' },
     ],
   },
   {
@@ -249,7 +262,7 @@ export function AppSidebar() {
           <span className="text-gray-400">All Systems Operational</span>
         </div>
         <div className="mt-2 text-xs text-gray-500">
-          v2.0.0 • 14/16 Sessions
+          v2.0.0 • 16/16 Sessions ✓
         </div>
       </div>
     </div>

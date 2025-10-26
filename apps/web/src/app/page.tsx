@@ -7,8 +7,7 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Redirect to dashboard
-    router.push('/dashboard')
+    router.replace('/dashboard')
   }, [router])
 
   return (
@@ -20,11 +19,9 @@ export default function HomePage() {
           </svg>
         </div>
         <h1 className="text-4xl font-bold text-white mb-2">SPECTRA-Lab</h1>
-        <p className="text-blue-100">Loading platform...</p>
-        <div className="mt-4">
-          <div className="w-48 h-1 bg-white/20 rounded-full overflow-hidden mx-auto">
-            <div className="h-full bg-white rounded-full animate-pulse" style={{ width: '60%' }}></div>
-          </div>
+        <p className="text-blue-100 mb-4">Enterprise Semiconductor Characterization Platform</p>
+        <div className="w-48 h-1 bg-white/20 rounded-full overflow-hidden mx-auto">
+          <div className="h-full bg-white rounded-full w-3/4 animate-pulse"></div>
         </div>
       </div>
     </div>
