@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Slider } from '@/components/ui/slider';
-import { LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { 
   Play, Square, Download, Settings, TrendingUp, Thermometer, Zap, 
   AlertCircle, CheckCircle, Activity, Cpu, Camera, Clock, Target,
@@ -846,9 +845,5 @@ export const PCDMeasurement = () => {
   );
 };
 
-// Export all Session 6 components
-export default {
-  DLTSMeasurement,
-  EBICMapping: EBICMappingComplete,
-  PCDMeasurement
-};
+// Export main component as default
+export default EBICMappingComplete;
