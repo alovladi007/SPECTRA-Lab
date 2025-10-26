@@ -69,7 +69,9 @@ SPECTRA-Lab/
 │       ├── electrical/           # Electrical measurement UIs
 │       ├── optical/              # Optical characterization UIs
 │       ├── structural/           # Structural analysis UIs
-│       └── chemical/             # Chemical analysis UIs
+│       ├── chemical/             # Chemical analysis UIs
+│       ├── spc/                  # Statistical Process Control
+│       └── ml/                   # Machine Learning & Virtual Metrology
 ├── services/
 │   ├── instruments/              # Instrument control service
 │   │   └── app/
@@ -82,7 +84,9 @@ SPECTRA-Lab/
 │           ├── electrical/       # Electrical analysis modules
 │           ├── optical/          # Optical analysis modules
 │           ├── structural/       # Structural analysis modules
-│           └── chemical/         # Chemical analysis modules
+│           ├── chemical/         # Chemical analysis modules
+│           ├── spc/              # Statistical Process Control
+│           └── ml/               # Machine Learning & Virtual Metrology
 ├── src/
 │   ├── backend/
 │   │   ├── models/               # Pydantic schemas
@@ -161,6 +165,28 @@ make format          # Format code
 - ✅ **NAA (Neutron Activation Analysis)** - Trace element detection
 - ✅ **Chemical Etch Analysis** - Loading effect characterization
 
+### Statistical Process Control (SPC)
+- ✅ **Control Charts** - X-bar/R, I-MR, EWMA, CUSUM for real-time monitoring
+- ✅ **Western Electric Rules** - All 8 rules for out-of-control detection
+- ✅ **Process Capability** - Cp, Cpk, Pp, Ppk, Sigma Level, DPMO
+- ✅ **Trend Analysis** - Linear regression with forecasting
+- ✅ **Root Cause Analysis** - AI-assisted suggestions for violations
+- ✅ **Real-time Alerts** - Severity-based with escalation
+
+### Machine Learning & Virtual Metrology
+- ✅ **Feature Engineering** - Automated feature generation (rolling stats, ratios, temporal)
+- ✅ **Virtual Metrology** - Predict process metrics from equipment data (RF, GB, LightGBM)
+- ✅ **Anomaly Detection** - Real-time anomaly identification (Isolation Forest, Elliptic Envelope)
+- ✅ **Drift Detection** - Track model and data distribution drift (KS test, PSI, KL divergence)
+- ✅ **Time Series Forecasting** - Predict future trends (Prophet, ARIMA)
+- ✅ **AutoML** - Automated hyperparameter optimization (Optuna)
+- ✅ **Model Explainability** - SHAP, LIME, permutation importance
+- ✅ **Ensemble Methods** - Stacking, voting, blending for improved accuracy
+- ✅ **A/B Testing** - Statistical significance testing for model comparison
+- ✅ **Online Learning** - Incremental updates for continuous improvement
+- ✅ **Model Registry** - Version control and lifecycle management
+- ✅ **Production Monitoring** - Prometheus metrics, real-time alerting
+
 ## Project Status
 
 **All Sessions Complete:**
@@ -175,10 +201,12 @@ make format          # Format code
 - ✅ Session 10: Structural II (Microscopy & Imaging)
 - ✅ Session 11: Chemical I - Surface Analysis (XPS & XRF)
 - ✅ Session 12: Chemical II - Bulk Analysis (SIMS, RBS, NAA, Etch)
+- ✅ Session 13: Statistical Process Control (SPC Hub)
+- ✅ Session 14: Machine Learning & Virtual Metrology (Enhanced)
 
-**Total Files:** 155 integrated files
-**Total Methods:** 26 characterization techniques
-**Status:** Production Ready ✅
+**Total Files:** 175 integrated files
+**Total Capabilities:** 26 characterization methods + SPC + ML/VM suite
+**Status:** Enterprise Production Ready ✅
 
 ## Contributing
 
