@@ -786,8 +786,21 @@ export const SPCDashboard: React.FC<SPCDashboardProps> = ({ results, data, onRef
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [selectedChart, setSelectedChart] = useState<string>('i');
 
+  // Early return if results is undefined
+  if (!results) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-gray-600">Loading SPC data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Get primary chart limits
-  const primaryLimits = results?.control_limits?.[selectedChart] || results?.control_limits?.['i'];
+  const primaryLimits = results.control_limits[selectedChart] || results.control_limits['i'];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
