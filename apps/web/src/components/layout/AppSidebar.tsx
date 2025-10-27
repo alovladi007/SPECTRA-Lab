@@ -122,12 +122,7 @@ const navigation: NavItem[] = [
   {
     name: 'Statistical Process Control',
     icon: TrendingUp,
-    children: [
-      { name: 'SPC Dashboard', href: '/dashboard/spc' },
-      { name: 'Control Charts', href: '/dashboard/spc/charts' },
-      { name: 'Capability Analysis', href: '/dashboard/spc/capability' },
-      { name: 'Alerts & Violations', href: '/dashboard/spc/alerts' },
-    ],
+    href: '/dashboard/spc',
   },
   {
     name: 'ML & Virtual Metrology',
@@ -201,7 +196,7 @@ function NavGroup({ item, level = 0 }: { item: NavItem; level?: number }) {
             <ChevronRight className="w-4 h-4 flex-shrink-0" />
           )}
         </button>
-        {isOpen && (
+        {isOpen && item.children && (
           <div className={`${level === 0 ? 'ml-0' : 'ml-3'} mt-1 space-y-1`}>
             {item.children.map((child, index) => (
               <NavGroup key={index} item={child} level={level + 1} />
