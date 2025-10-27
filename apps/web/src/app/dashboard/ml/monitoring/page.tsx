@@ -21,6 +21,36 @@ import {
   AlertTriangle, Info, Eye, EyeOff, Filter, Calendar, RefreshCw
 } from 'lucide-react';
 
+// ============================================================================
+// DATE FORMATTING HELPERS (Consistent Server/Client Rendering)
+// ============================================================================
+
+const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+const formatDate = (dateString: string | number): string => {
+  const date = typeof dateString === 'number' ? new Date(dateString) : new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
 // Import types from part 1
 interface AnomalyDetection {
   id: number;
@@ -182,7 +212,7 @@ export const AnomalyMonitor: React.FC<AnomalyMonitorProps> = ({
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        {new Date(anomaly.timestamp).toLocaleString()}
+                        {formatDateTime(anomaly.timestamp)}
                       </div>
                     </div>
                     <div className="text-right">
@@ -313,7 +343,7 @@ export const AnomalyMonitor: React.FC<AnomalyMonitorProps> = ({
                 anomalies
                   .slice(-20)
                   .map(a => ({
-                    timestamp: new Date(a.timestamp).toLocaleTimeString(),
+                    timestamp: formatTime(a.timestamp),
                     score: a.anomaly_score,
                     resolved: a.resolved ? 0 : 1
                   }))
@@ -453,7 +483,7 @@ export const DriftMonitoring: React.FC<DriftMonitoringProps> = ({
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="created_at"
-                tickFormatter={(date) => new Date(date).toLocaleDateString()}
+                tickFormatter={(date) => formatDate(date)}
                 tick={{ fontSize: 11 }}
               />
               <YAxis />
@@ -464,7 +494,7 @@ export const DriftMonitoring: React.FC<DriftMonitoringProps> = ({
                     return (
                       <div className="bg-white p-3 shadow-lg rounded-lg border border-gray-200">
                         <p className="text-xs text-gray-600">
-                          {new Date(data.created_at).toLocaleDateString()}
+                          {formatDate(data.created_at)}
                         </p>
                         <p className="font-medium mt-1">
                           Score: {data.drift_score.toFixed(3)}
@@ -561,7 +591,7 @@ export const DriftMonitoring: React.FC<DriftMonitoringProps> = ({
                     onClick={() => setSelectedReport(report)}
                   >
                     <td className="px-4 py-3">
-                      {new Date(report.created_at).toLocaleString()}
+                      {formatDateTime(report.created_at)}
                     </td>
                     <td className="px-4 py-3 capitalize">{report.drift_type.replace('_', ' ')}</td>
                     <td className="px-4 py-3 font-medium">{report.drift_score.toFixed(3)}</td>
@@ -667,7 +697,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
               dataKey="timestamp"
               type="number"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(time) => new Date(time).toLocaleDateString()}
+              tickFormatter={(time) => formatDate(time)}
               tick={{ fontSize: 11 }}
             />
             <YAxis />
@@ -678,7 +708,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
                   return (
                     <div className="bg-white p-3 shadow-lg rounded-lg border border-gray-200">
                       <p className="text-xs text-gray-600">
-                        {new Date(data.timestamp).toLocaleDateString()}
+                        {formatDate(data.timestamp)}
                       </p>
                       <p className="font-medium mt-1">
                         {data.type === 'historical' ? 'Actual' : 'Forecast'}: {data.value.toFixed(2)}
@@ -782,7 +812,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
             {forecast.length} periods
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            {forecast.length > 0 ? new Date(forecast[forecast.length - 1].ds).toLocaleDateString() : 'N/A'}
+            {forecast.length > 0 ? formatDate(forecast[forecast.length - 1].ds) : 'N/A'}
           </div>
         </div>
       </div>
