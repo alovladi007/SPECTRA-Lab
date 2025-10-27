@@ -784,3 +784,48 @@ export const PredictionDashboard: React.FC<PredictionDashboardProps> = ({
 };
 
 // Continuing in next message due to length...
+
+// ============================================================================
+// MAIN PAGE COMPONENT (Default Export)
+// ============================================================================
+
+export default function VMModelsPage() {
+  const [models] = useState<MLModel[]>([
+    {
+      id: 1,
+      name: "Thickness Predictor",
+      version: "2.1.0",
+      type: "virtual_metrology",
+      algorithm: "random_forest",
+      status: "deployed",
+      metrics: {
+        train: { r2: 0.94, rmse: 2.3, mae: 1.8, mape: 3.2 },
+        test: { r2: 0.92, rmse: 2.5, mae: 1.9, mape: 3.5 },
+        cv: { r2_mean: 0.93, r2_std: 0.02 }
+      },
+      feature_importance: {
+        "rf_power": 0.25,
+        "pressure": 0.18,
+        "gas_flow": 0.15
+      },
+      prediction_count: 1284,
+      drift_detected: false
+    }
+  ]);
+
+  const handleTrainModel = async (config: any) => {
+    console.log('Training model with config:', config);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <ModelTrainingDashboard 
+          onTrainModel={handleTrainModel}
+          models={models}
+        />
+      </div>
+    </div>
+  );
+}
