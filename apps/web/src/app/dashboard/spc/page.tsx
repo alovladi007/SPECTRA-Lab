@@ -2,7 +2,7 @@
 
 /**
  * Session 13: SPC Hub - Complete UI Components
- * 
+ *
  * Interactive statistical process control dashboards including:
  * - Control chart visualization (X-bar/R, I-MR, EWMA, CUSUM)
  * - Real-time alert monitoring and triage
@@ -786,19 +786,6 @@ export const SPCDashboard: React.FC<SPCDashboardProps> = ({ results, data, onRef
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [selectedChart, setSelectedChart] = useState<string>('i');
 
-  // Early return if results is undefined
-  if (!results) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-gray-600">Loading SPC data...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Get primary chart limits
   const primaryLimits = results.control_limits[selectedChart] || results.control_limits['i'];
 
@@ -962,4 +949,253 @@ export const SPCDashboard: React.FC<SPCDashboardProps> = ({ results, data, onRef
 };
 
 
-export default SPCDashboard;
+
+// ============================================================================
+// Page Wrapper with Real-time SPC Data Generation
+// ============================================================================
+
+const SPCPage: React.FC = () => {
+  const [data, setData] = useState<number[]>([]);
+  const [results, setResults] = useState<SPCResults | null>(null);
+
+  useEffect(() => {
+    generateSPCData();
+  }, []);
+
+  const generateSPCData = () => {
+    // Generate 100 realistic process measurements
+    const baseValue = 100;
+    const processStd = 2;
+    const generatedData: number[] = [];
+
+    for (let i = 0; i < 100; i++) {
+      let value = baseValue + (Math.random() - 0.5) * processStd * 2;
+      
+      // Introduce realistic process variations
+      if (i >= 40 && i <= 45) value += 3; // Process shift
+      if (i === 70 || i === 71) value -= 4.5; // Outliers
+      
+      generatedData.push(value);
+    }
+
+    setData(generatedData);
+
+    // Calculate comprehensive statistics
+    const n = generatedData.length;
+    const mean = generatedData.reduce((a, b) => a + b) / n;
+    const variance = generatedData.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+    const std = Math.sqrt(variance);
+    const sorted = [...generatedData].sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[n - 1];
+    const median = sorted[Math.floor(n / 2)];
+
+    // Calculate moving ranges for I-MR chart
+    const movingRanges: number[] = [];
+    for (let i = 1; i < n; i++) {
+      movingRanges.push(Math.abs(generatedData[i] - generatedData[i - 1]));
+    }
+    const avgMR = movingRanges.reduce((a, b) => a + b) / movingRanges.length;
+
+    // Control limits for I chart
+    const ucl_i = mean + 2.66 * avgMR;
+    const lcl_i = Math.max(0, mean - 2.66 * avgMR);
+
+    // Control limits for MR chart  
+    const ucl_mr = 3.267 * avgMR;
+    const lcl_mr = 0;
+
+    // Generate alerts based on Western Electric rules
+    const alerts: Alert[] = [];
+    generatedData.forEach((value, idx) => {
+      if (value > ucl_i) {
+        alerts.push({
+          id: `alert_ucl_$${'{'}idx${'}'}`,
+          timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
+          rule: 'Rule 1: Point beyond UCL',
+          severity: 'critical',
+          message: `Measurement $${'{'}idx + 1${'}'} ($${'{'}value.toFixed(2)${'}'}) exceeds upper control limit ($${'{'}ucl_i.toFixed(2)${'}'})`,
+          value,
+          points_involved: [idx],
+          suggested_actions: [
+            'Stop process and investigate immediately',
+            'Check equipment calibration and settings',
+            'Verify measurement accuracy',
+            'Review recent process parameter changes'
+          ],
+          root_causes: [
+            'Equipment malfunction or drift',
+            'Raw material quality variation',
+            'Operator error or procedure deviation',
+            'Environmental condition change'
+          ]
+        });
+      }
+      if (value < lcl_i) {
+        alerts.push({
+          id: `alert_lcl_$${'{'}idx${'}'}`,
+          timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
+          rule: 'Rule 1: Point below LCL',
+          severity: 'high',
+          message: `Measurement $${'{'}idx + 1${'}'} ($${'{'}value.toFixed(2)${'}'}) below lower control limit ($${'{'}lcl_i.toFixed(2)${'}'})`,
+          value,
+          points_involved: [idx],
+          suggested_actions: [
+            'Investigate process conditions',
+            'Check sensor calibration',
+            'Review process setpoints'
+          ],
+          root_causes: [
+            'Process undercorrection',
+            'Measurement systematic error',
+            'Raw material deficiency'
+          ]
+        });
+      }
+    });
+
+    // Check for runs and trends (additional Western Electric rules)
+    let consecutiveSameSide = 0;
+    let lastSide: 'above' | 'below' | null = null;
+    
+    generatedData.forEach((value, idx) => {
+      const currentSide = value > mean ? 'above' : 'below';
+      if (currentSide === lastSide) {
+        consecutiveSameSide++;
+        if (consecutiveSameSide >= 8) {
+          alerts.push({
+            id: `alert_run_$${'{'}idx${'}'}`,
+            timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
+            rule: 'Rule 4: 8+ consecutive points on same side',
+            severity: 'medium',
+            message: `$${'{'}consecutiveSameSide${'}'} consecutive points $${'{'}currentSide${'}'} centerline ending at point $${'{'}idx + 1${'}'}`,
+            value,
+            points_involved: Array.from({length: consecutiveSameSide}, (_, i) => idx - i),
+            suggested_actions: [
+              'Check for process drift or shift',
+              'Verify process centering',
+              'Review control chart calculation'
+            ],
+            root_causes: [
+              'Process mean shift',
+              'Systematic bias in measurement',
+              'Control limits miscalculation'
+            ]
+          });
+        }
+      } else {
+        consecutiveSameSide = 1;
+        lastSide = currentSide;
+      }
+    });
+
+    // Calculate process capability
+    const usl = mean + 4 * std;
+    const lsl = mean - 4 * std;
+    const target = mean;
+
+    const cp = (usl - lsl) / (6 * std);
+    const cpk = Math.min((usl - mean) / (3 * std), (mean - lsl) / (3 * std));
+    const pp = cp; // For simplicity, using same as Cp
+    const ppk = cpk;
+    const sigmaLevel = 3 * cpk;
+    const dpmo = 1000000 * (1 - 0.9973); // Approximation
+
+    // Trend analysis
+    const xValues = Array.from({length: n}, (_, i) => i);
+    const sumX = xValues.reduce((a, b) => a + b);
+    const sumY = generatedData.reduce((a, b) => a + b);
+    const sumXY = xValues.reduce((sum, x, i) => sum + x * generatedData[i], 0);
+    const sumX2 = xValues.reduce((sum, x) => sum + x * x, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    const predictedValues = xValues.map(x => intercept + slope * x);
+
+    // Build comprehensive SPC results
+    const spcResults: SPCResults = {
+      timestamp: new Date().toISOString(),
+      chart_type: 'i_mr',
+      n_points: n,
+      statistics: {
+        mean,
+        std,
+        min,
+        max,
+        median,
+        range: max - min
+      },
+      control_limits: {
+        i: {
+          ucl: ucl_i,
+          lcl: lcl_i,
+          centerline: mean,
+          usl,
+          lsl,
+          sigma: std
+        },
+        mr: {
+          ucl: ucl_mr,
+          lcl: lcl_mr,
+          centerline: avgMR,
+          sigma: avgMR
+        }
+      },
+      alerts,
+      capability: {
+        cp,
+        cpk,
+        pp,
+        ppk,
+        sigma_level: sigmaLevel,
+        dpmo,
+        is_capable: cpk >= 1.33,
+        comments: [
+          cpk >= 1.67 ? 'Process is highly capable' : cpk >= 1.33 ? 'Process is capable' : 'Process needs improvement',
+          `Cpk = $${'{'}cpk.toFixed(2)${'}'} indicates $${'{'}cpk >= 1.33 ? 'good' : 'poor'${'}'} process centering`,
+          alerts.length > 0 ? `$${'{'}alerts.length${'}'} active alerts require attention` : 'No active alerts'
+        ]
+      },
+      trend: {
+        detected: Math.abs(slope) > 0.01,
+        direction: Math.abs(slope) < 0.01 ? 'stable' : slope > 0 ? 'increasing' : 'decreasing',
+        slope,
+        p_value: 0.05,
+        predicted_values: predictedValues,
+        changepoints: [40, 70]
+      },
+      status: alerts.some(a => a.severity === 'critical') ? 'out_of_control' :
+              alerts.length > 0 ? 'warning' : 'in_control',
+      recommendations: [
+        alerts.length === 0 ? 'Process is stable and in control' : `Address $${'{'}alerts.length${'}'} active alerts`,
+        cpk < 1.33 ? 'Consider process improvement initiatives to increase capability' : 'Maintain current process controls',
+        'Continue monitoring for sustained performance',
+        'Review control limits quarterly or after process changes'
+      ]
+    };
+
+    setResults(spcResults);
+  };
+
+  const handleRefresh = () => {
+    generateSPCData();
+  };
+
+  if (!results || data.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Generating SPC Analysis...</p>
+          <p className="text-sm text-gray-500 mt-2">Calculating control limits and process capability</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <SPCDashboard results={results} data={data} onRefresh={handleRefresh} />;
+};
+
+// Export the page wrapper instead of SPCDashboard directly
+export default SPCPage;
+
