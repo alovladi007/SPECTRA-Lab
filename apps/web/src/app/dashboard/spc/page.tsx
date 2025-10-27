@@ -1010,11 +1010,11 @@ const SPCPage: React.FC = () => {
     generatedData.forEach((value, idx) => {
       if (value > ucl_i) {
         alerts.push({
-          id: `alert_ucl_$${'{'}idx${'}'}`,
+          id: `alert_ucl_${idx}`,
           timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
           rule: 'Rule 1: Point beyond UCL',
           severity: 'critical',
-          message: `Measurement $${'{'}idx + 1${'}'} ($${'{'}value.toFixed(2)${'}'}) exceeds upper control limit ($${'{'}ucl_i.toFixed(2)${'}'})`,
+          message: `Measurement ${idx + 1} (${value.toFixed(2)}) exceeds upper control limit (${ucl_i.toFixed(2)})`,
           value,
           points_involved: [idx],
           suggested_actions: [
@@ -1033,11 +1033,11 @@ const SPCPage: React.FC = () => {
       }
       if (value < lcl_i) {
         alerts.push({
-          id: `alert_lcl_$${'{'}idx${'}'}`,
+          id: `alert_lcl_${idx}`,
           timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
           rule: 'Rule 1: Point below LCL',
           severity: 'high',
-          message: `Measurement $${'{'}idx + 1${'}'} ($${'{'}value.toFixed(2)${'}'}) below lower control limit ($${'{'}lcl_i.toFixed(2)${'}'})`,
+          message: `Measurement ${idx + 1} (${value.toFixed(2)}) below lower control limit (${lcl_i.toFixed(2)})`,
           value,
           points_involved: [idx],
           suggested_actions: [
@@ -1064,11 +1064,11 @@ const SPCPage: React.FC = () => {
         consecutiveSameSide++;
         if (consecutiveSameSide >= 8) {
           alerts.push({
-            id: `alert_run_$${'{'}idx${'}'}`,
+            id: `alert_run_${idx}`,
             timestamp: new Date(Date.now() - (n - idx) * 3600000).toISOString(),
             rule: 'Rule 4: 8+ consecutive points on same side',
             severity: 'medium',
-            message: `$${'{'}consecutiveSameSide${'}'} consecutive points $${'{'}currentSide${'}'} centerline ending at point $${'{'}idx + 1${'}'}`,
+            message: `${consecutiveSameSide} consecutive points ${currentSide} centerline ending at point ${idx + 1}`,
             value,
             points_involved: Array.from({length: consecutiveSameSide}, (_, i) => idx - i),
             suggested_actions: [
@@ -1152,8 +1152,8 @@ const SPCPage: React.FC = () => {
         is_capable: cpk >= 1.33,
         comments: [
           cpk >= 1.67 ? 'Process is highly capable' : cpk >= 1.33 ? 'Process is capable' : 'Process needs improvement',
-          `Cpk = $${'{'}cpk.toFixed(2)${'}'} indicates $${'{'}cpk >= 1.33 ? 'good' : 'poor'${'}'} process centering`,
-          alerts.length > 0 ? `$${'{'}alerts.length${'}'} active alerts require attention` : 'No active alerts'
+          `Cpk = ${cpk.toFixed(2)} indicates ${cpk >= 1.33 ? 'good' : 'poor'} process centering`,
+          alerts.length > 0 ? `${alerts.length} active alerts require attention` : 'No active alerts'
         ]
       },
       trend: {
@@ -1167,7 +1167,7 @@ const SPCPage: React.FC = () => {
       status: alerts.some(a => a.severity === 'critical') ? 'out_of_control' :
               alerts.length > 0 ? 'warning' : 'in_control',
       recommendations: [
-        alerts.length === 0 ? 'Process is stable and in control' : `Address $${'{'}alerts.length${'}'} active alerts`,
+        alerts.length === 0 ? 'Process is stable and in control' : `Address ${alerts.length} active alerts`,
         cpk < 1.33 ? 'Consider process improvement initiatives to increase capability' : 'Maintain current process controls',
         'Continue monitoring for sustained performance',
         'Review control limits quarterly or after process changes'
