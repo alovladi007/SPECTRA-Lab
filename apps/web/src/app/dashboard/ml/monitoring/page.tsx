@@ -790,8 +790,140 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
   );
 };
 
-export default {
-  AnomalyMonitor,
-  DriftMonitoring,
-  TimeSeriesForecast
-};
+// ============================================================================
+// MAIN PAGE COMPONENT (Default Export)
+// ============================================================================
+
+export default function MLMonitoringPage() {
+  // Mock data for anomaly detection
+  const [anomalies] = useState<AnomalyDetection[]>([
+    {
+      id: 1,
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      is_anomaly: true,
+      anomaly_score: 0.87,
+      anomaly_type: 'point',
+      features: {
+        temperature: 425.3,
+        pressure: 5.8,
+        rf_power: 850
+      },
+      feature_contributions: {
+        temperature: 0.45,
+        pressure: 0.32,
+        rf_power: 0.23
+      },
+      likely_causes: [
+        'Temperature exceeded control limits',
+        'Possible equipment drift detected'
+      ],
+      resolved: false
+    },
+    {
+      id: 2,
+      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      is_anomaly: true,
+      anomaly_score: 0.65,
+      anomaly_type: 'contextual',
+      features: {
+        gas_flow: 45.2,
+        chamber_pressure: 3.2
+      },
+      feature_contributions: {
+        gas_flow: 0.55,
+        chamber_pressure: 0.45
+      },
+      likely_causes: ['Gas flow pattern unusual for this process step'],
+      resolved: true
+    }
+  ]);
+
+  // Mock data for drift reports
+  const [driftReports] = useState<DriftReport[]>([
+    {
+      id: 1,
+      drift_type: 'covariate_shift',
+      drift_detected: true,
+      drift_score: 0.42,
+      feature_drifts: {
+        temperature: {
+          drift_score: 0.55,
+          tests: { ks: { statistic: 0.23, p_value: 0.001 } }
+        },
+        pressure: {
+          drift_score: 0.38,
+          tests: { ks: { statistic: 0.18, p_value: 0.02 } }
+        }
+      },
+      recommended_action: 'monitor',
+      created_at: new Date().toISOString()
+    }
+  ]);
+
+  // Mock data for time series forecast
+  const historicalData = Array.from({ length: 30 }, (_, i) => ({
+    timestamp: new Date(Date.now() - (30 - i) * 24 * 60 * 60 * 1000).toISOString(),
+    value: 100 + Math.sin(i / 5) * 20 + Math.random() * 10
+  }));
+
+  const forecast = Array.from({ length: 7 }, (_, i) => ({
+    ds: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
+    yhat: 105 + Math.sin((30 + i) / 5) * 20,
+    yhat_lower: 95 + Math.sin((30 + i) / 5) * 20,
+    yhat_upper: 115 + Math.sin((30 + i) / 5) * 20,
+    trend: 100 + (i * 2)
+  }));
+
+  const handleResolveAnomaly = async (id: number) => {
+    console.log('Resolving anomaly:', id);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  };
+
+  const handleInvestigateAnomaly = (id: number) => {
+    console.log('Investigating anomaly:', id);
+  };
+
+  const handleRefreshDrift = async () => {
+    console.log('Refreshing drift reports...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  };
+
+  const handleReforecast = async () => {
+    console.log('Running reforecast...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">ML Monitoring Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Real-time monitoring of anomaly detection, model drift, and time series forecasting
+          </p>
+        </div>
+
+        {/* Anomaly Detection Section */}
+        <AnomalyMonitor
+          anomalies={anomalies}
+          onResolve={handleResolveAnomaly}
+          onInvestigate={handleInvestigateAnomaly}
+        />
+
+        {/* Drift Monitoring Section */}
+        <DriftMonitoring
+          reports={driftReports}
+          onRefresh={handleRefreshDrift}
+        />
+
+        {/* Time Series Forecast Section */}
+        <TimeSeriesForecast
+          historicalData={historicalData}
+          forecast={forecast}
+          onReforecast={handleReforecast}
+        />
+      </div>
+    </div>
+  );
+}
