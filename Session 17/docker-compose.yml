@@ -1,0 +1,198 @@
+# docker-compose.yml
+# SPECTRA-Lab Platform - Session 17 Development Environment
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: spectra-db
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: spectra
+      POSTGRES_DB: spectra
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectra"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spectra-network
+
+  # Redis (for future sessions - caching, Celery)
+  redis:
+    image: redis:7-alpine
+    container_name: spectra-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - spectra-network
+
+  # Analysis Service (FastAPI)
+  analysis:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: spectra-analysis
+    environment:
+      - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_ISSUER=spectra-lab
+      - OIDC_ENABLED=false
+      - LOG_LEVEL=INFO
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/analysis:/app
+      - ./services/shared:/app/services/shared
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - spectra-network
+
+  # LIMS Service (FastAPI)
+  lims:
+    build:
+      context: ./services/lims
+      dockerfile: Dockerfile
+    container_name: spectra-lims
+    environment:
+      - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
+      - REDIS_URL=redis://redis:6379/1
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_ISSUER=spectra-lab
+      - OIDC_ENABLED=false
+      - LOG_LEVEL=INFO
+    ports:
+      - "8002:8002"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/lims:/app
+      - ./services/shared:/app/services/shared
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - spectra-network
+
+  # Web Frontend (Next.js)
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: spectra-web
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8002
+      - NEXT_PUBLIC_ANALYSIS_API_URL=http://localhost:8001
+      - NODE_ENV=development
+    ports:
+      - "3012:3012"
+    depends_on:
+      - analysis
+      - lims
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    networks:
+      - spectra-network
+
+  # MinIO (Object Storage - for Session 18)
+  minio:
+    image: minio/minio:latest
+    container_name: spectra-minio
+    environment:
+      - MINIO_ROOT_USER=spectra
+      - MINIO_ROOT_PASSWORD=spectra123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    networks:
+      - spectra-network
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: spectra-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - spectra-network
+
+  # Grafana (Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: spectra-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./infra/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - spectra-network
+
+networks:
+  spectra-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
