@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import {
   AlertCircle, CheckCircle, TrendingUp, TrendingDown,
-  AlertTriangle, Info, Eye, Filter, Calendar, RefreshCw
+  AlertTriangle, Info, Eye, EyeOff, Filter, Calendar, RefreshCw
 } from 'lucide-react';
 
 // Import types from part 1
@@ -695,7 +695,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
                       )}
                     </div>
                   );
-                }}
+                }
                 return null;
               }}
             />
