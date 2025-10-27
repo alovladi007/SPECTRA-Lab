@@ -207,16 +207,16 @@ const ImageViewer: React.FC<{
   );
 };
 
-// 3D Surface Viewer for AFM
-const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, number] }> = ({ heightMap, scanSize }) => {
+// 3D Surface Mesh Component (must be inside Canvas)
+const Surface3DMesh: React.FC<{ heightMap: number[][], scanSize: [number, number] }> = ({ heightMap, scanSize }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  
+
   useFrame(() => {
     if (meshRef.current) {
       meshRef.current.rotation.z += 0.001;
     }
   });
-  
+
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(
       scanSize[0] / 100,
@@ -224,7 +224,7 @@ const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, numb
       heightMap[0].length - 1,
       heightMap.length - 1
     );
-    
+
     const vertices = geo.attributes.position.array as Float32Array;
     for (let y = 0; y < heightMap.length; y++) {
       for (let x = 0; x < heightMap[0].length; x++) {
@@ -232,23 +232,30 @@ const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, numb
         vertices[idx + 2] = heightMap[y][x] / 100;
       }
     }
-    
+
     geo.computeVertexNormals();
     return geo;
   }, [heightMap, scanSize]);
-  
+
+  return (
+    <mesh ref={meshRef} geometry={geometry}>
+      <meshStandardMaterial
+        color="#8884d8"
+        roughness={0.4}
+        metalness={0.3}
+        wireframe={false}
+      />
+    </mesh>
+  );
+};
+
+// 3D Surface Viewer for AFM
+const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, number] }> = ({ heightMap, scanSize }) => {
   return (
     <Canvas camera={{ position: [0, -5, 5], fov: 50 }}>
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} />
-      <mesh ref={meshRef} geometry={geometry}>
-        <meshStandardMaterial 
-          color="#8884d8" 
-          roughness={0.4}
-          metalness={0.3}
-          wireframe={false}
-        />
-      </mesh>
+      <Surface3DMesh heightMap={heightMap} scanSize={scanSize} />
       <OrbitControls enableDamping />
       <Grid args={[10, 10]} />
     </Canvas>

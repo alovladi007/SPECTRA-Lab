@@ -44,11 +44,16 @@ export const TabsTrigger = ({ value, children }: { value: string; children: Reac
   return (
     <button
       type="button"
-      onClick={() => context?.onValueChange(value)}
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('Tab clicked:', value, 'Current:', context?.value)
+        context?.onValueChange(value)
+      }}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 w-full ${
         isActive
-          ? 'bg-white text-gray-900 shadow-sm'
-          : 'text-gray-600 hover:text-gray-900'
+          ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+          : 'text-gray-500 bg-transparent hover:text-gray-900 hover:bg-gray-50'
       }`}
     >
       {children}
