@@ -787,7 +787,7 @@ export const SPCDashboard: React.FC<SPCDashboardProps> = ({ results, data, onRef
   const [selectedChart, setSelectedChart] = useState<string>('i');
 
   // Get primary chart limits
-  const primaryLimits = results.control_limits[selectedChart] || results.control_limits['i'];
+  const primaryLimits = results?.control_limits?.[selectedChart] || results?.control_limits?.['i'];
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
