@@ -1,22 +1,68 @@
 'use client'
-import { Brain } from 'lucide-react'
 
-export default function Page() {
+import { useState } from 'react'
+import { TimeSeriesForecast } from '@/components/ml/Session14Components'
+
+// Generate mock historical data
+const generateHistoricalData = () => {
+  const baseValue = 100
+  const trend = 0.1
+  const seasonality = 5
+
+  return Array.from({ length: 60 }, (_, i) => {
+    const timestamp = new Date(Date.now() - (60 - i) * 24 * 60 * 60 * 1000).toISOString()
+    const trendValue = baseValue + i * trend
+    const seasonalValue = Math.sin((i * 2 * Math.PI) / 14) * seasonality
+    const noise = (Math.random() - 0.5) * 3
+    const value = trendValue + seasonalValue + noise
+
+    return {
+      timestamp,
+      value: parseFloat(value.toFixed(2))
+    }
+  })
+}
+
+// Generate mock forecast data
+const generateForecastData = () => {
+  const lastHistoricalValue = 100 + 60 * 0.1
+  const trend = 0.1
+  const seasonality = 5
+
+  return Array.from({ length: 30 }, (_, i) => {
+    const ds = new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString()
+    const trendValue = lastHistoricalValue + (i + 1) * trend
+    const seasonalValue = Math.sin(((60 + i + 1) * 2 * Math.PI) / 14) * seasonality
+    const yhat = trendValue + seasonalValue
+    const uncertainty = 3 + i * 0.1
+
+    return {
+      ds,
+      yhat: parseFloat(yhat.toFixed(2)),
+      yhat_lower: parseFloat((yhat - uncertainty).toFixed(2)),
+      yhat_upper: parseFloat((yhat + uncertainty).toFixed(2)),
+      trend: parseFloat(trendValue.toFixed(2))
+    }
+  })
+}
+
+export default function ForecastPage() {
+  const [historicalData] = useState(generateHistoricalData())
+  const [forecast, setForecast] = useState(generateForecastData())
+
+  const handleReforecast = async () => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Regenerate forecast with slight variations
+    setForecast(generateForecastData())
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
-          <Brain className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Machine Learning & Virtual Metrology</h1>
-          <p className="text-gray-600 mt-1">Advanced ML and predictive analytics</p>
-        </div>
-      </div>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">ML Module Active</h3>
-        <p className="text-gray-600">Machine learning tools ready</p>
-      </div>
-    </div>
+    <TimeSeriesForecast
+      historicalData={historicalData}
+      forecast={forecast}
+      onReforecast={handleReforecast}
+    />
   )
 }
