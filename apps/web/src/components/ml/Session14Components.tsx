@@ -101,7 +101,7 @@ interface DriftReport {
   created_at: string;
 }
 
-interface TimeSeriesForecast {
+interface TimeSeriesForecastData {
   ds: string;
   yhat: number;
   yhat_lower: number;
@@ -1328,7 +1328,7 @@ export const DriftMonitoring: React.FC<DriftMonitoringProps> = ({
 
 interface TimeSeriesForecastProps {
   historicalData: Array<{ timestamp: string; value: number }>;
-  forecast: TimeSeriesForecast[];
+  forecast: TimeSeriesForecastData[];
   onReforecast: () => Promise<void>;
 }
 
@@ -1436,7 +1436,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
                       )}
                     </div>
                   );
-                }}
+                }
                 return null;
               }}
             />
