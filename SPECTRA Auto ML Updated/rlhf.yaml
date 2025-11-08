@@ -1,0 +1,23 @@
+# RLHF (RM + PPO/DPO) config
+sft_model_path: outputs/sft
+rm_output_dir: outputs/rm
+ppo_output_dir: outputs/ppo_policy
+dpo_output_dir: outputs/dpo_policy
+
+prefs_train_file: data/prefs_train.jsonl
+prefs_val_file: data/prefs_val.jsonl
+
+ppo:
+  batch_size: 64
+  ppo_epochs: 4
+  learning_rate: 1.0e-6
+  target_kl: 0.1
+  gen_max_new_tokens: 256
+  temperature: 0.7
+  top_p: 0.9
+
+dpo:
+  beta: 0.1
+  lr: 2.0e-6
+  epochs: 1
+  per_device_train_batch_size: 2

@@ -1,0 +1,2 @@
+{"prompt": "How to tune a PID for temperature control on a CVD reactor?", "chosen": "Start with Ziegler\u2013Nichols...", "rejected": "Just set all to zero and hope", "meta": {"domain": "electronics"}}
+{"prompt": "Explain single-mode vs multi-mode in photonic waveguides.", "chosen": "Single-mode supports the fundamental...", "rejected": "They are the same thing", "meta": {"domain": "photonics"}}

@@ -1,0 +1,61 @@
+# AutoML Configuration for Semiconductor Manufacturing
+# Complete pipeline: Model Selection + Hyperparameter Tuning + NAS
+
+# Output settings
+output_dir: "automl_results"
+
+# Data configuration
+data:
+  path: null  # Set to CSV path for real data, null for synthetic
+  type: "synthetic_yield"  # or "synthetic_defect"
+  test_size: 0.2
+  val_size: 0.1
+
+# Pipeline stages (set to false to skip)
+run_model_selection: true
+run_hyperparameter_tuning: true
+run_nas: false  # Set to true to include Neural Architecture Search
+
+# 1. Auto Model Selection
+model_selection:
+  task_type: "regression"  # or "classification"
+  metric: "r2"  # r2, rmse, mae, accuracy
+  cv_folds: 5
+  time_budget_seconds: 300
+  prioritize_speed: false  # Set true for real-time inference requirements
+
+# 2. Hyperparameter Tuning
+hyperparameter_tuning:
+  metric: "r2"
+  n_trials: 50  # Number of optimization trials
+  cv_folds: 5
+  timeout_seconds: null  # null for no timeout
+  n_jobs: -1  # -1 uses all CPU cores
+  pruner: "median"  # median, hyperband, or null
+  multi_objective: false  # Set true for multi-objective optimization
+  metrics:  # For multi-objective optimization
+    - "r2"
+    - "inference_time"
+
+# 3. Neural Architecture Search (Optional)
+nas:
+  task_type: "regression"
+  search_strategy: "evolutionary"  # random, evolutionary
+  n_architectures: 20  # For random search
+  max_layers: 5
+  max_units_per_layer: 256
+  
+  # Evolutionary search specific
+  population_size: 10
+  n_generations: 5
+  mutation_rate: 0.3
+
+# Hardware configuration
+hardware:
+  device: "cuda"  # cuda or cpu
+  use_mixed_precision: false
+  
+# Logging
+logging:
+  level: "INFO"
+  save_logs: true

@@ -1,0 +1,36 @@
+# Quick-Start AutoML Configuration
+# Fast pipeline for rapid prototyping (Model Selection + Basic Tuning)
+
+output_dir: "automl_results"
+
+data:
+  path: null
+  type: "synthetic_yield"
+  test_size: 0.2
+  val_size: 0.1
+
+# Run only model selection and basic tuning (skip NAS for speed)
+run_model_selection: true
+run_hyperparameter_tuning: true
+run_nas: false
+
+model_selection:
+  task_type: "regression"
+  metric: "r2"
+  cv_folds: 3  # Reduced for speed
+  prioritize_speed: true
+
+hyperparameter_tuning:
+  metric: "r2"
+  n_trials: 20  # Reduced for speed
+  cv_folds: 3
+  timeout_seconds: 600  # 10 minute timeout
+  n_jobs: -1
+  multi_objective: false
+
+hardware:
+  device: "cpu"  # Use CPU for quick testing
+  
+logging:
+  level: "INFO"
+  save_logs: true
