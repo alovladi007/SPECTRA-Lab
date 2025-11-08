@@ -1,0 +1,38 @@
+# Neural Architecture Search Configuration
+# Focus on discovering optimal neural network architectures
+
+output_dir: "automl_results_nas"
+
+data:
+  path: null
+  type: "synthetic_yield"
+  test_size: 0.2
+  val_size: 0.1
+
+# Skip traditional ML, focus on neural architecture search
+run_model_selection: false
+run_hyperparameter_tuning: false
+run_nas: true
+
+# Specify model type for hyperparameter tuning (if running)
+model_type: "MLP"
+
+nas:
+  task_type: "regression"
+  search_strategy: "evolutionary"  # More sophisticated than random
+  n_architectures: 30  # More architectures to explore
+  max_layers: 6  # Allow deeper networks
+  max_units_per_layer: 512  # Allow wider layers
+  
+  # Evolutionary search parameters
+  population_size: 15
+  n_generations: 8
+  mutation_rate: 0.25
+
+hardware:
+  device: "cuda"  # GPU recommended for NAS
+  use_mixed_precision: true
+  
+logging:
+  level: "INFO"
+  save_logs: true

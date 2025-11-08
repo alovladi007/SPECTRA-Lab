@@ -1,0 +1,12 @@
+# Evaluation config
+policy_paths:
+  - outputs/sft
+  - outputs/ppo_policy
+reference_path: outputs/sft  # used as baseline in tournaments
+
+eval_prompts_file: scripts/sample_prompts.jsonl
+tournament_samples: 100
+
+safety:
+  adversarial_file: src/eval/adversarial_prompts.txt
+  max_new_tokens: 256

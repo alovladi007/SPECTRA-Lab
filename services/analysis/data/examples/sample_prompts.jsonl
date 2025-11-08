@@ -1,0 +1,3 @@
+{"prompt": "Design a low-noise transimpedance amplifier for a photodiode (1 nA to 1 uA). Provide component selection and noise budgeting."}
+{"prompt": "Explain how group index affects microring FSR and give a numeric example."}
+{"prompt": "Propose a pipeline to denoise and segment cardiac MRI slices with quality control and uncertainty estimates."}

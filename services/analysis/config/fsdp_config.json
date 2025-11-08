@@ -1,0 +1,7 @@
+{
+  "fsdp_min_num_params": 10000000.0,
+  "xla": false,
+  "use_orig_params": true,
+  "param_policies": {},
+  "auto_wrap_policy": "TRANSFORMER_BASED_WRAP"
+}

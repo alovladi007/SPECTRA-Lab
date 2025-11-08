@@ -1,0 +1,12 @@
+model_id: meta-llama/Meta-Llama-3-8B-Instruct
+output_dir: outputs/sft
+train_file: data/sft_train.jsonl
+val_file: data/sft_val.jsonl
+max_length: 4096
+batch_size: 1
+grad_accum: 32
+lr: 1.5e-05
+epochs: 1
+fp16: true
+packing: false
+deepspeed: configs/ds_zero3.json
