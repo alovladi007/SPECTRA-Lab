@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoML Platform - Semiconductor Manufacturing</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.5.0/dist/Recharts.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <script type="text/babel">
+        const { Upload, Play, Download, Settings, BarChart3, Zap, Brain, CheckCircle, Clock, AlertCircle, TrendingUp, Cpu, Database, Search } = lucide;
+
+        const LucideIcon = ({ icon: Icon, ...props }) => {
+            const ref = React.useRef(null);
+            
+            React.useEffect(() => {
+                if (ref.current) {
+                    lucide.createElement(Icon, props);
+                }
+            }, [Icon, props]);
+            
+            return React.createElement(Icon, { ref, ...props });
+        };
+
+        const AutoMLDashboard = () => {
+            const [activeTab, setActiveTab] = React.useState('configure');
+            const [pipeline, setPipeline] = React.useState({
+                runModelSelection: true,
+                runHyperparameterTuning: true,
+                runNAS: false,
+                dataType: 'synthetic_yield',
+                metric: 'r2',
+                nTrials: 50,
+                cvFolds: 5,
+                device: 'cpu'
+            });
+            const [isRunning, setIsRunning] = React.useState(false);
+            const [progress, setProgress] = React.useState(0);
+            const [currentStage, setCurrentStage] = React.useState('');
+            const [results, setResults] = React.useState(null);
+            const [uploadedFile, setUploadedFile] = React.useState(null);
+
+            const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+            const runPipeline = () => {
+                setIsRunning(true);
+                setProgress(0);
+                setActiveTab('monitor');
+                
+                const stages = [
+                    { name: 'Loading Data...', duration: 1000 },
+                    { name: 'Auto Model Selection...', duration: 3000 },
+                    { name: 'Hyperparameter Tuning...', duration: 4000 },
+                    { name: 'Final Evaluation...', duration: 2000 }
+                ];
+
+                let currentProgress = 0;
+                let stageIndex = 0;
+
+                const runStages = () => {
+                    if (stageIndex < stages.length) {
+                        setCurrentStage(stages[stageIndex].name);
+                        const increment = 100 / stages.length;
+                        
+                        setTimeout(() => {
+                            currentProgress += increment;
+                            setProgress(Math.min(currentProgress, 100));
+                            stageIndex++;
+                            runStages();
+                        }, stages[stageIndex].duration);
+                    } else {
+                        setIsRunning(false);
+                        setCurrentStage('Complete!');
+                        generateMockResults();
+                        setTimeout(() => setActiveTab('results'), 500);
+                    }
+                };
+
+                runStages();
+            };
+
+            const generateMockResults = () => {
+                const mockResults = {
+                    modelSelection: {
+                        bestModel: 'RandomForest',
+                        bestScore: 0.9234,
+                        allCandidates: [
+                            { name: 'RandomForest', cvScore: 0.9234, testScore: 0.9156, inferenceTime: 0.234, complexity: 50000 },
+                            { name: 'GradientBoosting', cvScore: 0.9187, testScore: 0.9201, inferenceTime: 0.456, complexity: 45000 },
+                            { name: 'MLP_Deep', cvScore: 0.9012, testScore: 0.8987, inferenceTime: 0.123, complexity: 120000 },
+                            { name: 'Ridge', cvScore: 0.8756, testScore: 0.8723, inferenceTime: 0.045, complexity: 100 },
+                            { name: 'SVR_RBF', cvScore: 0.8892, testScore: 0.8845, inferenceTime: 0.567, complexity: 15000 }
+                        ]
+                    },
+                    hyperparameterTuning: {
+                        modelType: 'RandomForest',
+                        bestCvScore: 0.9412,
+                        nTrials: 50,
+                        bestParams: {
+                            n_estimators: 350,
+                            max_depth: 15,
+                            min_samples_split: 3,
+                            max_features: 'sqrt',
+                            bootstrap: true
+                        },
+                        testMetrics: {
+                            r2: 0.9412,
+                            rmse: 2.34,
+                            mae: 1.87
+                        },
+                        paramImportance: {
+                            n_estimators: 0.35,
+                            max_depth: 0.28,
+                            min_samples_split: 0.18,
+                            max_features: 0.12,
+                            bootstrap: 0.07
+                        }
+                    },
+                    optimizationHistory: Array.from({ length: 50 }, (_, i) => ({
+                        trial: i + 1,
+                        score: 0.85 + Math.random() * 0.1 + (i * 0.001)
+                    })),
+                    timeMetrics: {
+                        totalTime: '28.5 minutes',
+                        modelSelectionTime: '5.2 minutes',
+                        hyperparameterTuningTime: '23.3 minutes'
+                    }
+                };
+                setResults(mockResults);
+            };
+
+            const ConfigureTab = () => (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                            <Settings size={28} />
+                            Pipeline Configuration
+                        </h2>
+                        
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <Database size={20} />
+                                Data Source
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={!uploadedFile}
+                                            onChange={() => setUploadedFile(null)}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>Use Synthetic Data</span>
+                                    </label>
+                                    <select
+                                        value={pipeline.dataType}
+                                        onChange={(e) => setPipeline({...pipeline, dataType: e.target.value})}
+                                        disabled={uploadedFile}
+                                        className="px-4 py-2 border rounded-lg"
+                                    >
+                                        <option value="synthetic_yield">Wafer Yield Prediction</option>
+                                        <option value="synthetic_defect">Defect Detection</option>
+                                    </select>
+                                </div>
+                                
+                                <div className="flex items-center gap-4">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            checked={!!uploadedFile}
+                                            onChange={() => {}}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>Upload Custom Data</span>
+                                    </label>
+                                    <label className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 flex items-center gap-2">
+                                        <Upload size={16} />
+                                        Choose CSV File
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            onChange={(e) => setUploadedFile(e.target.files[0])}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    {uploadedFile && (
+                                        <span className="text-sm text-gray-600">
+                                            Selected: {uploadedFile.name}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-3">Pipeline Stages</h3>
+                            <div className="space-y-3">
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        checked={pipeline.runModelSelection}
+                                        onChange={(e) => setPipeline({...pipeline, runModelSelection: e.target.checked})}
+                                        className="w-5 h-5"
+                                    />
+                                    <Search size={20} className="text-blue-600" />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Auto Model Selection</div>
+                                        <div className="text-sm text-gray-600">Evaluate 9+ algorithms automatically</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        checked={pipeline.runHyperparameterTuning}
+                                        onChange={(e) => setPipeline({...pipeline, runHyperparameterTuning: e.target.checked})}
+                                        className="w-5 h-5"
+                                    />
+                                    <Zap size={20} className="text-yellow-600" />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Hyperparameter Tuning</div>
+                                        <div className="text-sm text-gray-600">Bayesian optimization (50-100 trials)</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                                    <input
+                                        type="checkbox"
+                                        checked={pipeline.runNAS}
+                                        onChange={(e) => setPipeline({...pipeline, runNAS: e.target.checked})}
+                                        className="w-5 h-5"
+                                    />
+                                    <Brain size={20} className="text-purple-600" />
+                                    <div className="flex-1">
+                                        <div className="font-medium">Neural Architecture Search</div>
+                                        <div className="text-sm text-gray-600">Evolutionary architecture design</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-3">Advanced Settings</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Optimization Metric</label>
+                                    <select
+                                        value={pipeline.metric}
+                                        onChange={(e) => setPipeline({...pipeline, metric: e.target.value})}
+                                        className="w-full px-4 py-2 border rounded-lg"
+                                    >
+                                        <option value="r2">R² Score</option>
+                                        <option value="rmse">RMSE</option>
+                                        <option value="mae">MAE</option>
+                                        <option value="accuracy">Accuracy</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Hardware</label>
+                                    <select
+                                        value={pipeline.device}
+                                        onChange={(e) => setPipeline({...pipeline, device: e.target.value})}
+                                        className="w-full px-4 py-2 border rounded-lg"
+                                    >
+                                        <option value="cpu">CPU</option>
+                                        <option value="cuda">GPU (CUDA)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Optimization Trials: {pipeline.nTrials}
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="20"
+                                        max="200"
+                                        step="10"
+                                        value={pipeline.nTrials}
+                                        onChange={(e) => setPipeline({...pipeline, nTrials: parseInt(e.target.value)})}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        {pipeline.nTrials < 50 ? 'Quick' : pipeline.nTrials < 100 ? 'Balanced' : 'Thorough'}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Cross-Validation Folds: {pipeline.cvFolds}
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="3"
+                                        max="10"
+                                        value={pipeline.cvFolds}
+                                        onChange={(e) => setPipeline({...pipeline, cvFolds: parseInt(e.target.value)})}
+                                        className="w-full"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Clock className="text-blue-600" size={20} />
+                                <span className="font-semibold">Estimated Runtime</span>
+                            </div>
+                            <div className="text-2xl font-bold text-blue-600">
+                                {pipeline.nTrials < 50 ? '10-15' : pipeline.nTrials < 100 ? '20-30' : '30-60'} minutes
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={runPipeline}
+                        disabled={isRunning}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-semibold text-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                        <Play size={24} />
+                        Run AutoML Pipeline
+                    </button>
+                </div>
+            );
+
+            const MonitorTab = () => (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <h2 className="text-2xl font-bold mb-4">Pipeline Execution</h2>
+                        
+                        <div className="mb-6">
+                            <div className="flex justify-between mb-2">
+                                <span className="font-medium">{currentStage}</span>
+                                <span className="font-bold text-blue-600">{Math.round(progress)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                                <div
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all duration-500 rounded-full"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className={`p-4 rounded-lg ${progress > 25 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'} border-2`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    {progress > 25 ? <CheckCircle className="text-green-600" size={20} /> : <Clock className="text-gray-400" size={20} />}
+                                    <span className="font-semibold">Data Loading</span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    {progress > 25 ? '✓ Complete' : 'Waiting...'}
+                                </div>
+                            </div>
+
+                            <div className={`p-4 rounded-lg ${progress > 50 ? 'bg-green-50 border-green-200' : progress > 25 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'} border-2`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    {progress > 50 ? <CheckCircle className="text-green-600" size={20} /> : progress > 25 ? <Cpu className="text-blue-600 animate-pulse" size={20} /> : <Clock className="text-gray-400" size={20} />}
+                                    <span className="font-semibold">Model Selection</span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    {progress > 50 ? '✓ Complete' : progress > 25 ? 'Running...' : 'Waiting...'}
+                                </div>
+                            </div>
+
+                            <div className={`p-4 rounded-lg ${progress > 90 ? 'bg-green-50 border-green-200' : progress > 50 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'} border-2`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    {progress > 90 ? <CheckCircle className="text-green-600" size={20} /> : progress > 50 ? <Zap className="text-blue-600 animate-pulse" size={20} /> : <Clock className="text-gray-400" size={20} />}
+                                    <span className="font-semibold">Optimization</span>
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    {progress > 90 ? '✓ Complete' : progress > 50 ? 'Running...' : 'Waiting...'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {isRunning && progress > 25 && (
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
+                                <h3 className="font-semibold mb-4">Live Metrics</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="text-sm text-gray-600">Models Evaluated</div>
+                                        <div className="text-2xl font-bold text-blue-600">
+                                            {Math.min(Math.round((progress / 100) * 9), 9)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-600">Best Score So Far</div>
+                                        <div className="text-2xl font-bold text-green-600">
+                                            {(0.85 + (progress / 100) * 0.09).toFixed(4)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-600">Trials Completed</div>
+                                        <div className="text-2xl font-bold text-purple-600">
+                                            {Math.min(Math.round((progress / 100) * pipeline.nTrials), pipeline.nTrials)}/{pipeline.nTrials}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-gray-600">Time Elapsed</div>
+                                        <div className="text-2xl font-bold text-orange-600">
+                                            {Math.round((progress / 100) * 28)} min
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {progress === 100 && !isRunning && (
+                            <div className="bg-green-50 border-2 border-green-200 p-6 rounded-lg text-center">
+                                <CheckCircle className="text-green-600 mx-auto mb-3" size={48} />
+                                <h3 className="text-xl font-bold text-green-800 mb-2">Pipeline Complete!</h3>
+                                <p className="text-gray-600 mb-4">Your optimized model is ready to view.</p>
+                                <button
+                                    onClick={() => setActiveTab('results')}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                >
+                                    View Results
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+            const ResultsTab = () => {
+                if (!results) return null;
+
+                return (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-4 gap-4">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                                <div className="text-sm opacity-90 mb-1">Best Model</div>
+                                <div className="text-2xl font-bold">{results.modelSelection.bestModel}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                                <div className="text-sm opacity-90 mb-1">Test R² Score</div>
+                                <div className="text-2xl font-bold">{results.hyperparameterTuning.testMetrics.r2.toFixed(4)}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                                <div className="text-sm opacity-90 mb-1">RMSE</div>
+                                <div className="text-2xl font-bold">{results.hyperparameterTuning.testMetrics.rmse.toFixed(2)}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-lg">
+                                <div className="text-sm opacity-90 mb-1">Total Time</div>
+                                <div className="text-2xl font-bold">{results.timeMetrics.totalTime}</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <BarChart3 className="text-blue-600" />
+                                Model Performance Comparison
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={results.modelSelection.allCandidates}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="cvScore" fill="#3b82f6" name="CV Score" />
+                                    <Bar dataKey="testScore" fill="#10b981" name="Test Score" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <TrendingUp className="text-green-600" />
+                                Optimization Progress
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={results.optimizationHistory}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="trial" />
+                                    <YAxis domain={[0.85, 0.95]} />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} name="R² Score" />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">Best Hyperparameters</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(results.hyperparameterTuning.bestParams).map(([key, value]) => (
+                                        <div key={key} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                            <span className="font-medium text-gray-700">{key}</span>
+                                            <span className="font-bold text-blue-600">{String(value)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-xl font-bold mb-4">Parameter Importance</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(results.hyperparameterTuning.paramImportance)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([key, value]) => (
+                                            <div key={key}>
+                                                <div className="flex justify-between mb-1">
+                                                    <span className="text-sm font-medium">{key}</span>
+                                                    <span className="text-sm font-bold">{(value * 100).toFixed(1)}%</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                                                        style={{ width: `${value * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h3 className="text-xl font-bold mb-4">Detailed Model Comparison</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b-2 border-gray-200">
+                                            <th className="text-left p-3 font-semibold">Model</th>
+                                            <th className="text-right p-3 font-semibold">CV Score</th>
+                                            <th className="text-right p-3 font-semibold">Test Score</th>
+                                            <th className="text-right p-3 font-semibold">Inference Time</th>
+                                            <th className="text-right p-3 font-semibold">Complexity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {results.modelSelection.allCandidates.map((model, idx) => (
+                                            <tr key={idx} className={`border-b ${idx === 0 ? 'bg-blue-50 font-semibold' : ''}`}>
+                                                <td className="p-3">{model.name}</td>
+                                                <td className="text-right p-3">{model.cvScore.toFixed(4)}</td>
+                                                <td className="text-right p-3">{model.testScore.toFixed(4)}</td>
+                                                <td className="text-right p-3">{model.inferenceTime.toFixed(3)}s</td>
+                                                <td className="text-right p-3">{model.complexity.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg p-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Download size={24} />
+                                Download Results
+                            </h3>
+                            <div className="grid grid-cols-3 gap-4">
+                                <button className="bg-white/20 hover:bg-white/30 backdrop-blur px-4 py-3 rounded-lg font-medium transition-all">
+                                    Download Model (.pkl)
+                                </button>
+                                <button className="bg-white/20 hover:bg-white/30 backdrop-blur px-4 py-3 rounded-lg font-medium transition-all">
+                                    Download Report (PDF)
+                                </button>
+                                <button className="bg-white/20 hover:bg-white/30 backdrop-blur px-4 py-3 rounded-lg font-medium transition-all">
+                                    Export Configuration
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+                    <div className="bg-white shadow-md">
+                        <div className="max-w-7xl mx-auto px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-lg">
+                                        <Brain className="text-white" size={32} />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-gray-900">AutoML Platform</h1>
+                                        <p className="text-sm text-gray-600">Semiconductor Manufacturing Intelligence</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <div className="text-sm text-gray-600">Current Project</div>
+                                        <div className="font-semibold">Wafer Yield Optimization</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto px-6 py-8">
+                        <div className="flex gap-2 mb-6">
+                            <button
+                                onClick={() => setActiveTab('configure')}
+                                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                                    activeTab === 'configure'
+                                        ? 'bg-white text-blue-600 shadow-lg'
+                                        : 'bg-white/50 text-gray-600 hover:bg-white/80'
+                                }`}
+                            >
+                                <Settings size={20} />
+                                Configure
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('monitor')}
+                                disabled={!isRunning && !results}
+                                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                                    activeTab === 'monitor'
+                                        ? 'bg-white text-blue-600 shadow-lg'
+                                        : 'bg-white/50 text-gray-600 hover:bg-white/80 disabled:opacity-40 disabled:cursor-not-allowed'
+                                }`}
+                            >
+                                <Cpu size={20} />
+                                Monitor
+                                {isRunning && <span className="ml-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('results')}
+                                disabled={!results}
+                                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                                    activeTab === 'results'
+                                        ? 'bg-white text-blue-600 shadow-lg'
+                                        : 'bg-white/50 text-gray-600 hover:bg-white/80 disabled:opacity-40 disabled:cursor-not-allowed'
+                                }`}
+                            >
+                                <BarChart3 size={20} />
+                                Results
+                                {results && <CheckCircle size={16} className="text-green-500" />}
+                            </button>
+                        </div>
+
+                        {activeTab === 'configure' && <ConfigureTab />}
+                        {activeTab === 'monitor' && <MonitorTab />}
+                        {activeTab === 'results' && <ResultsTab />}
+                    </div>
+
+                    <div className="bg-white border-t mt-12">
+                        <div className="max-w-7xl mx-auto px-6 py-4">
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                                <div>AutoML Platform v1.0 - Semiconductor Manufacturing</div>
+                                <div className="flex items-center gap-4">
+                                    <span>🤖 Auto Model Selection</span>
+                                    <span>⚡ Hyperparameter Tuning</span>
+                                    <span>🧠 Neural Architecture Search</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AutoMLDashboard />);
+    </script>
+</body>
+</html>
