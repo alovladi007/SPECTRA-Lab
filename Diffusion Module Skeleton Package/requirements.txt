@@ -1,0 +1,57 @@
+# Core dependencies
+numpy>=1.24.0
+scipy>=1.11.0
+pandas>=2.0.0
+
+# Data validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# FastAPI
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# ML/VM (Session 8-9)
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+
+# SPC/Change-point (Session 7)
+ruptures>=1.1.8  # Change-point detection
+
+# Bayesian (Session 9 - optional)
+arviz>=0.16.0  # Bayesian viz
+# numpyro>=0.13.0  # Bayesian inference (optional)
+
+# ONNX export (Session 8)
+onnx>=1.15.0
+onnxruntime>=1.16.0
+
+# Optional performance
+numba>=0.58.0  # JIT compilation (optional)
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+
+# Type checking
+mypy>=1.6.0
+types-requests
+
+# Code quality
+ruff>=0.1.0
+
+# Notebooks (examples)
+jupyter>=1.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Database (from main platform)
+# sqlalchemy>=2.0.0
+# alembic>=1.12.0
+# psycopg2-binary>=2.9.0
+
+# Object storage (from main platform)
+# boto3>=1.28.0
+# minio>=7.1.0

@@ -1,0 +1,63 @@
+[project]
+name = "diffusion-oxidation"
+version = "1.0.0"
+description = "Diffusion & Thermal Oxidation Module for SemiconductorLab Platform"
+authors = [
+    {name = "SemiconductorLab Team"},
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "scikit-learn>=1.3.0",
+    "xgboost>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.6.0",
+    "ruff>=0.1.0",
+]
+notebooks = [
+    "jupyter>=1.0.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+]
+bayesian = [
+    "arviz>=0.16.0",
+    "numpyro>=0.13.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-v --cov=. --cov-report=term-missing"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
