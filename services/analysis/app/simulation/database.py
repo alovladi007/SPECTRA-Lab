@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Database connection URL from environment
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/diffusion"
+    "postgresql://postgres:postgres@localhost:5434/diffusion"
 )
 
 # Create engine with connection pooling
