@@ -35,7 +35,7 @@ import { OrbitControls, Grid, PerspectiveCamera } from '@react-three/drei';
 // Type definitions
 interface MicroscopyImage {
   id: string;
-  type: 'SEM' | 'TEM' | 'AFM';
+  type: 'SEM' | 'TEM' | 'AFM' | 'Optical';
   mode: string;
   data: number[][];
   metadata: {
@@ -264,7 +264,7 @@ const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, numb
 // Main Microscopy Interface Component
 const MicroscopyInterface: React.FC = () => {
   // State management
-  const [selectedTechnique, setSelectedTechnique] = useState<'SEM' | 'TEM' | 'AFM'>('SEM');
+  const [selectedTechnique, setSelectedTechnique] = useState<'SEM' | 'TEM' | 'AFM' | 'Optical'>('SEM');
   const [currentImage, setCurrentImage] = useState<MicroscopyImage | null>(null);
   const [isAcquiring, setIsAcquiring] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
@@ -296,6 +296,15 @@ const MicroscopyInterface: React.FC = () => {
     setPoint: 0.5,
     gain: [1, 1],
     resolution: 256
+  });
+
+  // Optical parameters
+  const [opticalParams, setOpticalParams] = useState({
+    magnification: 100,
+    illumination: 'brightfield',
+    aperture: 0.95,
+    filter: 'none',
+    exposureTime: 100
   });
 
   // Load demo data
@@ -440,9 +449,9 @@ const MicroscopyInterface: React.FC = () => {
               </div>
             </Button>
             <Button
-              variant="outline"
-              className="h-auto py-4 flex-col gap-2 opacity-50 cursor-not-allowed"
-              disabled
+              variant={selectedTechnique === 'Optical' ? 'default' : 'outline'}
+              onClick={() => setSelectedTechnique('Optical')}
+              className="h-auto py-4 flex-col gap-2"
             >
               <Lightbulb className="w-6 h-6" />
               <div>
@@ -635,6 +644,74 @@ const MicroscopyInterface: React.FC = () => {
                         className="w-full"
                       />
                       <span className="text-sm text-muted-foreground">{afmParams.scanRate} Hz</span>
+                    </div>
+                  </>
+                )}
+
+                {selectedTechnique === 'Optical' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Magnification</Label>
+                      <Select
+                        value={opticalParams.magnification.toString()}
+                        onValueChange={(v) => setOpticalParams({ ...opticalParams, magnification: parseInt(v) })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10×</SelectItem>
+                          <SelectItem value="20">20×</SelectItem>
+                          <SelectItem value="40">40×</SelectItem>
+                          <SelectItem value="100">100×</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Illumination Mode</Label>
+                      <Select
+                        value={opticalParams.illumination}
+                        onValueChange={(v) => setOpticalParams({ ...opticalParams, illumination: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="brightfield">Brightfield</SelectItem>
+                          <SelectItem value="darkfield">Darkfield</SelectItem>
+                          <SelectItem value="phase">Phase Contrast</SelectItem>
+                          <SelectItem value="dic">DIC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Numerical Aperture</Label>
+                      <input
+                        type="range"
+                        value={opticalParams.aperture}
+                        onChange={(e) => setOpticalParams({ ...opticalParams, aperture: parseFloat(e.target.value) })}
+                        min={0.1}
+                        max={1.4}
+                        step={0.05}
+                        className="w-full"
+                      />
+                      <span className="text-sm text-muted-foreground">{opticalParams.aperture.toFixed(2)}</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Exposure Time (ms)</Label>
+                      <input
+                        type="range"
+                        value={opticalParams.exposureTime}
+                        onChange={(e) => setOpticalParams({ ...opticalParams, exposureTime: parseFloat(e.target.value) })}
+                        min={10}
+                        max={1000}
+                        step={10}
+                        className="w-full"
+                      />
+                      <span className="text-sm text-muted-foreground">{opticalParams.exposureTime} ms</span>
                     </div>
                   </>
                 )}
@@ -869,6 +946,62 @@ const MicroscopyInterface: React.FC = () => {
                 </Card>
               </>
             )}
+
+            {selectedTechnique === 'Optical' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Image Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {currentImage ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <Card>
+                          <CardContent className="pt-4">
+                            <div className="text-2xl font-bold">
+                              {opticalParams.magnification}×
+                            </div>
+                            <p className="text-xs text-muted-foreground">Magnification</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-4">
+                            <div className="text-2xl font-bold">
+                              {opticalParams.illumination}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Mode</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-4">
+                            <div className="text-2xl font-bold">
+                              {opticalParams.aperture.toFixed(2)}
+                            </div>
+                            <p className="text-xs text-muted-foreground">NA</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Alert>
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertTitle>Image Acquired</AlertTitle>
+                        <AlertDescription>
+                          Optical microscopy image captured at {opticalParams.magnification}× magnification
+                        </AlertDescription>
+                      </Alert>
+                    </>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>No Image</AlertTitle>
+                      <AlertDescription>
+                        Acquire an image to begin analysis
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            )}
       </div>
 
       {/* Measurements Section */}
@@ -951,7 +1084,7 @@ const MicroscopyInterface: React.FC = () => {
                     <dt className="text-muted-foreground">Technique:</dt>
                     <dd>{selectedTechnique}</dd>
                     <dt className="text-muted-foreground">Date:</dt>
-                    <dd>{new Date().toLocaleDateString()}</dd>
+                    <dd>{new Date().toISOString().split('T')[0]}</dd>
                     <dt className="text-muted-foreground">Operator:</dt>
                     <dd>Lab User</dd>
                   </dl>
@@ -983,6 +1116,14 @@ const MicroscopyInterface: React.FC = () => {
                       <li>• Sq roughness: 3.2 nm</li>
                       <li>• Peak-to-valley: 15.7 nm</li>
                       <li>• Grain size: 45 ± 12 nm</li>
+                    </ul>
+                  )}
+                  {selectedTechnique === 'Optical' && (
+                    <ul className="space-y-1 text-sm">
+                      <li>• Magnification: {opticalParams.magnification}×</li>
+                      <li>• Illumination: {opticalParams.illumination}</li>
+                      <li>• Resolution: {(0.61 * 0.55 / opticalParams.aperture).toFixed(2)} μm</li>
+                      <li>• Field of view: {(2560 / opticalParams.magnification).toFixed(0)} μm</li>
                     </ul>
                   )}
                 </div>
