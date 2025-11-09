@@ -2,7 +2,7 @@
 Diffusion Simulation Module
 
 Provides dopant diffusion simulation capabilities:
-- fick_fd: Finite difference solver for Fick's second law of diffusion (Session 3)
+- fick_fd: Finite difference solver for Fick's second law of diffusion (Session 3) ✓
 - massoud: Advanced diffusion model considering clustering effects (Session 1)
 - erfc: Complementary error function based analytical solutions (Session 2) ✓
 - segregation: Dopant segregation at interfaces (Session 1)
@@ -19,6 +19,11 @@ from .erfc import (
     quick_profile_limited_source,
 )
 
+from .fick_fd import (
+    Fick1D,
+    quick_solve_constant_D,
+)
+
 __all__ = [
     # ERFC diffusion functions (Session 2)
     "diffusivity",
@@ -29,4 +34,7 @@ __all__ = [
     "two_step_diffusion",
     "quick_profile_constant_source",
     "quick_profile_limited_source",
+    # Fick FD solver (Session 3)
+    "Fick1D",
+    "quick_solve_constant_D",
 ]
