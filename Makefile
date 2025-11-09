@@ -81,10 +81,82 @@ docker-compose -f infra/docker/docker-compose.yml exec $(SERVICE) /bin/bash
 
 # ============================================================================
 
+# Session 17 Database Commands (PostgreSQL on port 5433)
+DB_URL := postgresql+psycopg://spectra:spectra@localhost:5433/spectra
+DOCKER_COMPOSE_FILE := docker-compose.yml
+
+db-up-session17: ## Start Session 17 PostgreSQL database (port 5433)
+	@echo "$(BLUE)Starting Session 17 PostgreSQL database...$(NC)"
+	/usr/local/bin/docker compose -f $(DOCKER_COMPOSE_FILE) up -d db
+	@sleep 3
+	@/usr/local/bin/docker exec spectra-db pg_isready -U spectra && echo "$(GREEN)✓ Database ready$(NC)" || echo "$(YELLOW)Database starting...$(NC)"
+
+db-down-session17: ## Stop Session 17 PostgreSQL database
+	@echo "$(YELLOW)Stopping Session 17 database...$(NC)"
+	/usr/local/bin/docker compose -f $(DOCKER_COMPOSE_FILE) down db
+	@echo "$(GREEN)✓ Database stopped$(NC)"
+
+db-status-session17: ## Check Session 17 database status
+	@echo "$(BLUE)Session 17 Database Status:$(NC)"
+	@/usr/local/bin/docker ps | grep spectra-db || echo "$(RED)Database not running$(NC)"
+	@echo ""
+	@/usr/local/bin/docker exec spectra-db pg_isready -U spectra 2>/dev/null && echo "$(GREEN)✓ Database is ready$(NC)" || echo "$(YELLOW)Database not accessible$(NC)"
+
+db-shell-session17: ## Open Session 17 PostgreSQL shell
+	@echo "$(BLUE)Opening Session 17 PostgreSQL shell...$(NC)"
+	/usr/local/bin/docker exec -it spectra-db psql -U spectra -d spectra
+
+db-reset-session17: ## Reset Session 17 database (WARNING: destroys all data)
+	@echo "$(RED)WARNING: This will destroy all data in Session 17 database!$(NC)"
+	@read -p "Are you sure? [y/N] " -n 1 -r; echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo "$(YELLOW)Resetting database...$(NC)"; \
+		/usr/local/bin/docker compose -f $(DOCKER_COMPOSE_FILE) down db; \
+		/usr/local/bin/docker compose -f $(DOCKER_COMPOSE_FILE) down -v; \
+		/usr/local/bin/docker compose -f $(DOCKER_COMPOSE_FILE) up -d db; \
+		sleep 3; \
+		echo "$(GREEN)✓ Database reset complete$(NC)"; \
+	fi
+
+migrate-session17: ## Apply Session 17 database migrations
+	@echo "$(BLUE)Applying Session 17 migrations...$(NC)"
+	@export DATABASE_URL=$(DB_URL) && cd services/shared && alembic upgrade head
+	@echo "$(GREEN)✓ Migrations applied$(NC)"
+
+migrate-status-session17: ## Show current Session 17 migration status
+	@echo "$(BLUE)Current Migration Status:$(NC)"
+	@export DATABASE_URL=$(DB_URL) && cd services/shared && alembic current
+
+migrate-rollback-session17: ## Rollback Session 17 migration
+	@echo "$(YELLOW)Rolling back one migration...$(NC)"
+	@export DATABASE_URL=$(DB_URL) && cd services/shared && alembic downgrade -1
+	@echo "$(GREEN)✓ Rollback complete$(NC)"
+
+seed-session17: ## Seed Session 17 demo data
+	@echo "$(BLUE)Seeding Session 17 demo data...$(NC)"
+	@export DATABASE_URL=$(DB_URL) && python3 seed_demo.py
+	@echo "$(GREEN)✓ Demo data seeded$(NC)"
+	@echo ""
+	@echo "$(BLUE)Demo Credentials:$(NC)"
+	@echo "  Admin:      admin@acme.com / admin123"
+	@echo "  PI:         pi@acme.com / pi123"
+	@echo "  Engineer:   engineer@acme.com / eng123"
+	@echo "  Technician: tech@acme.com / tech123"
+	@echo "  Viewer:     viewer@acme.com / view123"
+
+init-session17: db-up-session17 migrate-session17 seed-session17 ## Initialize Session 17 database (up, migrate, seed)
+	@echo ""
+	@echo "$(GREEN)✓ Session 17 database initialized successfully!$(NC)"
+
+test-session17: ## Run Session 17 unit tests
+	@echo "$(BLUE)Running Session 17 tests...$(NC)"
+	@export DATABASE_URL=$(DB_URL) && python3 -m pytest services/shared/tests/ -v
+
+# Original database commands
 migrate: ## Run database migrations
-@echo “$(BLUE)Running database migrations…$(NC)”
+@echo "$(BLUE)Running database migrations…$(NC)"
 docker-compose -f infra/docker/docker-compose.yml exec instruments alembic upgrade head
-@echo “$(GREEN)✓ Migrations applied$(NC)”
+@echo "$(GREEN)✓ Migrations applied$(NC)"
 
 migrate-rollback: ## Rollback last migration
 @echo “$(YELLOW)Rolling back last migration…$(NC)”

@@ -139,7 +139,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     password_hash = Column(String(255), nullable=True)  # NULL for OIDC users
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     last_login = Column(TIMESTAMP(timezone=True), nullable=True)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     organization = relationship("Organization", back_populates="users")
@@ -187,7 +187,7 @@ class Instrument(Base, UUIDMixin, TimestampMixin):
     interface = Column(String(100), nullable=False)  # "visa_usb", "visa_gpib", etc.
     location = Column(String(255), nullable=True)
     status = Column(Enum(InstrumentStatus), default=InstrumentStatus.OFFLINE, index=True)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     organization = relationship("Organization", back_populates="instruments")
@@ -230,7 +230,7 @@ class Material(Base, UUIDMixin, TimestampMixin):
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False, index=True)
     type = Column(String(100), nullable=False)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     samples = relationship("Sample", back_populates="material")
@@ -253,7 +253,7 @@ class Sample(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     lot_code = Column(String(255), nullable=True)
     barcode = Column(String(255), nullable=True, index=True)
     location = Column(String(255), nullable=True)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     organization = relationship("Organization", back_populates="samples")
@@ -294,7 +294,7 @@ class Device(Base, UUIDMixin, TimestampMixin):
     wafer_id = Column(UUID(as_uuid=True), ForeignKey("wafers.id", ondelete="CASCADE"), nullable=False, index=True)
     device_label = Column(String(255), nullable=False)
     coordinates = Column(JSONB, default={})  # {"row": 5, "col": 10}
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     wafer = relationship("Wafer", back_populates="devices")
@@ -550,7 +550,7 @@ class SPCPoint(Base, UUIDMixin):
     ts = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
     value = Column(Float, nullable=False)
     subgroup = Column(String(255), nullable=True)
-    metadata = Column(JSONB, default={})
+    extra_metadata = Column(JSONB, default={})
     
     # Relationships
     series = relationship("SPCSeries", back_populates="points")

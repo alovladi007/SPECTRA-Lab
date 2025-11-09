@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://spectra:spectra@localhost:5432/spectra"
+    "postgresql+psycopg://spectra:spectra@localhost:5433/spectra"
 )
 
 # Engine configuration

@@ -19,7 +19,7 @@ from services.shared.db.models import *  # noqa: F401, F403
 config = context.config
 
 # Override sqlalchemy.url with environment variable
-database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5432/spectra")
+database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging

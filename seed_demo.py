@@ -111,7 +111,7 @@ def seed_demo_data(session: Session):
         interface="visa_gpib",
         location="Room 101",
         status=InstrumentStatus.ONLINE,
-        metadata={"capabilities": ["iv_sweep", "cv_measurement"]}
+        extra_metadata={"capabilities": ["iv_sweep", "cv_measurement"]}
     )
     instruments.append(smu)
     session.add(smu)
@@ -127,7 +127,7 @@ def seed_demo_data(session: Session):
         interface="visa_usb",
         location="Room 102",
         status=InstrumentStatus.ONLINE,
-        metadata={"wavelength_range": [200, 1100]}
+        extra_metadata={"wavelength_range": [200, 1100]}
     )
     instruments.append(spec)
     session.add(spec)
@@ -143,7 +143,7 @@ def seed_demo_data(session: Session):
         interface="visa_tcpip",
         location="Room 103",
         status=InstrumentStatus.ONLINE,
-        metadata={"angle_range": [45, 90]}
+        extra_metadata={"angle_range": [45, 90]}
     )
     instruments.append(ellips)
     session.add(ellips)
@@ -159,7 +159,7 @@ def seed_demo_data(session: Session):
         interface="visa_tcpip",
         location="Room 104",
         status=InstrumentStatus.MAINTENANCE,
-        metadata={"theta_range": [10, 80]}
+        extra_metadata={"theta_range": [10, 80]}
     )
     instruments.append(xrd)
     session.add(xrd)
@@ -175,7 +175,7 @@ def seed_demo_data(session: Session):
         interface="tcp",
         location="Room 105",
         status=InstrumentStatus.ONLINE,
-        metadata={"resolution_nm": 1.0}
+        extra_metadata={"resolution_nm": 1.0}
     )
     instruments.append(sem)
     session.add(sem)
@@ -236,7 +236,7 @@ def seed_demo_data(session: Session):
         organization_id=demo_org.id,
         name="Silicon",
         type="semiconductor",
-        metadata={
+        extra_metadata={
             "band_gap_ev": 1.12,
             "lattice_constant_nm": 0.543,
             "refractive_index": 3.42
@@ -250,7 +250,7 @@ def seed_demo_data(session: Session):
         organization_id=demo_org.id,
         name="Gallium Arsenide",
         type="semiconductor",
-        metadata={
+        extra_metadata={
             "band_gap_ev": 1.42,
             "lattice_constant_nm": 0.565
         }
@@ -279,7 +279,7 @@ def seed_demo_data(session: Session):
             lot_code=f"LOT-2025-{i:03d}",
             barcode=f"BARCODE-{i:05d}",
             location="Storage Cabinet A",
-            metadata={"thickness_um": 525 + i * 5}
+            extra_metadata={"thickness_um": 525 + i * 5}
         )
         samples.append(sample)
         session.add(sample)
@@ -305,7 +305,7 @@ def seed_demo_data(session: Session):
                     wafer_id=wafer.id,
                     device_label=f"D{d+1}",
                     coordinates={"row": d, "col": d},
-                    metadata={"area_cm2": 0.1}
+                    extra_metadata={"area_cm2": 0.1}
                 )
                 session.add(device)
     
