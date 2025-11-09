@@ -307,6 +307,16 @@ const MicroscopyInterface: React.FC = () => {
     exposureTime: 100
   });
 
+  // Measurement tools state
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [measurements, setMeasurements] = useState<Array<{
+    id: number;
+    type: string;
+    value: number;
+    unit: string;
+    timestamp: Date;
+  }>>([]);
+
   // Load demo data
   const loadDemoData = useCallback(() => {
     // Generate synthetic image based on technique
@@ -356,6 +366,58 @@ const MicroscopyInterface: React.FC = () => {
     loadDemoData();
     setIsAcquiring(false);
   }, [loadDemoData]);
+
+  // Handle measurement tool selection
+  const handleToolSelect = useCallback((tool: string) => {
+    if (selectedTool === tool) {
+      // Deselect if clicking the same tool
+      setSelectedTool(null);
+    } else {
+      setSelectedTool(tool);
+      // Simulate taking a measurement
+      if (currentImage) {
+        const newMeasurement = {
+          id: Date.now(),
+          type: tool,
+          value: 0,
+          unit: '',
+          timestamp: new Date()
+        };
+
+        // Generate realistic values based on measurement type
+        switch (tool) {
+          case 'Distance':
+            newMeasurement.value = 50 + Math.random() * 200;
+            newMeasurement.unit = 'nm';
+            break;
+          case 'Area':
+            newMeasurement.value = 1000 + Math.random() * 5000;
+            newMeasurement.unit = 'nm²';
+            break;
+          case 'Rectangle ROI':
+            newMeasurement.value = 100 + Math.random() * 50;
+            newMeasurement.unit = 'nm';
+            break;
+          case 'Profile Line':
+            newMeasurement.value = 5 + Math.random() * 10;
+            newMeasurement.unit = 'nm';
+            break;
+          case 'Point Analysis':
+            newMeasurement.value = 150 + Math.random() * 100;
+            newMeasurement.unit = 'counts';
+            break;
+        }
+
+        setMeasurements(prev => [newMeasurement, ...prev].slice(0, 10)); // Keep last 10 measurements
+      }
+    }
+  }, [selectedTool, currentImage]);
+
+  // Clear all measurements
+  const clearMeasurements = useCallback(() => {
+    setMeasurements([]);
+    setSelectedTool(null);
+  }, []);
 
   // Particle size distribution chart data
   const particleSizeData = useMemo(() => {
@@ -1009,50 +1071,112 @@ const MicroscopyInterface: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Measurement Tools</CardTitle>
+                <CardDescription>
+                  {currentImage ? 'Click a tool to add measurement' : 'Acquire an image first'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant={selectedTool === 'Distance' ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => handleToolSelect('Distance')}
+                  disabled={!currentImage}
+                >
                   <Ruler className="w-4 h-4 mr-2" />
                   Distance
+                  {selectedTool === 'Distance' && <span className="ml-auto text-xs">Active</span>}
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant={selectedTool === 'Area' ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => handleToolSelect('Area')}
+                  disabled={!currentImage}
+                >
                   <Circle className="w-4 h-4 mr-2" />
                   Area
+                  {selectedTool === 'Area' && <span className="ml-auto text-xs">Active</span>}
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant={selectedTool === 'Rectangle ROI' ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => handleToolSelect('Rectangle ROI')}
+                  disabled={!currentImage}
+                >
                   <Square className="w-4 h-4 mr-2" />
                   Rectangle ROI
+                  {selectedTool === 'Rectangle ROI' && <span className="ml-auto text-xs">Active</span>}
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant={selectedTool === 'Profile Line' ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => handleToolSelect('Profile Line')}
+                  disabled={!currentImage}
+                >
                   <PenTool className="w-4 h-4 mr-2" />
                   Profile Line
+                  {selectedTool === 'Profile Line' && <span className="ml-auto text-xs">Active</span>}
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant={selectedTool === 'Point Analysis' ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => handleToolSelect('Point Analysis')}
+                  disabled={!currentImage}
+                >
                   <Crosshair className="w-4 h-4 mr-2" />
                   Point Analysis
+                  {selectedTool === 'Point Analysis' && <span className="ml-auto text-xs">Active</span>}
                 </Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Recent Measurements</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Recent Measurements</CardTitle>
+                    <CardDescription>{measurements.length} measurement{measurements.length !== 1 ? 's' : ''}</CardDescription>
+                  </div>
+                  {measurements.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={clearMeasurements}
+                    >
+                      <Eraser className="w-4 h-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between p-2 bg-muted rounded">
-                    <span>Distance 1</span>
-                    <span className="font-mono">125.3 nm</span>
+                {measurements.length > 0 ? (
+                  <div className="space-y-2 text-sm max-h-[300px] overflow-y-auto">
+                    {measurements.map((measurement) => (
+                      <div
+                        key={measurement.id}
+                        className="flex justify-between items-center p-2 bg-muted rounded hover:bg-muted/80 transition-colors"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">{measurement.type}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {measurement.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold">
+                          {measurement.value.toFixed(measurement.unit === 'nm²' || measurement.unit === 'counts' ? 0 : 1)} {measurement.unit}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between p-2 bg-muted rounded">
-                    <span>Area 1</span>
-                    <span className="font-mono">3,542 nm²</span>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Ruler className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">No measurements yet</p>
+                    <p className="text-xs mt-1">
+                      {currentImage ? 'Select a tool above to start measuring' : 'Acquire an image to begin'}
+                    </p>
                   </div>
-                  <div className="flex justify-between p-2 bg-muted rounded">
-                    <span>Profile Max</span>
-                    <span className="font-mono">8.7 nm</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
       </div>
