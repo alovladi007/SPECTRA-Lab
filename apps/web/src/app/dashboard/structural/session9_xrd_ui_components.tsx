@@ -136,9 +136,7 @@ const XRDInterface: React.FC = () => {
     });
     
     // Set demo peaks
-    const demoP
-
-eaks: Peak[] = siPeaks.map(p => ({
+    const demoPeaks: Peak[] = siPeaks.map(p => ({
       position: p.pos,
       dSpacing: 1.5418 / (2 * Math.sin(p.pos * Math.PI / 360)),
       intensity: p.int,
