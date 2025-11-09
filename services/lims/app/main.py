@@ -5,7 +5,8 @@ SPECTRA-Lab LIMS API - Main application.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import samples_router, recipes_router, sops_router, eln_router
+# For now, only import auth router (others require database setup)
+from .api.auth import router as auth_router
 
 app = FastAPI(
     title="SPECTRA-Lab LIMS API",
@@ -22,11 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(samples_router)
-app.include_router(recipes_router)
-app.include_router(sops_router)
-app.include_router(eln_router)
+# Include auth router
+app.include_router(auth_router)
+
+# Note: Other routers (samples, recipes, sops, eln) are temporarily disabled until database is initialized
+# They will be enabled once database connectivity is established
 
 
 @app.get("/")
@@ -36,11 +37,10 @@ async def root():
         "version": "1.0.0",
         "status": "running",
         "endpoints": [
-            "/api/samples",
-            "/api/recipes",
-            "/api/sops",
-            "/api/eln"
-        ]
+            "/api/auth/login",
+            "/health"
+        ],
+        "note": "Database-dependent endpoints temporarily disabled pending DB initialization"
     }
 
 
