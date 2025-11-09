@@ -48,9 +48,9 @@ const navigation: NavItem[] = [
       {
         name: 'Advanced Electrical',
         children: [
-          { name: 'DLTS', href: '/dashboard/electrical/advanced', badge: 'DLTS' },
-          { name: 'EBIC', href: '/dashboard/electrical/advanced', badge: 'EBIC' },
-          { name: 'PCD', href: '/dashboard/electrical/advanced', badge: 'PCD' },
+          { name: 'DLTS', href: '/dashboard/electrical/dlts' },
+          { name: 'EBIC', href: '/dashboard/electrical/ebic' },
+          { name: 'PCD', href: '/dashboard/electrical/pcd' },
         ]
       },
     ],
