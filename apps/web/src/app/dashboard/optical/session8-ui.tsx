@@ -22,7 +22,7 @@ import {
   Activity, AlertCircle, Download, FileText, Play, Save, Settings,
   Upload, Zap, Eye, Layers, TrendingUp, Thermometer, Gauge,
   Sparkles, Atom, Maximize, Target, Info, CheckCircle, Beaker,
-  ScanLine, Lightbulb, Microscope, Prism, FlaskConical
+  ScanLine, Lightbulb, Microscope, Triangle, FlaskConical
 } from 'lucide-react';
 
 // Type definitions
@@ -1179,7 +1179,7 @@ const RamanInterface: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Prism className="w-6 h-6" />
+                <Triangle className="w-6 h-6" />
                 Raman Spectroscopy
               </CardTitle>
               <CardDescription>
@@ -1408,7 +1408,7 @@ const Session8OpticalInterface: React.FC = () => {
                 variant={selectedMethod === 'raman' ? 'default' : 'outline'}
                 onClick={() => setSelectedMethod('raman')}
               >
-                <Prism className="w-4 h-4 mr-2" />
+                <Triangle className="w-4 h-4 mr-2" />
                 Raman
               </Button>
             </div>
