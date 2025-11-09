@@ -1,8 +1,8 @@
-# Diffusion Module - Complete Integration (Sessions 1, 2 & 3)
+# Diffusion Module - Complete Integration (Sessions 1-4)
 
 **Status:** ✅ Reorganized & Ready
 **Date:** November 8, 2025
-**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical)
+**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical) + 4 (Thermal Oxidation)
 
 ---
 
@@ -45,15 +45,26 @@ Diffusion_Module_Complete/
 │   ├── README_SESSION3.md              # Session 3 quick start
 │   └── SESSION3_SUMMARY.md             # Session 3 complete documentation
 │
+├── session4/                           # Session 4 original files (17 files)
+│   ├── deal_grove.py                   # ✅ Production Deal-Grove model (7.5 KB)
+│   ├── massoud.py                      # ✅ Thin-oxide corrections (9 KB)
+│   ├── service.py                      # ✅ FastAPI service
+│   ├── test_api.py                     # ✅ API tests
+│   ├── validation_demo.py              # ✅ Validation examples
+│   ├── 02_quickstart_oxidation.ipynb   # ✅ Jupyter tutorial
+│   ├── session4_validation.png         # ✅ Validation plots
+│   ├── README.md, QUICKSTART.md        # Documentation
+│   └── SESSION4_SUMMARY.md, SESSION4_COMPLETE.txt
+│
 ├── integrated/                         # ✅ ORGANIZED BY FUNCTION (USE THIS!)
 │   ├── README.md                       # Integration guide
 │   │
 │   ├── core/                           # Core diffusion & oxidation (5 files)
-│   │   ├── erfc.py                     # ✅ Session 2 - PRODUCTION (Analytical solutions)
-│   │   ├── fick_fd.py                  # ✅ Session 3 - PRODUCTION (Numerical solver)
-│   │   ├── massoud.py                  # ⚠️ Session 1 - Stub
-│   │   ├── segregation.py              # ⚠️ Session 1 - Stub
-│   │   └── deal_grove.py               # ⚠️ Session 1 - Stub
+│   │   ├── erfc.py                     # ✅ Session 2 - PRODUCTION (Analytical diffusion)
+│   │   ├── fick_fd.py                  # ✅ Session 3 - PRODUCTION (Numerical diffusion)
+│   │   ├── deal_grove.py               # ✅ Session 4 - PRODUCTION (Thermal oxidation)
+│   │   ├── massoud.py                  # ✅ Session 4 - PRODUCTION (Thin-oxide corrections)
+│   │   └── segregation.py              # ⚠️ Session 1 - Stub
 │   │
 │   ├── spc/                            # Statistical Process Control (4 files)
 │   │   ├── cusum.py                    # ⚠️ Session 1 - Stub
@@ -70,21 +81,25 @@ Diffusion_Module_Complete/
 │   │   ├── loaders.py                  # ⚠️ Session 1 - Stub
 │   │   └── writers.py                  # ⚠️ Session 1 - Stub
 │   │
-│   ├── api/                            # API endpoints (2 files)
+│   ├── api/                            # API endpoints (3 files)
 │   │   ├── routers.py                  # ⚠️ Session 1 - Stub
-│   │   └── schemas.py                  # ⚠️ Session 1 - Stub
+│   │   ├── schemas.py                  # ⚠️ Session 1 - Stub
+│   │   └── service.py                  # ✅ Session 4 - FastAPI oxidation service
 │   │
-│   ├── tests/                          # Test suites (5 files)
+│   ├── tests/                          # Test suites (6 files)
 │   │   ├── test_erfc.py                # ✅ Session 2 - 50+ tests, 95% coverage
 │   │   ├── test_fick_fd.py             # ✅ Session 3 - 35+ tests, 95% coverage
+│   │   ├── test_api.py                 # ✅ Session 4 - API tests
 │   │   ├── test_config.py              # Session 1
 │   │   ├── test_imports.py             # Session 1
 │   │   └── test_schemas.py             # Session 1
 │   │
-│   ├── examples/                       # Tutorials (3 files)
+│   ├── examples/                       # Tutorials (5 files)
 │   │   ├── 01_quickstart_diffusion.ipynb  # ✅ Session 2 - ERFC tutorial
 │   │   ├── 01_fick_solver_validation.ipynb  # ✅ Session 3 - Numerical solver
-│   │   └── example_session3_usage.py   # ✅ Session 3 - Usage examples
+│   │   ├── 02_quickstart_oxidation.ipynb   # ✅ Session 4 - Oxidation tutorial
+│   │   ├── example_session3_usage.py   # ✅ Session 3 - Usage examples
+│   │   └── validation_demo.py          # ✅ Session 4 - Oxidation validation
 │   │
 │   ├── config/                         # Configuration (6 files)
 │   │   ├── __init__.py
