@@ -1,0 +1,38 @@
+# Core Dependencies for Diffusion Module
+# Production requirements
+
+# Numerical Computing
+numpy==1.24.3
+scipy==1.10.1
+pandas==2.0.0
+
+# Plotting
+matplotlib==3.7.1
+
+# Machine Learning
+scikit-learn==1.2.2
+xgboost==1.7.5
+
+# API Framework
+fastapi==0.100.0
+uvicorn[standard]==0.23.0
+python-multipart==0.0.6
+pydantic==2.0.0
+
+# Data I/O
+pyarrow==12.0.0
+fastparquet==2023.4.0
+
+# Bayesian Calibration
+emcee==3.1.4
+
+# Performance
+numba==0.57.0
+
+# Dashboards
+streamlit==1.24.0
+plotly==5.14.1
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3

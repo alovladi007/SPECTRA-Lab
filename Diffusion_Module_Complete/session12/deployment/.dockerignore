@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/_build/
+*.md
+
+# Data
+*.csv
+*.parquet
+*.h5
+*.pkl
+*.joblib
+data/
+artifacts/
+logs/
+
+# Notebooks
+*.ipynb_checkpoints/
+notebooks/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Tests (exclude from production)
+tests/
+test_*.py
+*_test.py
+conftest.py
+
+# Session-specific (keep only integrated and session11)
+session1/
+session2/
+session3/
+session4/
+session5/
+session6/
+session7/
+session8/
+session9/
+session10/
+session12/
+
+# Documentation
+documentation/
+README.md

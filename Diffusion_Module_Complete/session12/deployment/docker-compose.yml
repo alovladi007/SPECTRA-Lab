@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Diffusion API Service
+  # ============================================================================
+  diffusion-api:
+    build:
+      context: ../..
+      dockerfile: session12/deployment/Dockerfile
+      target: application
+    container_name: diffusion-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/diffusion}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - diffusion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================================
+  # PostgreSQL Database (Optional - for audit trails)
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: diffusion-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=diffusion
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - diffusion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Redis Cache (Optional - for caching and job queues)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: diffusion-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - diffusion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ============================================================================
+  # MinIO Object Storage (Optional - for large simulation data)
+  # ============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: diffusion-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - diffusion-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================================================
+  # Streamlit Dashboards
+  # ============================================================================
+  diffusion-dashboard:
+    build:
+      context: ../..
+      dockerfile: session12/deployment/Dockerfile
+      target: application
+    container_name: diffusion-dashboard
+    ports:
+      - "8501:8501"
+      - "8502:8502"
+      - "8503:8503"
+    environment:
+      - API_URL=http://diffusion-api:8000
+    volumes:
+      - ../../session11/dashboards:/app/dashboards:ro
+    command: >
+      sh -c "streamlit run /app/dashboards/diffusion_viewer.py --server.port 8501 &
+             streamlit run /app/dashboards/oxide_planner.py --server.port 8502 &
+             streamlit run /app/dashboards/spc_monitor.py --server.port 8503 &
+             wait"
+    networks:
+      - diffusion-network
+    depends_on:
+      - diffusion-api
+    restart: unless-stopped
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  diffusion-network:
+    driver: bridge
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
