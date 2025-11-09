@@ -1437,4 +1437,7 @@ const Session8OpticalInterface: React.FC = () => {
   );
 };
 
+// Export individual interfaces
+export { EllipsometryInterface, PhotoluminescenceInterface, RamanInterface };
+
 export default Session8OpticalInterface;

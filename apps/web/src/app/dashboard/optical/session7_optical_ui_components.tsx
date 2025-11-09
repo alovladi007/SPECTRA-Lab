@@ -9,15 +9,21 @@ import {
   ResponsiveContainer, ReferenceLine, Area, AreaChart, Scatter,
   ScatterChart, Brush, ReferenceArea
 } from 'recharts';
-import {
-  Card, CardContent, CardHeader, CardTitle,
-  Button, Input, Label, Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue, Slider, Switch, Tabs, TabsContent,
-  TabsList, TabsTrigger, Alert, AlertDescription, Badge,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  Progress, Separator, ScrollArea
-} from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Activity, AlertCircle, Download, FileText, Filter, 
   Info, Loader2, Play, RefreshCw, Save, Search, Settings,
