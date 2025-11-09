@@ -1,5 +1,6 @@
-"""ML module for Virtual Metrology and Forecasting - Session 8."""
+"""ML module for Virtual Metrology, Forecasting, and Calibration - Sessions 8-9."""
 
+# Session 8: Virtual Metrology & Forecasting
 from .features import (
     FDCFeatureExtractor,
     ThermalProfileFeatures,
@@ -24,23 +25,46 @@ from .forecast import (
     forecast_with_drift_detection,
 )
 
+# Session 9: Calibration & Uncertainty Quantification
+from .calibrate import (
+    Prior,
+    DiffusionPriors,
+    OxidationPriors,
+    CalibrationResult,
+    LeastSquaresCalibrator,
+    BayesianCalibrator,
+    predict_with_uncertainty,
+    calibrate_diffusion_params,
+    calibrate_oxidation_params,
+)
+
 __all__ = [
-    # Features
+    # Session 8: Features
     "FDCFeatureExtractor",
     "ThermalProfileFeatures",
     "ProcessStabilityFeatures",
     "SpatialFeatures",
     "HistoricalFeatures",
     "extract_features_from_fdc_data",
-    # VM Models
+    # Session 8: VM Models
     "VirtualMetrologyModel",
     "ModelCard",
     "train_ensemble",
     "get_best_model",
-    # Forecasting
+    # Session 8: Forecasting
     "ARIMAForecaster",
     "TreeBasedForecaster",
     "NextRunForecaster",
     "ForecastResult",
     "forecast_with_drift_detection",
+    # Session 9: Calibration
+    "Prior",
+    "DiffusionPriors",
+    "OxidationPriors",
+    "CalibrationResult",
+    "LeastSquaresCalibrator",
+    "BayesianCalibrator",
+    "predict_with_uncertainty",
+    "calibrate_diffusion_params",
+    "calibrate_oxidation_params",
 ]
