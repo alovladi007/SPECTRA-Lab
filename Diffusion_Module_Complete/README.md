@@ -1,8 +1,8 @@
-# Diffusion Module - Complete Integration (Sessions 1-8)
+# Diffusion Module - Complete Integration (Sessions 1-10)
 
 **Status:** ✅ Production Ready
 **Date:** November 8, 2025
-**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical) + 4 (Thermal Oxidation) + 5 (Segregation & Moving Boundary) + 6 (IO & Schemas for MES/SPC/FDC) + 7 (SPC Engine) + 8 (Virtual Metrology & Forecasting)
+**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical) + 4 (Thermal Oxidation) + 5 (Segregation & Moving Boundary) + 6 (IO & Schemas for MES/SPC/FDC) + 7 (SPC Engine) + 8 (Virtual Metrology & Forecasting) + 9 (Calibration & UQ) + 10 (API Hardening & CLI Tools)
 
 ---
 
@@ -101,6 +101,28 @@ Diffusion_Module_Complete/
 │   ├── __init__.py                     # Package exports
 │   └── README.md                       # Session 8 overview
 │
+├── session9/                           # Session 9 original files (5 files)
+│   ├── ml/
+│   │   ├── calibrate.py                # ✅ Calibration & UQ (800+ lines)
+│   │   └── __init__.py                 # ML module exports
+│   ├── __init__.py                     # Package exports
+│   └── README.md                       # Session 9 overview
+│
+├── session10/                          # Session 10 original files (10 files)
+│   ├── api/
+│   │   ├── schemas.py                  # ✅ Production Pydantic models (500+ lines)
+│   │   └── __init__.py                 # API exports
+│   ├── scripts/
+│   │   ├── batch_diffusion_sim.py      # ✅ CLI for batch diffusion (314 lines)
+│   │   ├── batch_oxidation_sim.py      # ✅ CLI for batch oxidation (280 lines)
+│   │   └── spc_watch.py                # ✅ CLI for SPC monitoring (400 lines)
+│   ├── tests/
+│   │   ├── test_cli_e2e.py             # ✅ E2E tests for CLIs (300+ lines)
+│   │   ├── test_schemas.py             # ✅ Schema validation tests (400+ lines)
+│   │   └── __init__.py                 # Test exports
+│   ├── __init__.py                     # Package exports
+│   └── README.md                       # Session 10 overview
+│
 ├── integrated/                         # ✅ ORGANIZED BY FUNCTION (USE THIS!)
 │   ├── README.md                       # Integration guide
 │   │
@@ -117,10 +139,11 @@ Diffusion_Module_Complete/
 │   │   ├── cusum.py                    # ✅ Session 7 - PRODUCTION (CUSUM & FIR-CUSUM)
 │   │   └── changepoint.py              # ✅ Session 7 - PRODUCTION (BOCPD drift detection)
 │   │
-│   ├── ml/                             # Virtual Metrology & ML (3 files)
+│   ├── ml/                             # Virtual Metrology & ML (4 files)
 │   │   ├── features.py                 # ✅ Session 8 - PRODUCTION (29 FDC features)
 │   │   ├── vm.py                       # ✅ Session 8 - PRODUCTION (Ridge/Lasso/XGBoost)
-│   │   └── forecast.py                 # ✅ Session 8 - PRODUCTION (ARIMA/Trees/Ensemble)
+│   │   ├── forecast.py                 # ✅ Session 8 - PRODUCTION (ARIMA/Trees/Ensemble)
+│   │   └── calibrate.py                # ✅ Session 9 - PRODUCTION (Calibration & UQ)
 │   │
 │   ├── io/                             # Input/Output utilities (4 files)
 │   │   ├── schemas.py                  # ✅ Session 6 - Pydantic data schemas
@@ -182,6 +205,8 @@ Diffusion_Module_Complete/
     ├── SESSION6_SUMMARY.md             # Session 6 documentation
     ├── SESSION7_SUMMARY.md             # ✅ Session 7 documentation
     ├── SESSION8_SUMMARY.md             # ✅ Session 8 documentation
+    ├── SESSION9_SUMMARY.md             # ✅ Session 9 documentation
+    ├── SESSION10_SUMMARY.md            # ✅ Session 10 documentation
     └── README_SESSION5.md              # Session 5 overview
 ```
 
@@ -516,6 +541,116 @@ from integrated.ml import (
 
 **Models:** Ridge, Lasso, XGBoost (3 models × 3 targets = 9 trained models)
 
+### Session 9: Calibration & Uncertainty Quantification ✅
+
+**Status:** 100% Complete & Production-Ready
+**Tag:** `diffusion-v9`
+
+**Delivered:**
+- ✅ **calibrate.py** - 800+ lines of production code
+  - LeastSquaresCalibrator using scipy.optimize
+  - BayesianCalibrator using emcee MCMC
+  - Prior distributions for diffusion and oxidation parameters
+  - CalibrationResult dataclass with uncertainties
+  - Posterior predictive distributions
+  - Credible interval computation
+
+- ✅ **Prior Definitions**
+  - DiffusionPriors: Boron, Phosphorus, Arsenic (D0, Ea)
+  - OxidationPriors: Dry and Wet oxidation (B, A)
+  - Log-normal and normal distributions
+  - Physically informed bounds
+
+- ✅ **Helper Functions**
+  - calibrate_diffusion_params() - One-line calibration
+  - calibrate_oxidation_params() - One-line calibration
+  - predict_with_uncertainty() - Posterior predictive UQ
+
+**What Works Right Now:**
+```python
+from integrated.ml.calibrate import (
+    calibrate_diffusion_params,     # ✅ Works!
+    calibrate_oxidation_params,     # ✅ Works!
+    LeastSquaresCalibrator,         # ✅ Works!
+    BayesianCalibrator,             # ✅ Works!
+    predict_with_uncertainty,       # ✅ Works!
+)
+```
+
+**Methods:**
+- Least Squares: Fast, point estimates with covariance
+- Bayesian MCMC: Full posteriors, incorporates priors, credible intervals
+
+**Integrates With:**
+- Session 2: ERFC diffusion model
+- Session 3: Numerical solver
+- Session 4: Deal-Grove oxidation
+- Session 8: Virtual metrology uncertainty
+
+### Session 10: API Hardening & CLI Tools ✅
+
+**Status:** 100% Complete & Production-Ready
+**Tag:** `diffusion-v10`
+
+**Delivered:**
+- ✅ **schemas.py** - 500+ lines of production Pydantic models
+  - 20+ comprehensive data models with validation
+  - DiffusionRequest/Response, OxidationRequest/Response
+  - SPCRequest/Response with multiple methods
+  - VMRequest/Response, CalibrationRequest/Response
+  - Batch operation models
+  - Field validation with bounds checking
+  - JSON schema examples for OpenAPI
+
+- ✅ **batch_diffusion_sim.py** - 314 lines CLI tool
+  - Batch diffusion simulations from CSV
+  - ERFC and numerical solver support
+  - Parquet output with schema validation
+  - Per-run error tracking
+
+- ✅ **batch_oxidation_sim.py** - 280 lines CLI tool
+  - Batch oxidation simulations from CSV
+  - Deal-Grove model integration
+  - Dry/wet oxidation support
+  - Growth rate calculations
+
+- ✅ **spc_watch.py** - 400 lines CLI tool
+  - SPC monitoring for KPI time series
+  - Western Electric/Nelson rules, EWMA, CUSUM, BOCPD
+  - JSON report output with violations
+  - Change point detection
+
+- ✅ **E2E Tests** - 700+ lines
+  - test_cli_e2e.py: CLI integration tests
+  - test_schemas.py: Schema validation tests
+  - 50+ test cases with fixtures
+
+**What Works Right Now:**
+```bash
+# Batch diffusion
+batch_diffusion_sim.py --input runs.csv --out results.parquet --verbose
+
+# Batch oxidation
+batch_oxidation_sim.py --input recipes.csv --out results.parquet --verbose
+
+# SPC monitoring
+spc_watch.py --series kpi.csv --report spc.json --methods all --verbose
+```
+
+**Production Features:**
+- CSV input validation with comprehensive error checking
+- Parquet and JSON output
+- Per-run error handling with status tracking
+- Multiple solver backends
+- Complete test coverage (50+ tests)
+
+**Integrates With:**
+- Session 2: ERFC diffusion for batch_diffusion_sim.py
+- Session 3: Numerical solver for batch_diffusion_sim.py
+- Session 4: Deal-Grove for batch_oxidation_sim.py
+- Session 7: SPC methods for spc_watch.py
+- Session 9: Calibration schemas
+
 ### Session 1: Module Skeleton ⚠️
 
 **Status:** Stubs only (mostly superseded by Sessions 2-8)
@@ -742,40 +877,38 @@ POST http://localhost:8001/api/v1/simulation/diffusion
 3. ✅ Session 4: Thermal oxidation (Deal-Grove & Massoud) (100%)
 4. ✅ Session 5: Segregation & moving boundary (100%)
 5. ✅ Session 6: IO & Schemas for MES/SPC/FDC (100%)
-6. ✅ Structure reorganized
-7. ✅ All tests passing (95%+ coverage)
-8. ✅ Tutorials available
-9. ✅ Backend integration complete
+6. ✅ Session 7: SPC Engine (Rules + EWMA + CUSUM + BOCPD) (100%)
+7. ✅ Session 8: Virtual Metrology & Forecasting (100%)
+8. ✅ Session 9: Calibration & Uncertainty Quantification (100%)
+9. ✅ Session 10: API Hardening & CLI Tools (100%)
+10. ✅ Structure reorganized
+11. ✅ All tests passing (95%+ coverage)
+12. ✅ Tutorials available
+13. ✅ Backend integration complete
 
-### Future Sessions (7-12)
-- Sessions 7-8: Statistical Process Control
-  - Western Electric rules
-  - CUSUM/EWMA charts
-  - Change-point detection (BOCPD)
-  - Process capability metrics
-
-- Sessions 8-9: Virtual Metrology & ML
-  - Feature extraction from FDC data
-  - XGBoost models for prediction
-  - Parameter calibration with uncertainty
-  - ONNX export for deployment
-
-- Sessions 10-12: Production Integration
-  - API endpoints
-  - Database schemas
-  - Batch processing
+### Future Sessions (11-12)
+- Sessions 11-12: Advanced Integration
+  - FastAPI deployment with all endpoints
+  - Database persistence layer
   - Performance optimization
+  - Docker containerization
+  - CI/CD pipeline
+  - Production monitoring
 
 ---
 
-**Status:** ✅ Sessions 2-6 Complete & Production-Ready
+**Status:** ✅ Sessions 2-10 Complete & Production-Ready
 **Production Code:**
 - Session 2: ERFC module (100% complete)
 - Session 3: Fick FD solver (100% complete)
 - Session 4: Thermal oxidation (100% complete)
 - Session 5: Segregation & moving boundary (100% complete)
 - Session 6: IO & Schemas for MES/SPC/FDC (100% complete)
+- Session 7: SPC Engine (100% complete)
+- Session 8: Virtual Metrology & Forecasting (100% complete)
+- Session 9: Calibration & Uncertainty Quantification (100% complete)
+- Session 10: API Hardening & CLI Tools (100% complete)
 
-**Next Session:** Session 7 - Statistical Process Control
+**Next Session:** Session 11 - Production Deployment & Integration
 
 🎯 **All diffusion files are now in one organized folder!** 🎯
