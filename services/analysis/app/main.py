@@ -4,6 +4,11 @@ Analysis Service - Port 8001
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import sys
+from pathlib import Path
+
+# Add services/shared to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared"))
 
 # Import ML routers
 from app.api.v1 import automl_router, explainability_router, ab_testing_router, monitoring_router
@@ -12,7 +17,12 @@ from app.api.v1.simulation import simulation_router
 # Import runs and calibrations routers
 from app.api import runs_router, calibrations_router
 
+# Import database initialization
+from sqlalchemy import create_engine
+import os
+
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="SPECTRA-Lab Analysis API",
@@ -27,6 +37,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Database initialization on startup
+@app.on_event("startup")
+async def init_database():
+    """Create all database tables on startup"""
+    try:
+        from services.shared.db.base import Base
+        from services.shared.db import models  # Import all models
+
+        # Use environment variable or default for Docker access
+        database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
+        logger.info(f"Initializing database with URL: {database_url.replace(database_url.split('@')[0].split('//')[1], '***')}")
+
+        engine = create_engine(database_url)
+        Base.metadata.create_all(bind=engine)
+
+        table_count = len(Base.metadata.tables)
+        logger.info(f"✓ Database initialized successfully! Created/verified {table_count} tables")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        # Don't crash the app - allow it to start even if DB init fails
+        logger.warning("Application starting without database initialization")
 
 # Register ML routers
 app.include_router(automl_router, prefix="/api/v1")
