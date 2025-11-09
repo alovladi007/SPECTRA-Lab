@@ -1,0 +1,11 @@
+run_id,lot_id,wafer_id,process_type,recipe_name,equipment_id,start_time,end_time,temperature,temperature_unit,time,time_unit,ambient,pressure,pressure_unit,flow_rate,flow_rate_unit,dopant_type,target_concentration,concentration_unit,target_junction_depth,depth_unit,target_sheet_resistance,status,measured_junction_depth,measured_sheet_resistance
+RUN_001,LOT_01,W01,drive_in,RECIPE_Sb_DRIVE_IN,FURNACE_01,2025-11-01 00:00:00,2025-11-01 01:45:00,1064,C,105,min,N2,0.986,atm,1481,sccm,Sb,4.65e+19,cm^-3,257,nm,55,completed,279,155
+RUN_002,LOT_01,W02,drive_in,RECIPE_P_DRIVE_IN,FURNACE_02,2025-11-01 02:00:00,2025-11-01 03:04:00,1069,C,64,min,wet_O2,0.917,atm,4099,sccm,P,4.61e+19,cm^-3,763,nm,139,completed,314,120
+RUN_003,LOT_01,W03,predeposition,RECIPE_P_PREDEPOSITION,FURNACE_03,2025-11-01 04:00:00,2025-11-01 04:55:00,903,C,55,min,N2,0.933,atm,1537,sccm,P,4.99e+19,cm^-3,515,nm,116,completed,425,55
+RUN_004,LOT_02,W04,drive_in,RECIPE_B_DRIVE_IN,FURNACE_01,2025-11-01 06:00:00,2025-11-01 07:56:00,1060,C,116,min,dry_O2,0.91,atm,3828,sccm,B,2.58e+19,cm^-3,754,nm,162,completed,482,151
+RUN_005,LOT_02,W05,two_step,RECIPE_B_TWO_STEP,FURNACE_02,2025-11-01 08:00:00,2025-11-01 08:19:00,999,C,19,min,wet_O2,0.906,atm,3802,sccm,B,4.63e+19,cm^-3,584,nm,72,completed,423,169
+RUN_006,LOT_02,W06,two_step,RECIPE_As_TWO_STEP,FURNACE_03,2025-11-01 10:00:00,2025-11-01 11:43:00,949,C,103,min,N2,0.938,atm,2834,sccm,As,8.68e+19,cm^-3,652,nm,54,completed,394,130
+RUN_007,LOT_03,W07,drive_in,RECIPE_P_DRIVE_IN,FURNACE_01,2025-11-01 12:00:00,2025-11-01 12:28:00,999,C,28,min,N2,0.911,atm,2211,sccm,P,7.02e+19,cm^-3,318,nm,76,completed,296,51
+RUN_008,LOT_03,W08,drive_in,RECIPE_Sb_DRIVE_IN,FURNACE_02,2025-11-01 14:00:00,2025-11-01 14:26:00,988,C,26,min,N2,0.945,atm,2293,sccm,Sb,2.72e+19,cm^-3,354,nm,136,completed,727,164
+RUN_009,LOT_03,W09,drive_in,RECIPE_P_DRIVE_IN,FURNACE_03,2025-11-01 16:00:00,2025-11-01 16:19:00,930,C,19,min,wet_O2,1.081,atm,1487,sccm,P,5.34e+19,cm^-3,354,nm,162,completed,350,95
+RUN_010,LOT_04,W10,drive_in,RECIPE_P_DRIVE_IN,FURNACE_01,2025-11-01 18:00:00,2025-11-01 18:42:00,1051,C,42,min,dry_O2,1.055,atm,3032,sccm,P,3.95e+19,cm^-3,433,nm,129,completed,237,52
