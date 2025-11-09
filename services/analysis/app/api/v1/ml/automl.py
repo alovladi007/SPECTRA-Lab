@@ -12,12 +12,10 @@ from pathlib import Path
 import json
 
 # Import AutoML modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from ml.automl.train_automl import AutoMLPipeline
-from ml.automl.model_selection.auto_selector import AutoModelSelector
-from ml.automl.hyperopt.tuner import HyperparameterTuner
-from ml.automl.nas.architecture_search import NASSearch
+from app.ml.automl.train_automl import AutoMLPipeline
+from app.ml.automl.model_selection.auto_selector import AutoModelSelector
+from app.ml.automl.hyperopt.tuner import AutoHyperparameterTuner
+from app.ml.automl.nas.architecture_search import NeuralArchitectureSearch
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +26,29 @@ jobs = {}
 
 # Pydantic models for request/response
 class AutoMLConfig(BaseModel):
-    """AutoML pipeline configuration"""
-    target_column: str = Field(..., description="Target variable column name")
-    data_path: Optional[str] = Field(None, description="Path to training data CSV")
+    """AutoML pipeline configuration - Updated to match frontend parameters"""
+
+    # Data configuration
+    data_type: str = Field("synthetic_yield", description="Type of data: synthetic_yield, synthetic_defect, or custom")
+    data_path: Optional[str] = Field(None, description="Path to training data CSV (for custom data)")
+    target_column: str = Field("target", description="Target variable column name")
+
+    # Pipeline stages (matching frontend booleans)
+    model_selection: bool = Field(True, description="Run automated model selection")
+    hyperparameter_tuning: bool = Field(True, description="Run hyperparameter optimization")
+    neural_architecture_search: bool = Field(False, description="Run Neural Architecture Search")
+
+    # Optimization configuration
+    metric: str = Field("r2", description="Optimization metric: r2, rmse, mae, accuracy")
+    n_trials: int = Field(50, description="Number of optimization trials (20-200)")
+    cv_folds: int = Field(5, description="Number of cross-validation folds (3-10)")
+    device: str = Field("cpu", description="Compute device: cpu or cuda")
+
+    # Advanced configuration
     output_dir: str = Field("automl_results", description="Output directory for results")
-    preset: Optional[str] = Field("quickstart", description="Configuration preset: quickstart, full, nas")
     max_time_minutes: int = Field(30, description="Maximum training time in minutes")
-    algorithms: Optional[List[str]] = Field(None, description="List of algorithms to try")
-    cv_folds: int = Field(5, description="Number of cross-validation folds")
-    enable_nas: bool = Field(False, description="Enable Neural Architecture Search")
+    algorithms: Optional[List[str]] = Field(None, description="List of specific algorithms to try (None = all)")
+    preset: Optional[str] = Field(None, description="Legacy configuration preset")
 
 class ModelSelectionConfig(BaseModel):
     """Model selection configuration"""
@@ -98,46 +110,133 @@ def run_automl_pipeline(job_id: str, config: AutoMLConfig):
     try:
         jobs[job_id]["status"] = "running"
         jobs[job_id]["started_at"] = datetime.now().isoformat()
+        jobs[job_id]["current_stage"] = "Initializing"
 
-        logger.info(f"Starting AutoML job {job_id}")
+        logger.info(f"Starting AutoML job {job_id} with config: {config.dict()}")
 
-        # Load configuration preset
+        # Transform frontend config to pipeline's expected nested structure
         config_dict = {
-            "target_column": config.target_column,
+            # Data configuration
+            "data": {
+                "type": config.data_type,
+                "path": config.data_path,
+                "target_column": config.target_column,
+                "test_size": 0.2,
+                "val_size": 0.1
+            },
+
+            # Model selection configuration
+            "run_model_selection": config.model_selection,
+            "model_selection": {
+                "task_type": "regression" if config.metric in ["r2", "rmse", "mae"] else "classification",
+                "metric": config.metric,
+                "cv_folds": config.cv_folds,
+                "algorithms": config.algorithms  # None means try all
+            } if config.model_selection else {},
+
+            # Hyperparameter tuning configuration
+            "run_hyperparameter_tuning": config.hyperparameter_tuning,
+            "hyperparameter_tuning": {
+                "n_trials": config.n_trials,
+                "metric": config.metric,
+                "cv_folds": config.cv_folds,
+                "device": config.device,
+                "max_time_minutes": config.max_time_minutes
+            } if config.hyperparameter_tuning else {},
+
+            # Neural Architecture Search configuration
+            "run_nas": config.neural_architecture_search,
+            "nas": {
+                "search_method": "evolutionary",
+                "population_size": 20,
+                "n_generations": 10,
+                "device": config.device
+            } if config.neural_architecture_search else {},
+
+            # Output configuration
             "output_dir": config.output_dir,
-            "max_time_minutes": config.max_time_minutes,
-            "cv_folds": config.cv_folds,
-            "enable_nas": config.enable_nas,
+            "max_time_minutes": config.max_time_minutes
         }
 
-        if config.data_path:
-            config_dict["data_path"] = config.data_path
-        if config.algorithms:
-            config_dict["algorithms"] = config.algorithms
+        logger.info(f"Transformed config for pipeline: {json.dumps(config_dict, indent=2)}")
+
+        # Update progress
+        jobs[job_id]["current_stage"] = "Loading data"
+        jobs[job_id]["progress"] = 10
 
         # Initialize and run pipeline
         pipeline = AutoMLPipeline(config_dict)
         results = pipeline.run()
 
-        # Store results
+        # Transform pipeline results to frontend format
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["completed_at"] = datetime.now().isoformat()
         jobs[job_id]["progress"] = 100
-        jobs[job_id]["results"] = {
-            "best_model": results.get("best_model"),
-            "best_score": float(results.get("best_score", 0)),
-            "metrics": results.get("metrics", {}),
+        jobs[job_id]["current_stage"] = "Completed"
+
+        # Map results to frontend's expected structure
+        frontend_results = {}
+
+        # Model selection results
+        if config.model_selection and "model_selection" in results:
+            ms_results = results["model_selection"]
+            frontend_results["modelSelection"] = {
+                "bestModel": ms_results.get("best_model", "Unknown"),
+                "bestScore": float(ms_results.get("best_score", 0)),
+                "allCandidates": ms_results.get("all_candidates", [])
+            }
+
+        # Hyperparameter tuning results
+        if config.hyperparameter_tuning and "hyperparameter_tuning" in results:
+            hp_results = results["hyperparameter_tuning"]
+            frontend_results["hyperparameterTuning"] = {
+                "modelType": hp_results.get("model_type", "Unknown"),
+                "bestCvScore": float(hp_results.get("best_score", 0)),
+                "nTrials": hp_results.get("n_trials", config.n_trials),
+                "bestParams": hp_results.get("best_params", {}),
+                "testMetrics": hp_results.get("test_metrics", {}),
+                "paramImportance": hp_results.get("param_importance", {})
+            }
+
+        # Optimization history
+        if "hyperparameter_tuning" in results and "optimization_history" in results["hyperparameter_tuning"]:
+            hp_hist = results["hyperparameter_tuning"]["optimization_history"]
+            frontend_results["optimizationHistory"] = [
+                {"trial": item.get("trial", idx + 1), "score": float(item.get("value", 0))}
+                for idx, item in enumerate(hp_hist)
+            ]
+
+        # Summary metrics - use model_selection best model as primary
+        best_model_name = "Unknown"
+        best_score = 0.0
+
+        if "model_selection" in results:
+            best_model_name = results["model_selection"].get("best_model", best_model_name)
+            best_score = results["model_selection"].get("best_score", best_score)
+
+        if "hyperparameter_tuning" in results:
+            hp_score = results["hyperparameter_tuning"].get("best_score", 0)
+            if hp_score > best_score:
+                best_score = hp_score
+
+        frontend_results["summary"] = {
+            "best_model": best_model_name,
+            "best_score": float(best_score),
+            "total_time_seconds": results.get("total_time", 0),
             "model_path": str(results.get("model_path", "")),
             "report_path": str(results.get("report_path", ""))
         }
 
+        jobs[job_id]["results"] = frontend_results
+
         logger.info(f"AutoML job {job_id} completed successfully")
 
     except Exception as e:
-        logger.error(f"AutoML job {job_id} failed: {str(e)}")
+        logger.error(f"AutoML job {job_id} failed: {str(e)}", exc_info=True)
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         jobs[job_id]["completed_at"] = datetime.now().isoformat()
+        jobs[job_id]["current_stage"] = "Failed"
 
 
 def run_model_selection(job_id: str, config: ModelSelectionConfig):

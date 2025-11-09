@@ -14,11 +14,9 @@ import joblib
 import numpy as np
 
 # Import evaluation modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from ml.eval.eval import ModelEvaluator
-from ml.eval.eval_metrics import calculate_metrics
-from ml.eval.safety_checks import SafetyChecker
+from app.ml.eval.eval import ModelEvaluator
+from app.ml.eval.eval_metrics import calculate_metrics
+from app.ml.eval.safety_checks import SafetyChecker
 
 logger = logging.getLogger(__name__)
 
@@ -547,6 +545,18 @@ async def get_explainability_methods():
                 "cons": ["Model-specific", "May be biased"]
             }
         }
+    }
+
+
+@router.get("/available-models")
+async def get_available_models():
+    """Get list of available trained models for explainability analysis"""
+    # TODO: Load from model registry or database
+    # For now, return empty list as placeholder
+    return {
+        "models": [],
+        "total": 0,
+        "message": "No trained models available. Train a model first using AutoML."
     }
 
 

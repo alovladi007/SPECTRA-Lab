@@ -1,8 +1,8 @@
 import argparse, yaml, os
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
-from src.utils.data_utils import sft_collate
-from src.utils.logging_utils import log_section, info
+from app.utils.data_utils import sft_collate
+from app.utils.logging_utils import log_section, info
 
 def main():
     ap = argparse.ArgumentParser()

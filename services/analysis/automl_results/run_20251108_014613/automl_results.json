@@ -1,0 +1,81 @@
+{
+  "model_selection": {
+    "best_model": "Ridge",
+    "best_score": 0.9806153463914162,
+    "all_candidates": [
+      {
+        "name": "Ridge",
+        "cv_score": 0.9806153463914162,
+        "train_score": 0.9817803632025869,
+        "test_score": 0.9820814812006844,
+        "inference_time": 0.000720977783203125,
+        "complexity": 12
+      },
+      {
+        "name": "MLP_Deep",
+        "cv_score": 0.8994705923015083,
+        "train_score": 0.979939305239904,
+        "test_score": 0.9642046535096087,
+        "inference_time": 2.2145438194274902,
+        "complexity": 11808
+      },
+      {
+        "name": "GradientBoosting",
+        "cv_score": 0.8968696894533736,
+        "train_score": 0.9980114897911779,
+        "test_score": 0.9130028000135161,
+        "inference_time": 0.2989649772644043,
+        "complexity": 6000
+      },
+      {
+        "name": "SVR_RBF",
+        "cv_score": 0.8836629140954232,
+        "train_score": 0.9281492207163121,
+        "test_score": 0.9073458815954183,
+        "inference_time": 0.01093912124633789,
+        "complexity": 12
+      },
+      {
+        "name": "RandomForest",
+        "cv_score": 0.8555268338257015,
+        "train_score": 0.9818089642571521,
+        "test_score": 0.8704417906501364,
+        "inference_time": 0.08971595764160156,
+        "complexity": 12000
+      },
+      {
+        "name": "Lasso",
+        "cv_score": 0.7149837636563022,
+        "train_score": 0.719161658027379,
+        "test_score": 0.7413437842526645,
+        "inference_time": 0.0007748603820800781,
+        "complexity": 12
+      },
+      {
+        "name": "DecisionTree",
+        "cv_score": 0.6119110682376699,
+        "train_score": 0.9962902384874026,
+        "test_score": 0.7087540320160637,
+        "inference_time": 0.0042650699615478516,
+        "complexity": 12
+      },
+      {
+        "name": "MLP_Small",
+        "cv_score": 0.6105299993108928,
+        "train_score": 0.8991018847231597,
+        "test_score": 0.8337095742181866,
+        "inference_time": 2.0223212242126465,
+        "complexity": 2848
+      },
+      {
+        "name": "ElasticNet",
+        "cv_score": 0.6058048307607714,
+        "train_score": 0.6085130341397673,
+        "test_score": 0.6278593811078044,
+        "inference_time": 0.0005109310150146484,
+        "complexity": 12
+      }
+    ],
+    "recommendation": "Fast and interpretable linear model. Best for linear relationships and when inference speed is critical."
+  }
+}

@@ -55,33 +55,40 @@ class SemiconductorDataProcessor:
             (X_processed, y) tuple
         """
         logger.info(f"Processing semiconductor data: {data.shape}")
-        
+
         df = data.copy()
-        
-        # Separate features and target
-        if target_column:
+
+        # Keep target column in dataframe during outlier removal to maintain index alignment
+        has_target = target_column and target_column in df.columns
+
+        # Store feature names (excluding target)
+        if has_target:
+            self.feature_names = [col for col in df.columns if col != target_column]
+        else:
+            self.feature_names = df.columns.tolist()
+
+        # 1. Handle missing values (on entire dataframe including target)
+        df = self._handle_missing_values(df)
+
+        # 2. Remove outliers (on entire dataframe so indices stay aligned)
+        df = self._remove_outliers(df)
+
+        # NOW separate features and target after outlier removal
+        if has_target:
             y = df[target_column].values
             df = df.drop(columns=[target_column])
         else:
             y = None
-        
-        self.feature_names = df.columns.tolist()
-        
-        # 1. Handle missing values
-        df = self._handle_missing_values(df)
-        
-        # 2. Remove outliers
-        df = self._remove_outliers(df)
-        
+
         # 3. Feature engineering for semiconductor processes
         df = self._engineer_features(df)
-        
+
         # 4. Scale features
         X = self._scale_features(df)
-        
+
         self.is_fitted = True
         logger.info(f"Processing complete: {X.shape}")
-        
+
         return X, y
     
     def transform(self, data: pd.DataFrame) -> np.ndarray:

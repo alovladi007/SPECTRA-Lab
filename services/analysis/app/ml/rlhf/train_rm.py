@@ -1,9 +1,9 @@
 import argparse, yaml, torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from datasets import load_dataset
-from src.utils.data_utils import pairwise_rm_batch
-from src.utils.reward_utils import pairwise_loss
-from src.utils.logging_utils import log_section, info
+from app.utils.data_utils import pairwise_rm_batch
+from app.utils.reward_utils import pairwise_loss
+from app.utils.logging_utils import log_section, info
 
 class PairwiseRMTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):

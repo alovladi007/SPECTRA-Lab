@@ -2,7 +2,7 @@ import argparse, yaml
 from datasets import load_dataset
 from transformers import AutoTokenizer
 from trl import DPOTrainer, DPOConfig, AutoModelForCausalLMWithValueHead
-from src.utils.logging_utils import log_section, info
+from app.utils.logging_utils import log_section, info
 
 def main():
     ap = argparse.ArgumentParser()

@@ -2,8 +2,8 @@ import argparse, yaml, torch
 from transformers import AutoTokenizer
 from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
 from datasets import load_dataset
-from src.utils.logging_utils import log_section, info
-from src.utils.safety_policies import should_refuse
+from app.utils.logging_utils import log_section, info
+from app.utils.safety_policies import should_refuse
 from transformers import pipeline
 
 def main():

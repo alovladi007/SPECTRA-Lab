@@ -24,3 +24,13 @@ def tournament(policies:list, reference:str, prompts:list, max_new_tokens=256):
             if len(a) >= len(b):
                 scores[p] += 1
     return scores
+
+
+# Stub class for API compatibility
+class WinRateTournament:
+    """Placeholder tournament runner"""
+    def __init__(self):
+        pass
+    
+    def run_tournament(self, **kwargs):
+        return {"status": "not_implemented", "message": "WinRateTournament not yet implemented"}

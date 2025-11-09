@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 # Import ML routers
-from app.api.v1 import automl_router, explainability_router, ab_testing_router
+from app.api.v1 import automl_router, explainability_router, ab_testing_router, monitoring_router
+from app.api.v1.simulation import simulation_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,6 +29,10 @@ app.add_middleware(
 app.include_router(automl_router, prefix="/api/v1")
 app.include_router(explainability_router, prefix="/api/v1")
 app.include_router(ab_testing_router, prefix="/api/v1")
+app.include_router(monitoring_router, prefix="/api/v1")
+
+# Register simulation routers
+app.include_router(simulation_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
@@ -38,7 +43,9 @@ async def root():
         "endpoints": {
             "automl": "/api/v1/automl",
             "explainability": "/api/v1/explainability",
-            "ab_testing": "/api/v1/ab-testing"
+            "ab_testing": "/api/v1/ab-testing",
+            "monitoring": "/api/v1/monitoring",
+            "simulation": "/api/v1/simulation"
         }
     }
 

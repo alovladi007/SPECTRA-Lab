@@ -1,0 +1,23 @@
+================================================================================
+AUTOML PIPELINE REPORT - SEMICONDUCTOR MANUFACTURING
+================================================================================
+
+Timestamp: 2025-11-08 01:46:25
+
+--------------------------------------------------------------------------------
+1. AUTO MODEL SELECTION
+--------------------------------------------------------------------------------
+Best Model: Ridge
+Best Score: 0.9806
+Recommendation: Fast and interpretable linear model. Best for linear relationships and when inference speed is critical.
+
+All Candidates:
+  - Ridge: CV=0.9806, Test=0.9821, Time=0.001s
+  - MLP_Deep: CV=0.8995, Test=0.9642, Time=2.215s
+  - GradientBoosting: CV=0.8969, Test=0.9130, Time=0.299s
+  - SVR_RBF: CV=0.8837, Test=0.9073, Time=0.011s
+  - RandomForest: CV=0.8555, Test=0.8704, Time=0.090s
+
+================================================================================
+END OF REPORT
+================================================================================

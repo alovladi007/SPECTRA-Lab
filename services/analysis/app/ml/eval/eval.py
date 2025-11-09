@@ -1,7 +1,7 @@
 import argparse, yaml, json
-from .winrate_tournament import tournament
-from ..utils.eval_metrics import winrate, harmful_rate
-from .safety_checks import run_safety
+from app.ml.eval.winrate_tournament import tournament
+from app.ml.eval.eval_metrics import winrate, harmful_rate
+from app.ml.eval.safety_checks import run_safety
 
 def main():
     ap = argparse.ArgumentParser()
@@ -23,3 +23,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Stub classes for API compatibility
+class ModelEvaluator:
+    """Placeholder model evaluator"""
+    def __init__(self, model_path: str = None):
+        self.model_path = model_path
+    
+    def evaluate(self, data_path: str, **kwargs):
+        return {"status": "not_implemented", "message": "ModelEvaluator not yet implemented"}
+
+class SafetyChecker:
+    """Placeholder safety checker"""
+    def __init__(self):
+        pass
+    
+    def check(self, **kwargs):
+        return {"status": "not_implemented", "message": "SafetyChecker not yet implemented"}

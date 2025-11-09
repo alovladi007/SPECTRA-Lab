@@ -2,14 +2,14 @@
 
 /**
  * SESSION 14: ML/VM HUB - UI COMPONENTS (Part 2)
- * 
+ *
  * Anomaly Detection, Drift Monitoring, and Time Series Components
- * 
+ *
  * @author Semiconductor Lab Platform Team
  * @date October 2024
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LineChart, Line, ScatterChart, Scatter, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -824,103 +824,162 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
 // MAIN PAGE COMPONENT (Default Export)
 // ============================================================================
 
+const API_BASE_URL = 'http://localhost:8001/api/v1';
+
 export default function MLMonitoringPage() {
-  // Mock data for anomaly detection
-  const [anomalies] = useState<AnomalyDetection[]>([
-    {
-      id: 1,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      is_anomaly: true,
-      anomaly_score: 0.87,
-      anomaly_type: 'point',
-      features: {
-        temperature: 425.3,
-        pressure: 5.8,
-        rf_power: 850
-      },
-      feature_contributions: {
-        temperature: 0.45,
-        pressure: 0.32,
-        rf_power: 0.23
-      },
-      likely_causes: [
-        'Temperature exceeded control limits',
-        'Possible equipment drift detected'
-      ],
-      resolved: false
-    },
-    {
-      id: 2,
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-      is_anomaly: true,
-      anomaly_score: 0.65,
-      anomaly_type: 'contextual',
-      features: {
-        gas_flow: 45.2,
-        chamber_pressure: 3.2
-      },
-      feature_contributions: {
-        gas_flow: 0.55,
-        chamber_pressure: 0.45
-      },
-      likely_causes: ['Gas flow pattern unusual for this process step'],
-      resolved: true
-    }
-  ]);
+  // State for data from API
+  const [anomalies, setAnomalies] = useState<AnomalyDetection[]>([]);
+  const [driftReports, setDriftReports] = useState<DriftReport[]>([]);
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
+  const [forecast, setForecast] = useState<TimeSeriesForecast[]>([]);
+  const [isLoadingAnomalies, setIsLoadingAnomalies] = useState(false);
+  const [isLoadingDrift, setIsLoadingDrift] = useState(false);
+  const [isLoadingForecast, setIsLoadingForecast] = useState(false);
 
-  // Mock data for drift reports
-  const [driftReports] = useState<DriftReport[]>([
-    {
-      id: 1,
-      drift_type: 'covariate_shift',
-      drift_detected: true,
-      drift_score: 0.42,
-      feature_drifts: {
-        temperature: {
-          drift_score: 0.55,
-          tests: { ks: { statistic: 0.23, p_value: 0.001 } }
-        },
-        pressure: {
-          drift_score: 0.38,
-          tests: { ks: { statistic: 0.18, p_value: 0.02 } }
+  // Fetch anomalies from API
+  const fetchAnomalies = async () => {
+    setIsLoadingAnomalies(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/monitoring/anomaly-detection/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          n_samples: 100,
+          contamination: 0.1
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAnomalies(data.anomalies || []);
+      }
+    } catch (error) {
+      console.error('Error fetching anomalies:', error);
+    } finally {
+      setIsLoadingAnomalies(false);
+    }
+  };
+
+  // Transform drift API response to component format
+  const transformDriftData = (apiData: any) => {
+    // Transform feature_drifts to include drift_score for each feature
+    const transformedFeatureDrifts: any = {};
+
+    // Combine PSI and KS data
+    if (apiData.feature_drifts.psi) {
+      Object.entries(apiData.feature_drifts.psi).forEach(([feature, psiValue]) => {
+        transformedFeatureDrifts[feature] = {
+          drift_score: psiValue as number,
+          psi_value: psiValue,
+          tests: {}
+        };
+      });
+    }
+
+    if (apiData.feature_drifts.ks) {
+      Object.entries(apiData.feature_drifts.ks).forEach(([feature, ksData]: [string, any]) => {
+        if (!transformedFeatureDrifts[feature]) {
+          transformedFeatureDrifts[feature] = { drift_score: ksData.statistic, tests: {} };
         }
-      },
-      recommended_action: 'monitor',
-      created_at: new Date().toISOString()
+        transformedFeatureDrifts[feature].tests = {
+          ks: ksData
+        };
+      });
     }
-  ]);
 
-  // Mock data for time series forecast
-  const historicalData = Array.from({ length: 30 }, (_, i) => ({
-    timestamp: new Date(Date.now() - (30 - i) * 24 * 60 * 60 * 1000).toISOString(),
-    value: 100 + Math.sin(i / 5) * 20 + Math.random() * 10
-  }));
+    return {
+      ...apiData,
+      feature_drifts: transformedFeatureDrifts
+    };
+  };
 
-  const forecast = Array.from({ length: 7 }, (_, i) => ({
-    ds: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
-    yhat: 105 + Math.sin((30 + i) / 5) * 20,
-    yhat_lower: 95 + Math.sin((30 + i) / 5) * 20,
-    yhat_upper: 115 + Math.sin((30 + i) / 5) * 20,
-    trend: 100 + (i * 2)
-  }));
+  // Fetch drift reports from API
+  const fetchDriftReports = async () => {
+    setIsLoadingDrift(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/monitoring/drift/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference_period_days: 30,
+          current_period_days: 7,
+          threshold: 0.1,
+          methods: ['psi', 'ks']
+        })
+      });
 
+      if (response.ok) {
+        const data = await response.json();
+        const transformed = transformDriftData(data);
+        setDriftReports([transformed]);
+      }
+    } catch (error) {
+      console.error('Error fetching drift reports:', error);
+    } finally {
+      setIsLoadingDrift(false);
+    }
+  };
+
+  // Fetch forecast from API
+  const fetchForecast = async () => {
+    setIsLoadingForecast(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/monitoring/forecast/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          historical_days: 60,
+          forecast_periods: 30,
+          confidence_level: 0.95
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHistoricalData(data.historical_data || []);
+        setForecast(data.forecast || []);
+      }
+    } catch (error) {
+      console.error('Error fetching forecast:', error);
+    } finally {
+      setIsLoadingForecast(false);
+    }
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    fetchAnomalies();
+    fetchDriftReports();
+    fetchForecast();
+  }, []);
+
+  // Handler functions
   const handleResolveAnomaly = async (id: number) => {
-    console.log('Resolving anomaly:', id);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch(`${API_BASE_URL}/monitoring/anomaly-detection/${id}/resolve`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        // Refresh anomalies list
+        await fetchAnomalies();
+      }
+    } catch (error) {
+      console.error('Error resolving anomaly:', error);
+    }
   };
 
   const handleInvestigateAnomaly = (id: number) => {
     console.log('Investigating anomaly:', id);
+    // Could open a modal or navigate to detail page
   };
 
   const handleRefreshDrift = async () => {
-    console.log('Refreshing drift reports...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await fetchDriftReports();
   };
 
   const handleReforecast = async () => {
-    console.log('Running reforecast...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await fetchForecast();
   };
 
   return (

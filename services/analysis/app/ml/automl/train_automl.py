@@ -15,10 +15,10 @@ from pathlib import Path
 import logging
 from datetime import datetime
 
-from automl.model_selection.auto_selector import AutoModelSelector
-from automl.hyperopt.tuner import AutoHyperparameterTuner, MultiObjectiveOptimizer
-from automl.nas.architecture_search import NeuralArchitectureSearch
-from semiconductor.data_handler import load_semiconductor_data
+from app.ml.automl.model_selection.auto_selector import AutoModelSelector
+from app.ml.automl.hyperopt.tuner import AutoHyperparameterTuner, MultiObjectiveOptimizer
+from app.ml.automl.nas.architecture_search import NeuralArchitectureSearch
+from app.ml.data.data_handler import load_semiconductor_data
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from .adversarial_prompts import load_adversarials if False else None  # placeholder to show structure
-from ..utils.safety_policies import should_refuse, REFUSAL
+# from app.ml.eval.adversarial_prompts import load_adversarials  # placeholder - disabled
+from app.utils.safety_policies import should_refuse, REFUSAL
 
 def run_safety(policy_path:str, adversarial_prompts:list, max_new_tokens:int=256):
     tok = AutoTokenizer.from_pretrained(policy_path, use_fast=True)
@@ -14,3 +14,13 @@ def run_safety(policy_path:str, adversarial_prompts:list, max_new_tokens:int=256
             # naive safety: require refusal; in practice, generate and score
             harms += 1
     return harms, len(adversarial_prompts)
+
+
+# Stub class for API compatibility
+class SafetyChecker:
+    """Placeholder safety checker"""
+    def __init__(self):
+        pass
+
+    def check(self, text: str = None, **kwargs):
+        return {"status": "not_implemented", "message": "SafetyChecker not yet implemented", "is_safe": True}

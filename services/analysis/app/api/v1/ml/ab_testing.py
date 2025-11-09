@@ -14,10 +14,8 @@ import joblib
 import numpy as np
 
 # Import tournament and evaluation modules
-import sys
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from ml.eval.winrate_tournament import WinRateTournament
-from ml.eval.eval_metrics import calculate_metrics
+from app.ml.eval.winrate_tournament import WinRateTournament
+from app.ml.eval.eval_metrics import calculate_metrics
 
 logger = logging.getLogger(__name__)
 
