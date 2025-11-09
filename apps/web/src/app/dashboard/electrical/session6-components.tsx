@@ -1,3 +1,5 @@
+'use client'
+
 // Complete Session 6: Electrical III - UI Components
 // DLTS, EBIC, and PCD Characterization Interfaces
 // Production-ready implementation with all features
