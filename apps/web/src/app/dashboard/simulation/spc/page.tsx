@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Activity, AlertTriangle, TrendingUp, BarChart3, Info, Play, RefreshCw } from 'lucide-react'
+import { SPCControlChart } from '@/components/charts/SPCControlChart'
 
 interface Violation {
   rule_id: string
@@ -426,20 +427,12 @@ export default function SPCMonitorPage() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Control Chart
                   </h3>
-                  <div className="h-96 flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                    <div className="text-center">
-                      <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600 dark:text-gray-400 mb-2">
-                        SPC Control Chart will be displayed here
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {results.data_points.length} data points • {results.violations.length} violations
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Integration with Chart.js or Recharts coming soon
-                      </p>
-                    </div>
-                  </div>
+                  <SPCControlChart
+                    dataPoints={results.data_points}
+                    centerline={results.centerline}
+                    ucl={results.ucl}
+                    lcl={results.lcl}
+                  />
                 </div>
 
                 {/* Violations */}

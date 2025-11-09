@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Layers, TrendingUp, Clock, Info, ArrowRight } from 'lucide-react'
+import { OxidationGrowthChart } from '@/components/charts/OxidationGrowthChart'
 
 export default function OxidationPlannerPage() {
   const [loading, setLoading] = useState(false)
@@ -379,19 +380,11 @@ export default function OxidationPlannerPage() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Oxide Growth Profile
                   </h3>
-                  <div className="h-96 flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                    <div className="text-center">
-                      <p className="text-gray-600 dark:text-gray-400 mb-2">
-                        Growth profile visualization will be displayed here
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {results.time_points?.length} data points calculated
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Integration with Chart.js or Recharts coming soon
-                      </p>
-                    </div>
-                  </div>
+                  <OxidationGrowthChart
+                    time={results.time_points}
+                    thickness={results.thickness_profile}
+                    mode={results.mode}
+                  />
 
                   {/* Deal-Grove Parameters */}
                   <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
