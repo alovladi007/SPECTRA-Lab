@@ -9,7 +9,21 @@ interface DialogProps {
 }
 
 const Dialog = ({ children, open, onOpenChange }: DialogProps) => {
-  return <div>{children}</div>
+  if (!open) return null
+
+  return (
+    <>
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 z-50 bg-black/80"
+        onClick={() => onOpenChange?.(false)}
+      />
+      {/* Dialog content container */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {children}
+      </div>
+    </>
+  )
 }
 
 const DialogTrigger = React.forwardRef<
@@ -30,7 +44,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ children, className, ...props }, ref) => (
     <div
       ref={ref}
-      className={`fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg ${className || ''}`}
+      className={`relative z-50 grid w-full max-w-lg gap-4 border border-gray-200 bg-white p-6 shadow-2xl rounded-xl ${className || ''}`}
+      onClick={(e) => e.stopPropagation()}
       {...props}
     >
       {children}
