@@ -40,13 +40,74 @@ from app.simulation.diffusion import (
     quick_profile_constant_source,
 )
 
-logger = logging.getLogger(__name__)
+# Import database functions (with graceful fallback)
+try:
+    from app.simulation.database import (
+        save_simulation,
+        get_simulation,
+        health_check as db_health_check
+    )
+    DATABASE_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("Database integration enabled")
+except Exception as e:
+    DATABASE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Database not available, using in-memory storage: {e}")
 
 router = APIRouter(prefix="/simulation", tags=["Simulation"])
 
-# In-memory storage (will be replaced with database in production)
+# In-memory storage (fallback when database unavailable)
 jobs_db: Dict[str, Dict] = {}
 results_db: Dict[str, Dict] = {}
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def save_simulation_result(simulation_id: str, simulation_type: str, parameters: dict, results: dict, execution_time_ms: int = None):
+    """
+    Save simulation result to database (if available) or in-memory storage
+
+    Args:
+        simulation_id: Unique simulation identifier
+        simulation_type: Type of simulation (diffusion, oxidation, etc.)
+        parameters: Input parameters
+        results: Simulation results
+        execution_time_ms: Execution time in milliseconds
+    """
+    if DATABASE_AVAILABLE:
+        try:
+            save_simulation({
+                "simulation_id": simulation_id,
+                "simulation_type": simulation_type,
+                "parameters": parameters,
+                "results": results,
+                "status": "completed",
+                "execution_time_ms": execution_time_ms,
+                "module_version": "1.12.0",
+                "created_at": datetime.utcnow()
+            })
+            logger.debug(f"Simulation {simulation_id} saved to database")
+        except Exception as e:
+            logger.warning(f"Failed to save to database, using memory: {e}")
+            results_db[simulation_id] = {**results, "parameters": parameters}
+    else:
+        results_db[simulation_id] = {**results, "parameters": parameters}
+
+
+def get_simulation_result(simulation_id: str) -> Optional[dict]:
+    """Get simulation result from database or in-memory storage"""
+    if DATABASE_AVAILABLE:
+        try:
+            result = get_simulation(simulation_id)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Failed to get from database, checking memory: {e}")
+
+    return results_db.get(simulation_id)
 
 
 # ============================================================================
@@ -65,9 +126,11 @@ async def run_diffusion_simulation(request: DiffusionRequest):
 
     Uses Session 2 implementation - Production ready!
     """
+    import time
     try:
-        # Generate unique ID
+        # Generate unique ID and start timer
         simulation_id = str(uuid.uuid4())
+        start_time = time.time()
 
         # Use quick helper function for constant-source diffusion (default)
         if request.model in ["fick", "erfc"]:
@@ -130,10 +193,17 @@ async def run_diffusion_simulation(request: DiffusionRequest):
         else:
             raise ValueError(f"Model '{request.model}' not yet implemented. Use 'fick' or 'erfc'.")
 
-        # Store result
-        results_db[simulation_id] = response.dict()
+        # Store result (database or in-memory)
+        execution_time_ms = int((time.time() - start_time) * 1000)
+        save_simulation_result(
+            simulation_id=simulation_id,
+            simulation_type="diffusion",
+            parameters=request.dict(),
+            results=response.dict(),
+            execution_time_ms=execution_time_ms
+        )
 
-        logger.info(f"Diffusion simulation {simulation_id} completed using {request.model} model")
+        logger.info(f"Diffusion simulation {simulation_id} completed in {execution_time_ms}ms using {request.model} model")
         return response
 
     except Exception as e:
@@ -144,10 +214,11 @@ async def run_diffusion_simulation(request: DiffusionRequest):
 @router.get("/diffusion/{simulation_id}", response_model=DiffusionResponse)
 async def get_diffusion_result(simulation_id: str):
     """Get diffusion simulation result by ID"""
-    if simulation_id not in results_db:
+    result = get_simulation_result(simulation_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Simulation not found")
 
-    return results_db[simulation_id]
+    return result
 
 
 # ============================================================================
@@ -163,9 +234,11 @@ async def run_oxidation_simulation(request: OxidationRequest):
 
     **Implementation will be completed when oxidation modules are integrated.**
     """
+    import time
     try:
-        # Generate unique ID
+        # Generate unique ID and start timer
         simulation_id = str(uuid.uuid4())
+        start_time = time.time()
 
         # Placeholder response
         # TODO: Replace with actual Deal-Grove simulation call
@@ -188,10 +261,17 @@ async def run_oxidation_simulation(request: OxidationRequest):
             }
         )
 
-        # Store result
-        results_db[simulation_id] = response.dict()
+        # Store result (database or in-memory)
+        execution_time_ms = int((time.time() - start_time) * 1000)
+        save_simulation_result(
+            simulation_id=simulation_id,
+            simulation_type="oxidation",
+            parameters=request.dict(),
+            results=response.dict(),
+            execution_time_ms=execution_time_ms
+        )
 
-        logger.info(f"Oxidation simulation {simulation_id} completed")
+        logger.info(f"Oxidation simulation {simulation_id} completed in {execution_time_ms}ms")
         return response
 
     except Exception as e:
@@ -202,10 +282,11 @@ async def run_oxidation_simulation(request: OxidationRequest):
 @router.get("/oxidation/{simulation_id}", response_model=OxidationResponse)
 async def get_oxidation_result(simulation_id: str):
     """Get oxidation simulation result by ID"""
-    if simulation_id not in results_db:
+    result = get_simulation_result(simulation_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Simulation not found")
 
-    return results_db[simulation_id]
+    return result
 
 
 # ============================================================================
@@ -276,11 +357,21 @@ async def list_jobs(limit: int = 50):
 @router.get("/health")
 async def health_check():
     """Health check for simulation service"""
+    db_status = "disconnected"
+    if DATABASE_AVAILABLE:
+        try:
+            if db_health_check():
+                db_status = "connected"
+        except:
+            db_status = "error"
+
     return {
         "status": "healthy",
         "service": "simulation",
+        "database_status": db_status,
+        "storage_mode": "database" if (DATABASE_AVAILABLE and db_status == "connected") else "memory",
         "simulations_completed": len(results_db),
-        "active_jobs": len([j for j in jobs_db.values() if j["status"] == "running"])
+        "active_jobs": len([j for j in jobs_db.values() if j.get("status") == "running"])
     }
 
 
