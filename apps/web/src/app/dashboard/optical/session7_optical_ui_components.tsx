@@ -1,3 +1,5 @@
+'use client'
+
 // Session 7: Optical I - Frontend UI Components
 // UV-Vis-NIR & FTIR Spectroscopy Interfaces
 
@@ -1153,5 +1155,8 @@ const OpticalAnalysisDashboard = () => {
     </div>
   );
 };
+
+// Export individual interfaces
+export { UVVisNIRInterface, FTIRInterface };
 
 export default OpticalAnalysisDashboard;
