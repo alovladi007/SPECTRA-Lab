@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -265,7 +264,6 @@ const Surface3DViewer: React.FC<{ heightMap: number[][], scanSize: [number, numb
 // Main Microscopy Interface Component
 const MicroscopyInterface: React.FC = () => {
   // State management
-  const [activeTab, setActiveTab] = useState('acquisition');
   const [selectedTechnique, setSelectedTechnique] = useState<'SEM' | 'TEM' | 'AFM'>('SEM');
   const [currentImage, setCurrentImage] = useState<MicroscopyImage | null>(null);
   const [isAcquiring, setIsAcquiring] = useState(false);
@@ -342,13 +340,12 @@ const MicroscopyInterface: React.FC = () => {
   // Start acquisition
   const startAcquisition = useCallback(async () => {
     setIsAcquiring(true);
-    
+
     // Simulate acquisition
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     loadDemoData();
     setIsAcquiring(false);
-    setActiveTab('analysis');
   }, [loadDemoData]);
 
   // Particle size distribution chart data
@@ -392,7 +389,7 @@ const MicroscopyInterface: React.FC = () => {
                 Microscopy Analysis Suite
               </CardTitle>
               <CardDescription>
-                SEM, TEM, and AFM imaging and analysis
+                SEM, TEM, AFM, and Optical Microscopy - Unified Interface
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -408,49 +405,59 @@ const MicroscopyInterface: React.FC = () => {
       {/* Technique Selection */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <Button
               variant={selectedTechnique === 'SEM' ? 'default' : 'outline'}
               onClick={() => setSelectedTechnique('SEM')}
-              className="flex-1"
+              className="h-auto py-4 flex-col gap-2"
             >
-              <Camera className="w-4 h-4 mr-2" />
-              SEM
+              <Camera className="w-6 h-6" />
+              <div>
+                <div className="font-bold">SEM</div>
+                <div className="text-xs opacity-70">Scanning Electron</div>
+              </div>
             </Button>
             <Button
               variant={selectedTechnique === 'TEM' ? 'default' : 'outline'}
               onClick={() => setSelectedTechnique('TEM')}
-              className="flex-1"
+              className="h-auto py-4 flex-col gap-2"
             >
-              <Aperture className="w-4 h-4 mr-2" />
-              TEM
+              <Aperture className="w-6 h-6" />
+              <div>
+                <div className="font-bold">TEM</div>
+                <div className="text-xs opacity-70">Transmission Electron</div>
+              </div>
             </Button>
             <Button
               variant={selectedTechnique === 'AFM' ? 'default' : 'outline'}
               onClick={() => setSelectedTechnique('AFM')}
-              className="flex-1"
+              className="h-auto py-4 flex-col gap-2"
             >
-              <Grid3x3 className="w-4 h-4 mr-2" />
-              AFM
+              <Grid3x3 className="w-6 h-6" />
+              <div>
+                <div className="font-bold">AFM</div>
+                <div className="text-xs opacity-70">Atomic Force</div>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex-col gap-2 opacity-50 cursor-not-allowed"
+              disabled
+            >
+              <Lightbulb className="w-6 h-6" />
+              <div>
+                <div className="font-bold">Optical</div>
+                <div className="text-xs opacity-70">Light Microscopy</div>
+              </div>
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="acquisition">Acquisition</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
-          <TabsTrigger value="measurements">Measurements</TabsTrigger>
-          <TabsTrigger value="results">Results</TabsTrigger>
-        </TabsList>
-
-        {/* Acquisition Tab */}
-        <TabsContent value="acquisition">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Parameters Panel */}
-            <Card>
+      {/* Acquisition Section */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Parameters Panel */}
+        <Card>
               <CardHeader>
                 <CardTitle className="text-lg">
                   {selectedTechnique} Parameters
@@ -702,11 +709,9 @@ const MicroscopyInterface: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        {/* Analysis Tab */}
-        <TabsContent value="analysis">
-          <div className="space-y-4">
+      {/* Analysis Section */}
+      <div className="space-y-4">
             {selectedTechnique === 'SEM' && (
               <Card>
                 <CardHeader>
@@ -864,12 +869,10 @@ const MicroscopyInterface: React.FC = () => {
                 </Card>
               </>
             )}
-          </div>
-        </TabsContent>
+      </div>
 
-        {/* Measurements Tab */}
-        <TabsContent value="measurements">
-          <div className="grid grid-cols-2 gap-4">
+      {/* Measurements Section */}
+      <div className="grid grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Measurement Tools</CardTitle>
@@ -919,12 +922,10 @@ const MicroscopyInterface: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+      </div>
 
-        {/* Results Tab */}
-        <TabsContent value="results">
-          <Card>
+      {/* Results Section */}
+      <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Analysis Report</CardTitle>
@@ -995,11 +996,9 @@ const MicroscopyInterface: React.FC = () => {
                     All measurements have been processed successfully
                   </AlertDescription>
                 </Alert>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </CardContent>
+        </Card>
     </div>
   );
 };

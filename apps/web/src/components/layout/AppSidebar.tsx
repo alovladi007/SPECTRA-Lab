@@ -89,10 +89,7 @@ const navigation: NavItem[] = [
       {
         name: 'Microscopy',
         children: [
-          { name: 'SEM', href: '/dashboard/structural/microscopy', badge: 'SEM' },
-          { name: 'TEM', href: '/dashboard/structural/microscopy', badge: 'TEM' },
-          { name: 'AFM', href: '/dashboard/structural/microscopy', badge: 'AFM' },
-          { name: 'Optical Microscopy', href: '/dashboard/structural/microscopy', badge: 'Optical' },
+          { name: 'Microscopy Suite', href: '/dashboard/structural/microscopy' },
         ]
       },
     ],
@@ -101,22 +98,8 @@ const navigation: NavItem[] = [
     name: 'Chemical Analysis',
     icon: Beaker,
     children: [
-      {
-        name: 'Surface Analysis',
-        children: [
-          { name: 'XPS', href: '/dashboard/chemical/surface-analysis', badge: 'XPS' },
-          { name: 'XRF', href: '/dashboard/chemical/surface-analysis', badge: 'XRF' },
-        ]
-      },
-      {
-        name: 'Bulk Analysis',
-        children: [
-          { name: 'SIMS', href: '/dashboard/chemical/bulk-analysis', badge: 'SIMS' },
-          { name: 'RBS', href: '/dashboard/chemical/bulk-analysis', badge: 'RBS' },
-          { name: 'NAA', href: '/dashboard/chemical/bulk-analysis', badge: 'NAA' },
-          { name: 'Chemical Etch', href: '/dashboard/chemical/bulk-analysis', badge: 'Etch' },
-        ]
-      },
+      { name: 'Surface Analysis', href: '/dashboard/chemical/surface-analysis' },
+      { name: 'Bulk Analysis', href: '/dashboard/chemical/bulk-analysis' },
     ],
   },
   {
@@ -153,9 +136,7 @@ const navigation: NavItem[] = [
       { name: 'Virtual Metrology Models', href: '/dashboard/ml/vm-models' },
       { name: 'Model Training', href: '/dashboard/ml/training' },
       { name: 'AutoML', href: '/dashboard/ml/automl' },
-      { name: 'Anomaly Detection', href: '/dashboard/ml/anomaly' },
-      { name: 'Drift Monitoring', href: '/dashboard/ml/monitoring' },
-      { name: 'Time Series Forecast', href: '/dashboard/ml/forecast' },
+      { name: 'Monitoring Dashboard', href: '/dashboard/ml/monitoring' },
       { name: 'Model Explainability', href: '/dashboard/ml/explainability' },
       { name: 'A/B Testing', href: '/dashboard/ml/ab-testing' },
     ],

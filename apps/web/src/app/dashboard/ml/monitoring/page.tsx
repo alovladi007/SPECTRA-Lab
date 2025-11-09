@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * SESSION 14: ML/VM HUB - UI COMPONENTS (Part 2)
+ * ML MONITORING DASHBOARD - Combined View
  *
- * Anomaly Detection, Drift Monitoring, and Time Series Components
+ * Unified dashboard for Anomaly Detection, Drift Monitoring, and Time Series Forecasting
  *
- * @author Semiconductor Lab Platform Team
- * @date October 2024
+ * @author SPECTRA-Lab Platform Team
+ * @date 2024
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -18,7 +18,8 @@ import {
 } from 'recharts';
 import {
   AlertCircle, CheckCircle, TrendingUp, TrendingDown,
-  AlertTriangle, Info, Eye, EyeOff, Filter, Calendar, RefreshCw
+  AlertTriangle, Info, Eye, EyeOff, Filter, Calendar, RefreshCw,
+  Activity, BarChart3, Clock, Zap
 } from 'lucide-react';
 
 // ============================================================================
@@ -107,7 +108,7 @@ export const AnomalyMonitor: React.FC<AnomalyMonitorProps> = ({
     } else if (filter === 'resolved') {
       filtered = anomalies.filter(a => a.resolved);
     }
-    return filtered.sort((a, b) => 
+    return filtered.sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
   }, [anomalies, filter]);
@@ -115,7 +116,7 @@ export const AnomalyMonitor: React.FC<AnomalyMonitorProps> = ({
   const stats = useMemo(() => {
     const total = anomalies.length;
     const unresolved = anomalies.filter(a => !a.resolved).length;
-    const last24h = anomalies.filter(a => 
+    const last24h = anomalies.filter(a =>
       new Date(a.timestamp).getTime() > Date.now() - 24 * 60 * 60 * 1000
     ).length;
 
@@ -181,7 +182,7 @@ export const AnomalyMonitor: React.FC<AnomalyMonitorProps> = ({
           </div>
 
           {/* Anomaly Cards */}
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
             {filteredAnomalies.map(anomaly => (
               <div
                 key={anomaly.id}
@@ -730,7 +731,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
               }}
             />
             <Legend />
-            
+
             {/* Confidence band */}
             {showConfidence && (
               <Area
@@ -742,7 +743,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
                 name="Confidence Band"
               />
             )}
-            
+
             {/* Historical data */}
             <Line
               type="monotone"
@@ -752,7 +753,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
               dot={false}
               name="Actual / Forecast"
             />
-            
+
             {/* Trend */}
             <Line
               type="monotone"
@@ -763,7 +764,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
               dot={false}
               name="Trend"
             />
-            
+
             {/* Dividing line between historical and forecast */}
             {historicalData.length > 0 && (
               <ReferenceLine
@@ -788,7 +789,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
             ±{forecast[0] ? ((forecast[0].yhat_upper - forecast[0].yhat_lower) / 2).toFixed(2) : 'N/A'}
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-600 mb-1">Trend Direction</div>
           <div className="flex items-center gap-2">
@@ -805,7 +806,7 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
             )}
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-600 mb-1">Forecast Horizon</div>
           <div className="text-2xl font-bold text-gray-900">
@@ -821,12 +822,15 @@ export const TimeSeriesForecast: React.FC<TimeSeriesForecastProps> = ({
 };
 
 // ============================================================================
-// MAIN PAGE COMPONENT (Default Export)
+// MAIN MONITORING DASHBOARD (Default Export)
 // ============================================================================
 
 const API_BASE_URL = 'http://localhost:8001/api/v1';
 
-export default function MLMonitoringPage() {
+export default function MLMonitoringDashboard() {
+  // State for active view
+  const [activeView, setActiveView] = useState<'overview' | 'anomaly' | 'drift' | 'forecast'>('overview');
+
   // State for data from API
   const [anomalies, setAnomalies] = useState<AnomalyDetection[]>([]);
   const [driftReports, setDriftReports] = useState<DriftReport[]>([]);
@@ -835,6 +839,7 @@ export default function MLMonitoringPage() {
   const [isLoadingAnomalies, setIsLoadingAnomalies] = useState(false);
   const [isLoadingDrift, setIsLoadingDrift] = useState(false);
   const [isLoadingForecast, setIsLoadingForecast] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Fetch anomalies from API
   const fetchAnomalies = async () => {
@@ -862,10 +867,8 @@ export default function MLMonitoringPage() {
 
   // Transform drift API response to component format
   const transformDriftData = (apiData: any) => {
-    // Transform feature_drifts to include drift_score for each feature
     const transformedFeatureDrifts: any = {};
 
-    // Combine PSI and KS data
     if (apiData.feature_drifts.psi) {
       Object.entries(apiData.feature_drifts.psi).forEach(([feature, psiValue]) => {
         transformedFeatureDrifts[feature] = {
@@ -946,11 +949,19 @@ export default function MLMonitoringPage() {
     }
   };
 
+  // Load all data
+  const loadAllData = async () => {
+    await Promise.all([
+      fetchAnomalies(),
+      fetchDriftReports(),
+      fetchForecast()
+    ]);
+    setLastUpdate(new Date());
+  };
+
   // Load data on mount
   useEffect(() => {
-    fetchAnomalies();
-    fetchDriftReports();
-    fetchForecast();
+    loadAllData();
   }, []);
 
   // Handler functions
@@ -961,7 +972,6 @@ export default function MLMonitoringPage() {
       });
 
       if (response.ok) {
-        // Refresh anomalies list
         await fetchAnomalies();
       }
     } catch (error) {
@@ -971,47 +981,315 @@ export default function MLMonitoringPage() {
 
   const handleInvestigateAnomaly = (id: number) => {
     console.log('Investigating anomaly:', id);
-    // Could open a modal or navigate to detail page
+    setActiveView('anomaly');
   };
 
   const handleRefreshDrift = async () => {
     await fetchDriftReports();
+    setLastUpdate(new Date());
   };
 
   const handleReforecast = async () => {
     await fetchForecast();
+    setLastUpdate(new Date());
   };
+
+  // Calculate overview stats
+  const overviewStats = useMemo(() => {
+    const unresolvedAnomalies = anomalies.filter(a => !a.resolved).length;
+    const latestDrift = driftReports[0];
+    const driftDetected = latestDrift?.drift_detected || false;
+    const driftScore = latestDrift?.drift_score || 0;
+    const nextForecast = forecast[0]?.yhat || 0;
+    const trendDirection = forecast.length > 1 && forecast[forecast.length - 1].trend > forecast[0].trend ? 'up' : 'down';
+
+    return {
+      unresolvedAnomalies,
+      driftDetected,
+      driftScore,
+      nextForecast,
+      trendDirection
+    };
+  }, [anomalies, driftReports, forecast]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-[1800px] mx-auto space-y-6">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">ML Monitoring Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Real-time monitoring of anomaly detection, model drift, and time series forecasting
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">ML Monitoring Dashboard</h1>
+            <p className="text-gray-600 mt-2">
+              Comprehensive monitoring of anomaly detection, model drift, and time series forecasting
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              <Clock size={14} className="inline mr-1" />
+              Last updated: {lastUpdate.toLocaleTimeString()}
+            </div>
+            <button
+              onClick={loadAllData}
+              disabled={isLoadingAnomalies || isLoadingDrift || isLoadingForecast}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 flex items-center gap-2"
+            >
+              <RefreshCw size={16} className={(isLoadingAnomalies || isLoadingDrift || isLoadingForecast) ? 'animate-spin' : ''} />
+              Refresh All
+            </button>
+          </div>
         </div>
 
-        {/* Anomaly Detection Section */}
-        <AnomalyMonitor
-          anomalies={anomalies}
-          onResolve={handleResolveAnomaly}
-          onInvestigate={handleInvestigateAnomaly}
-        />
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveView('overview')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeView === 'overview'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart3 size={18} />
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveView('anomaly')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeView === 'anomaly'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <AlertCircle size={18} />
+              Anomaly Detection
+              {overviewStats.unresolvedAnomalies > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">
+                  {overviewStats.unresolvedAnomalies}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveView('drift')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeView === 'drift'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Activity size={18} />
+              Drift Monitoring
+              {overviewStats.driftDetected && (
+                <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">!</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveView('forecast')}
+              className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeView === 'forecast'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <TrendingUp size={18} />
+              Time Series Forecast
+            </button>
+          </div>
+        </div>
 
-        {/* Drift Monitoring Section */}
-        <DriftMonitoring
-          reports={driftReports}
-          onRefresh={handleRefreshDrift}
-        />
+        {/* Overview Tab */}
+        {activeView === 'overview' && (
+          <div className="space-y-6">
+            {/* Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Anomaly Status */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <AlertCircle className="text-amber-600" size={24} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Anomalies</h3>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {overviewStats.unresolvedAnomalies}
+                </div>
+                <p className="text-sm text-gray-600">Unresolved anomalies detected</p>
+                <button
+                  onClick={() => setActiveView('anomaly')}
+                  className="mt-4 w-full px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100"
+                >
+                  View Details
+                </button>
+              </div>
 
-        {/* Time Series Forecast Section */}
-        <TimeSeriesForecast
-          historicalData={historicalData}
-          forecast={forecast}
-          onReforecast={handleReforecast}
-        />
+              {/* Drift Status */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Activity className="text-blue-600" size={24} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Model Drift</h3>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {overviewStats.driftScore.toFixed(3)}
+                </div>
+                <p className="text-sm text-gray-600">
+                  {overviewStats.driftDetected ? 'Drift detected' : 'Within parameters'}
+                </p>
+                <button
+                  onClick={() => setActiveView('drift')}
+                  className="mt-4 w-full px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100"
+                >
+                  View Details
+                </button>
+              </div>
+
+              {/* Forecast Status */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <TrendingUp className="text-green-600" size={24} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Forecast</h3>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {overviewStats.nextForecast.toFixed(1)}
+                </div>
+                <p className="text-sm text-gray-600">Next period prediction</p>
+                <button
+                  onClick={() => setActiveView('forecast')}
+                  className="mt-4 w-full px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100"
+                >
+                  View Details
+                </button>
+              </div>
+
+              {/* System Health */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Zap className="text-purple-600" size={24} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Health</h3>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-green-600 mb-1">
+                  {!overviewStats.driftDetected && overviewStats.unresolvedAnomalies < 5 ? 'Good' : 'Warning'}
+                </div>
+                <p className="text-sm text-gray-600">Overall system status</p>
+                <div className="mt-4 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${!overviewStats.driftDetected && overviewStats.unresolvedAnomalies < 5 ? 'bg-green-500' : 'bg-yellow-500'}`}
+                    style={{ width: '85%' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Anomalies */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <AlertCircle size={18} className="text-amber-600" />
+                  Recent Anomalies
+                </h3>
+                <div className="space-y-3">
+                  {anomalies.slice(0, 5).map(anomaly => (
+                    <div key={anomaly.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">Anomaly #{anomaly.id}</div>
+                        <div className="text-xs text-gray-600">{formatTime(anomaly.timestamp)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-amber-600">{anomaly.anomaly_score.toFixed(2)}</div>
+                        <div className={`text-xs ${anomaly.resolved ? 'text-green-600' : 'text-gray-600'}`}>
+                          {anomaly.resolved ? 'Resolved' : 'Active'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trend Forecast */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp size={18} className="text-blue-600" />
+                  Forecast Trend
+                </h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={forecast.slice(0, 10)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="ds"
+                      tickFormatter={(date) => formatDate(date)}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="yhat"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="yhat_upper"
+                      stroke="#93c5fd"
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="yhat_lower"
+                      stroke="#93c5fd"
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Anomaly Detection Tab */}
+        {activeView === 'anomaly' && (
+          <AnomalyMonitor
+            anomalies={anomalies}
+            onResolve={handleResolveAnomaly}
+            onInvestigate={handleInvestigateAnomaly}
+          />
+        )}
+
+        {/* Drift Monitoring Tab */}
+        {activeView === 'drift' && (
+          <DriftMonitoring
+            reports={driftReports}
+            onRefresh={handleRefreshDrift}
+          />
+        )}
+
+        {/* Time Series Forecast Tab */}
+        {activeView === 'forecast' && (
+          <TimeSeriesForecast
+            historicalData={historicalData}
+            forecast={forecast}
+            onReforecast={handleReforecast}
+          />
+        )}
       </div>
     </div>
   );
