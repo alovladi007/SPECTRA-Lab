@@ -123,9 +123,22 @@ const navigation: NavItem[] = [
     name: 'Process Simulation',
     icon: Activity,
     children: [
-      { name: 'Diffusion Simulation', href: '/dashboard/simulation/diffusion' },
-      { name: 'Oxidation Planning', href: '/dashboard/simulation/oxidation' },
-      { name: 'SPC Monitoring', href: '/dashboard/simulation/spc' },
+      {
+        name: 'Core Simulations',
+        children: [
+          { name: 'Diffusion Simulation', href: '/dashboard/simulation/diffusion' },
+          { name: 'Oxidation Planning', href: '/dashboard/simulation/oxidation' },
+          { name: 'SPC Monitoring', href: '/dashboard/simulation/spc' },
+        ]
+      },
+      {
+        name: 'Advanced Tools',
+        children: [
+          { name: 'Calibration', href: '/dashboard/simulation/calibration' },
+          { name: 'Batch Job Manager', href: '/dashboard/simulation/batch' },
+          { name: 'Predictive Maintenance', href: '/dashboard/simulation/maintenance' },
+        ]
+      },
     ],
   },
   {
