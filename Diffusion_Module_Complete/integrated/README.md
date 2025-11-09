@@ -1,24 +1,24 @@
-# Integrated Diffusion Module - Sessions 1 & 2
+# Integrated Diffusion Module - Sessions 1-8
 
 **Status:** ✅ Production Ready
 **Date:** November 8, 2025
-**Sessions Integrated:** Session 1 (Skeleton) + Session 2 (ERFC)
+**Sessions Integrated:** 1 (Skeleton) + 2 (ERFC) + 3 (Fick FD) + 4 (Oxidation) + 5 (Segregation) + 6 (IO) + 7 (SPC) + 8 (VM & Forecasting)
 
 ---
 
 ## 📁 Directory Structure
 
-This directory contains all integrated files from Sessions 1 and 2, organized by functional module rather than by session.
+This directory contains all integrated files from Sessions 1-8, organized by functional module rather than by session.
 
 ```
 integrated/
-├── core/               # Core diffusion & oxidation algorithms
-├── spc/                # Statistical Process Control modules
-├── vm/                 # Virtual Metrology & ML
-├── io/                 # Input/Output utilities
-├── api/                # API endpoints & schemas
-├── tests/              # Test suites
-├── examples/           # Tutorial notebooks
+├── core/               # Core diffusion & oxidation algorithms (Sessions 2-5)
+├── spc/                # Statistical Process Control modules (Session 7)
+├── ml/                 # Virtual Metrology & ML (Session 8)
+├── io/                 # Input/Output utilities (Session 6)
+├── api/                # API endpoints & schemas (Sessions 4, 7, 8)
+├── tests/              # Test suites (Sessions 2-6)
+├── examples/           # Tutorial notebooks (Sessions 2-5, 8)
 ├── config/             # Configuration files
 ├── scripts/            # Utility scripts
 └── README.md           # This file
@@ -33,10 +33,10 @@ integrated/
 | File | Status | Description | Session |
 |------|--------|-------------|---------|
 | `erfc.py` | ✅ **PRODUCTION** | Closed-form diffusion solutions (erfc, Gaussian) | Session 2 |
-| `fick_fd.py` | ⚠️ Stub | Finite difference solver for Fick's 2nd law | Session 1 |
-| `massoud.py` | ⚠️ Stub | Advanced diffusion model with clustering | Session 1 |
-| `segregation.py` | ⚠️ Stub | Dopant segregation at interfaces | Session 1 |
-| `deal_grove.py` | ⚠️ Stub | Deal-Grove oxidation model | Session 1 |
+| `fick_fd.py` | ✅ **PRODUCTION** | Crank-Nicolson FD solver for Fick's 2nd law | Session 3 |
+| `deal_grove.py` | ✅ **PRODUCTION** | Deal-Grove oxidation model | Session 4 |
+| `massoud.py` | ✅ **PRODUCTION** | Thin-oxide corrections for Deal-Grove | Session 4 |
+| `segregation.py` | ✅ **PRODUCTION** | Dopant segregation & moving boundary | Session 5 |
 
 ### Production-Ready Functions (erfc.py)
 
@@ -68,28 +68,47 @@ from core.erfc import (
 
 **Purpose:** SPC monitoring and anomaly detection
 
-| File | Status | Description |
-|------|--------|-------------|
-| `cusum.py` | ⚠️ Stub | CUSUM control charts |
-| `ewma.py` | ⚠️ Stub | Exponentially Weighted Moving Average |
-| `changepoint.py` | ⚠️ Stub | Changepoint detection |
-| `rules.py` | ⚠️ Stub | Western Electric rules |
+| File | Status | Description | Session |
+|------|--------|-------------|---------|
+| `rules.py` | ✅ **PRODUCTION** | Western Electric & Nelson rules (8 rules) | Session 7 |
+| `ewma.py` | ✅ **PRODUCTION** | EWMA control charts with ARL estimation | Session 7 |
+| `cusum.py` | ✅ **PRODUCTION** | CUSUM & FIR-CUSUM variants | Session 7 |
+| `changepoint.py` | ✅ **PRODUCTION** | BOCPD drift detection | Session 7 |
 
-**Note:** These are Session 1 stubs awaiting implementation in future sessions.
+**Production-Ready Functions:**
+```python
+from spc import (
+    check_spc_rules,           # Quick SPC rules check
+    EWMAChart,                  # EWMA monitoring
+    CUSUMChart,                 # CUSUM monitoring
+    detect_changepoints,        # BOCPD drift detection
+)
+```
 
 ---
 
-## 🤖 Virtual Metrology (`vm/`)
+## 🤖 Virtual Metrology & ML (`ml/`)
 
 **Purpose:** ML-based process prediction and forecasting
 
-| File | Status | Description |
-|------|--------|-------------|
-| `vm.py` | ⚠️ Stub | Virtual metrology models |
-| `forecast.py` | ⚠️ Stub | Time series forecasting |
-| `features.py` | ⚠️ Stub | Feature engineering |
+| File | Status | Description | Session |
+|------|--------|-------------|---------|
+| `features.py` | ✅ **PRODUCTION** | FDC feature engineering (29 features) | Session 8 |
+| `vm.py` | ✅ **PRODUCTION** | VM models (Ridge, Lasso, XGBoost) | Session 8 |
+| `forecast.py` | ✅ **PRODUCTION** | Forecasting (ARIMA, Trees, Ensemble) | Session 8 |
 
-**Note:** These are Session 1 stubs awaiting implementation in future sessions.
+**Production-Ready Functions:**
+```python
+from ml import (
+    extract_features_from_fdc_data,  # 29 feature extraction
+    VirtualMetrologyModel,            # Ridge/Lasso/XGBoost
+    train_ensemble,                   # Train all 3 models
+    NextRunForecaster,                # Next-run forecasting
+    forecast_with_drift_detection,    # Forecast + BOCPD
+)
+```
+
+**Targets:** Junction depth, Sheet resistance, Oxide thickness
 
 ---
 
@@ -97,10 +116,21 @@ from core.erfc import (
 
 **Purpose:** Data loading and writing utilities
 
-| File | Status | Description |
-|------|--------|-------------|
-| `loaders.py` | ⚠️ Stub | Data loading utilities |
-| `writers.py` | ⚠️ Stub | Data writing utilities |
+| File | Status | Description | Session |
+|------|--------|-------------|---------|
+| `schemas.py` | ✅ **PRODUCTION** | Pydantic data models (MES, FDC, SPC) | Session 6 |
+| `loaders.py` | ✅ **PRODUCTION** | MES/FDC/SPC parsers with validation | Session 6 |
+| `writers.py` | ✅ **PRODUCTION** | Parquet/JSON writers with provenance | Session 6 |
+
+**Production-Ready Functions:**
+```python
+from io import (
+    MESRun, FDCFurnaceData, SPCChart,         # Schemas
+    load_mes_diffusion_runs,                   # MES parser
+    load_fdc_furnace_data,                     # FDC parser
+    write_mes_runs_parquet,                    # Data export
+)
+```
 
 ---
 
@@ -108,12 +138,18 @@ from core.erfc import (
 
 **Purpose:** REST API endpoints and request/response schemas
 
-| File | Status | Description |
-|------|--------|-------------|
-| `routers.py` | ⚠️ Stub | FastAPI routers (diffusion, oxidation, SPC) |
-| `schemas.py` | ⚠️ Stub | Pydantic schemas for validation |
+| File | Status | Description | Session |
+|------|--------|-------------|---------|
+| `service.py` | ✅ **PRODUCTION** | FastAPI oxidation service | Session 4 |
+| `spc_monitor.py` | ✅ **PRODUCTION** | POST /spc/monitor endpoint | Session 7 |
+| `ml_endpoints.py` | ✅ **PRODUCTION** | POST /ml/vm/predict, /ml/forecast/next | Session 8 |
+| `routers.py` | ⚠️ Stub | General routers (partial) | Session 1 |
+| `schemas.py` | ⚠️ Stub | Legacy schemas (superseded by io/schemas.py) | Session 1 |
 
-**Note:** Production API is integrated in `services/analysis/app/api/v1/simulation/`
+**Production API Endpoints:**
+- `/spc/monitor` - SPC rule violations and drift detection
+- `/ml/vm/predict` - Virtual metrology KPI prediction
+- `/ml/forecast/next` - Next-run forecasting with violation probability
 
 ---
 

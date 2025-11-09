@@ -1,8 +1,8 @@
-# Diffusion Module - Complete Integration (Sessions 1-6)
+# Diffusion Module - Complete Integration (Sessions 1-8)
 
 **Status:** ✅ Production Ready
 **Date:** November 8, 2025
-**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical) + 4 (Thermal Oxidation) + 5 (Segregation & Moving Boundary) + 6 (IO & Schemas for MES/SPC/FDC)
+**Sessions:** 1 (Skeleton) + 2 (ERFC Analytical) + 3 (Fick FD Numerical) + 4 (Thermal Oxidation) + 5 (Segregation & Moving Boundary) + 6 (IO & Schemas for MES/SPC/FDC) + 7 (SPC Engine) + 8 (Virtual Metrology & Forecasting)
 
 ---
 
@@ -76,6 +76,31 @@ Diffusion_Module_Complete/
 │   ├── README.md                       # Session 6 overview
 │   └── __init__.py                     # Package initialization
 │
+├── session7/                           # Session 7 original files (9 files)
+│   ├── spc/
+│   │   ├── rules.py                    # ✅ Western Electric & Nelson rules (457 lines)
+│   │   ├── ewma.py                     # ✅ EWMA control charts (343 lines)
+│   │   ├── cusum.py                    # ✅ CUSUM & FIR-CUSUM (417 lines)
+│   │   └── changepoint.py              # ✅ BOCPD drift detection (361 lines)
+│   ├── api/
+│   │   └── monitor.py                  # ✅ /spc/monitor endpoint (229 lines)
+│   ├── __init__.py                     # Package exports
+│   └── README.md                       # Session 7 overview
+│
+├── session8/                           # Session 8 original files (9 files)
+│   ├── ml/
+│   │   ├── features.py                 # ✅ FDC feature engineering - 29 features (453 lines)
+│   │   ├── vm.py                       # ✅ VM models: Ridge/Lasso/XGBoost (426 lines)
+│   │   ├── forecast.py                 # ✅ Forecasting: ARIMA/Trees/Ensemble (392 lines)
+│   │   └── __init__.py                 # ML module exports
+│   ├── api/
+│   │   └── ml_endpoints.py             # ✅ /ml/vm/predict & /ml/forecast/next (233 lines)
+│   ├── examples/notebooks/
+│   │   └── 04_vm_forecast.ipynb        # ✅ End-to-end demo notebook
+│   ├── artifacts/                      # Model storage directory
+│   ├── __init__.py                     # Package exports
+│   └── README.md                       # Session 8 overview
+│
 ├── integrated/                         # ✅ ORGANIZED BY FUNCTION (USE THIS!)
 │   ├── README.md                       # Integration guide
 │   │
@@ -87,25 +112,27 @@ Diffusion_Module_Complete/
 │   │   └── segregation.py              # ✅ Session 5 - PRODUCTION (Segregation & moving boundary)
 │   │
 │   ├── spc/                            # Statistical Process Control (4 files)
-│   │   ├── cusum.py                    # ⚠️ Session 1 - Stub
-│   │   ├── ewma.py                     # ⚠️ Session 1 - Stub
-│   │   ├── changepoint.py              # ⚠️ Session 1 - Stub
-│   │   └── rules.py                    # ⚠️ Session 1 - Stub
+│   │   ├── rules.py                    # ✅ Session 7 - PRODUCTION (Western Electric & Nelson rules)
+│   │   ├── ewma.py                     # ✅ Session 7 - PRODUCTION (EWMA control charts)
+│   │   ├── cusum.py                    # ✅ Session 7 - PRODUCTION (CUSUM & FIR-CUSUM)
+│   │   └── changepoint.py              # ✅ Session 7 - PRODUCTION (BOCPD drift detection)
 │   │
-│   ├── vm/                             # Virtual Metrology (3 files)
-│   │   ├── vm.py                       # ⚠️ Session 1 - Stub
-│   │   ├── forecast.py                 # ⚠️ Session 1 - Stub
-│   │   └── features.py                 # ⚠️ Session 1 - Stub
+│   ├── ml/                             # Virtual Metrology & ML (3 files)
+│   │   ├── features.py                 # ✅ Session 8 - PRODUCTION (29 FDC features)
+│   │   ├── vm.py                       # ✅ Session 8 - PRODUCTION (Ridge/Lasso/XGBoost)
+│   │   └── forecast.py                 # ✅ Session 8 - PRODUCTION (ARIMA/Trees/Ensemble)
 │   │
 │   ├── io/                             # Input/Output utilities (4 files)
 │   │   ├── schemas.py                  # ✅ Session 6 - Pydantic data schemas
 │   │   ├── loaders.py                  # ✅ Session 6 - MES/FDC/SPC parsers
 │   │   └── writers.py                  # ✅ Session 6 - Parquet/JSON writers with provenance
 │   │
-│   ├── api/                            # API endpoints (3 files)
+│   ├── api/                            # API endpoints (5 files)
 │   │   ├── routers.py                  # ⚠️ Session 1 - Stub
 │   │   ├── schemas.py                  # ⚠️ Session 1 - Stub
-│   │   └── service.py                  # ✅ Session 4 - FastAPI oxidation service
+│   │   ├── service.py                  # ✅ Session 4 - FastAPI oxidation service
+│   │   ├── spc_monitor.py              # ✅ Session 7 - /spc/monitor endpoint
+│   │   └── ml_endpoints.py             # ✅ Session 8 - /ml/vm/predict & /ml/forecast/next
 │   │
 │   ├── tests/                          # Test suites (9 files)
 │   │   ├── test_erfc.py                # ✅ Session 2 - 50+ tests, 95% coverage
@@ -119,11 +146,13 @@ Diffusion_Module_Complete/
 │   │   ├── test_imports.py             # Session 1
 │   │   └── test_schemas.py             # Session 1
 │   │
-│   ├── examples/                       # Tutorials (6 files)
+│   ├── examples/                       # Tutorials (7 files + notebooks/)
 │   │   ├── 01_quickstart_diffusion.ipynb  # ✅ Session 2 - ERFC tutorial
 │   │   ├── 01_fick_solver_validation.ipynb  # ✅ Session 3 - Numerical solver
 │   │   ├── 02_quickstart_oxidation.ipynb   # ✅ Session 4 - Oxidation tutorial
 │   │   ├── 05_coupled_oxidation_diffusion.ipynb  # ✅ Session 5 - Coupled physics
+│   │   ├── notebooks/
+│   │   │   └── 04_vm_forecast.ipynb    # ✅ Session 8 - VM & Forecasting demo
 │   │   ├── example_session3_usage.py   # ✅ Session 3 - Usage examples
 │   │   └── validation_demo.py          # ✅ Session 4 - Oxidation validation
 │   │
@@ -151,6 +180,8 @@ Diffusion_Module_Complete/
     ├── SESSION4_SUMMARY.md             # Session 4 documentation
     ├── SESSION5_SUMMARY.md             # Session 5 documentation
     ├── SESSION6_SUMMARY.md             # Session 6 documentation
+    ├── SESSION7_SUMMARY.md             # ✅ Session 7 documentation
+    ├── SESSION8_SUMMARY.md             # ✅ Session 8 documentation
     └── README_SESSION5.md              # Session 5 overview
 ```
 
@@ -369,9 +400,125 @@ from integrated.io.writers import (
 - Round-trip IO tested
 - Production-ready for Micron-style MES/SPC/FDC data
 
+### Session 7: SPC Engine (Rules + Change Points) ✅
+
+**Status:** 100% Complete & Production-Ready
+**Tag:** `diffusion-v7`
+
+**Delivered:**
+- ✅ **rules.py** - 457 lines of production SPC code
+  - All 8 Western Electric & Nelson rules implemented
+  - RuleViolation detection with severity (CRITICAL, WARNING, MINOR)
+  - SPCRulesEngine class with timestamps
+  - Quick helper: check_spc_rules()
+
+- ✅ **ewma.py** - 343 lines of EWMA charts
+  - EWMAChart class with time-varying control limits
+  - Lambda (smoothing) parameter tuning
+  - ARL (Average Run Length) estimation
+  - Violation detection with confidence levels
+
+- ✅ **cusum.py** - 417 lines of CUSUM charts
+  - CUSUMChart class (tabular method)
+  - FastInitialResponse_CUSUM variant
+  - Two-sided CUSUM (high/low)
+  - ARL estimation for design
+
+- ✅ **changepoint.py** - 361 lines of drift detection
+  - BOCPD (Bayesian Online Change Point Detection)
+  - SimplifiedBOCPD with hazard functions
+  - Student-t predictive distribution
+  - Quick helper: detect_changepoints()
+
+- ✅ **API endpoint** - monitor.py (229 lines)
+  - POST /spc/monitor for KPI series
+  - Returns rule violations, EWMA/CUSUM scores, change points
+  - MonitorRequest/Response with Pydantic validation
+
+**What Works Right Now:**
+```python
+from integrated.spc import (
+    check_spc_rules,           # ✅ Works!
+    EWMAChart,                  # ✅ Works!
+    CUSUMChart,                 # ✅ Works!
+    detect_changepoints,        # ✅ Works!
+)
+```
+
+**SPC Rules Implemented:**
+- Rule 1: 1 point beyond 3σ (CRITICAL)
+- Rule 2: 9 consecutive points same side of CL (WARNING)
+- Rule 3: 6 consecutive increasing/decreasing (WARNING)
+- Rule 4: 14 alternating up/down (MINOR)
+- Rule 5: 2 of 3 beyond 2σ same side (WARNING)
+- Rule 6: 4 of 5 beyond 1σ same side (WARNING)
+- Rule 7: 15 consecutive within 1σ (MINOR - stratification)
+- Rule 8: 8 consecutive beyond 1σ both sides (WARNING - mixture)
+
+### Session 8: Virtual Metrology & Forecasting ✅
+
+**Status:** 100% Complete & Production-Ready
+**Tag:** `diffusion-v8`
+
+**Delivered:**
+- ✅ **features.py** - 453 lines of feature engineering
+  - 29 engineered features from FDC time series
+  - Thermal features (10): ramp rates, soak integral, peak temp, uniformity
+  - Stability features (9): pressure/gas flow stats, alarms
+  - Spatial features (5): zone balance, boat load, slot position
+  - Historical features (5): thermal budget, steps, lot age
+  - Quick helper: extract_features_from_fdc_data()
+
+- ✅ **vm.py** - 426 lines of ML models
+  - VirtualMetrologyModel class (Ridge, Lasso, XGBoost)
+  - K-fold cross-validation framework
+  - Permutation feature importance
+  - ModelCard dataclass for metadata & governance
+  - Model persistence with versioning
+  - train_ensemble() and get_best_model() helpers
+
+- ✅ **forecast.py** - 392 lines of forecasting
+  - ARIMAForecaster for time series baseline
+  - TreeBasedForecaster (Random Forest with lags)
+  - NextRunForecaster (ensemble method)
+  - SPC violation probability estimation
+  - Integration with BOCPD drift detection
+  - ForecastResult dataclass
+
+- ✅ **API endpoints** - ml_endpoints.py (233 lines)
+  - POST /ml/vm/predict - KPI prediction from FDC data
+  - POST /ml/forecast/next - Next-run forecasting
+  - VMPredictRequest/Response, ForecastRequest/Response
+  - Ready for FastAPI integration
+
+- ✅ **Demo notebook** - 04_vm_forecast.ipynb
+  - End-to-end demonstration with synthetic data
+  - Model training (Ridge, Lasso, XGBoost) for 3 targets
+  - Feature importance visualization
+  - Next-run forecasting with violation probability
+  - API endpoint simulation
+
+**What Works Right Now:**
+```python
+from integrated.ml import (
+    extract_features_from_fdc_data,  # ✅ Works!
+    VirtualMetrologyModel,            # ✅ Works!
+    train_ensemble,                   # ✅ Works!
+    NextRunForecaster,                # ✅ Works!
+    forecast_with_drift_detection,    # ✅ Works!
+)
+```
+
+**Targets Supported:**
+- Junction depth (nm)
+- Sheet resistance (Ω/sq)
+- Oxide thickness (nm)
+
+**Models:** Ridge, Lasso, XGBoost (3 models × 3 targets = 9 trained models)
+
 ### Session 1: Module Skeleton ⚠️
 
-**Status:** Stubs only (mostly superseded by Sessions 2-6)
+**Status:** Stubs only (mostly superseded by Sessions 2-8)
 **Tag:** `diffusion-v1`
 
 **Delivered:**
@@ -380,14 +527,13 @@ from integrated.io.writers import (
 - ✅ **massoud.py** - Completed in Session 4
 - ✅ **segregation.py** - Completed in Session 5
 - ✅ **I/O modules** - schemas, loaders, writers - Completed in Session 6
-- ⚠️ **SPC modules** - cusum, ewma, changepoint, rules (stubs)
-- ⚠️ **VM modules** - vm, forecast, features (stubs)
-- ⚠️ **API modules** - routers, schemas (stubs)
+- ✅ **SPC modules** - rules, ewma, cusum, changepoint - Completed in Session 7
+- ✅ **VM modules** - features, vm, forecast - Completed in Session 8
+- ⚠️ **API modules** - routers, schemas (stubs - Sessions 7-8 added endpoints)
 
 **Future Implementation:**
-- Sessions 7-8: Complete SPC modules
-- Sessions 9-10: Complete VM modules
-- Sessions 11-12: Production integration
+- Sessions 9-10: Advanced ML features (LSTM, AutoML)
+- Sessions 11-12: Production integration & deployment
 
 ---
 
