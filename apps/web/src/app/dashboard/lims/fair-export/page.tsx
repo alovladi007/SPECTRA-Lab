@@ -1,6 +1,25 @@
 'use client'
-import { useState } from 'react'
-import { Database, Plus, Search, Download, CheckCircle, AlertCircle, Clock, FileText, Shield, Globe } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Database, Plus, Search, Download, CheckCircle, AlertCircle, Clock, FileText, Shield, Globe, Trash2 } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface FAIRExport {
   id: string
@@ -17,7 +36,14 @@ interface FAIRExport {
   doi?: string
 }
 
-const mockExports: FAIRExport[] = [
+interface NewExportForm {
+  datasetName: string
+  dataSource: string
+  schema: 'JSON-LD' | 'RO-Crate' | 'DataCite' | 'DCAT' | 'Schema.org'
+  repository: string
+}
+
+const generateMockExports = (): FAIRExport[] => [
   {
     id: 'FAIR-001',
     datasetName: 'Silicon Wafer Characterization Dataset Q4 2024',
@@ -76,14 +102,25 @@ const mockExports: FAIRExport[] = [
     fairScore: 65,
     createdBy: 'Dr. Kim',
     createdDate: '2024-11-09'
+  },
+  {
+    id: 'FAIR-006',
+    datasetName: 'Photolithography Process Optimization Data',
+    datasetId: 'DS-2024-PHOTO-006',
+    schema: 'RO-Crate',
+    status: 'ready',
+    fairScore: 94,
+    createdBy: 'Dr. Wilson',
+    createdDate: '2024-11-08',
+    size: '23.6 MB'
   }
 ]
 
 const statusConfig = {
-  validating: { color: 'bg-blue-100 text-blue-800', icon: Clock },
-  ready: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  exported: { color: 'bg-purple-100 text-purple-800', icon: Database },
-  failed: { color: 'bg-red-100 text-red-800', icon: AlertCircle }
+  validating: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Validating' },
+  ready: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Ready' },
+  exported: { color: 'bg-purple-100 text-purple-800', icon: Database, label: 'Exported' },
+  failed: { color: 'bg-red-100 text-red-800', icon: AlertCircle, label: 'Failed' }
 }
 
 const schemaColors = {
@@ -95,10 +132,24 @@ const schemaColors = {
 }
 
 export default function FAIRExportPage() {
-  const [exports, setExports] = useState(mockExports)
+  const [exports, setExports] = useState<FAIRExport[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNewExport, setShowNewExport] = useState(false)
+  const [selectedExport, setSelectedExport] = useState<FAIRExport | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+
+  const [newExport, setNewExport] = useState<NewExportForm>({
+    datasetName: '',
+    dataSource: '',
+    schema: 'RO-Crate',
+    repository: 'Zenodo'
+  })
+
+  // Generate mock data on client side to prevent hydration errors
+  useEffect(() => {
+    setExports(generateMockExports())
+  }, [])
 
   const filteredExports = exports.filter(exp => {
     const matchesSearch =
@@ -111,6 +162,69 @@ export default function FAIRExportPage() {
     return matchesSearch && matchesStatus
   })
 
+  const handleCreateExport = () => {
+    if (!newExport.datasetName || !newExport.dataSource) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const currentUser = 'Current User'
+    const fairExport: FAIRExport = {
+      id: `FAIR-${String(exports.length + 1).padStart(3, '0')}`,
+      datasetName: newExport.datasetName,
+      datasetId: `DS-2024-${String(exports.length + 1).padStart(3, '0')}`,
+      schema: newExport.schema,
+      status: 'validating',
+      fairScore: 0,
+      createdBy: currentUser,
+      createdDate: new Date().toISOString().split('T')[0]
+    }
+
+    setExports([fairExport, ...exports])
+    setShowNewExport(false)
+    setNewExport({
+      datasetName: '',
+      dataSource: '',
+      schema: 'RO-Crate',
+      repository: 'Zenodo'
+    })
+  }
+
+  const handleRevalidate = (exportId: string) => {
+    setExports(exports.map(exp => {
+      if (exp.id === exportId && exp.status === 'failed') {
+        return { ...exp, status: 'validating' as const }
+      }
+      return exp
+    }))
+  }
+
+  const handleExport = (exportId: string) => {
+    setExports(exports.map(exp => {
+      if (exp.id === exportId && exp.status === 'ready') {
+        return {
+          ...exp,
+          status: 'exported' as const,
+          exportedDate: new Date().toISOString().split('T')[0],
+          repository: newExport.repository,
+          doi: `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`
+        }
+      }
+      return exp
+    }))
+  }
+
+  const handleDelete = (exportId: string) => {
+    if (confirm('Are you sure you want to delete this export?')) {
+      setExports(exports.filter(exp => exp.id !== exportId))
+    }
+  }
+
+  const handleViewDetails = (fairExport: FAIRExport) => {
+    setSelectedExport(fairExport)
+    setShowDetailsDialog(true)
+  }
+
   const getFairColor = (score: number) => {
     if (score >= 90) return 'text-green-600'
     if (score >= 75) return 'text-yellow-600'
@@ -121,6 +235,13 @@ export default function FAIRExportPage() {
     if (score >= 90) return 'Excellent'
     if (score >= 75) return 'Good'
     return 'Needs Improvement'
+  }
+
+  const stats = {
+    total: exports.length,
+    exported: exports.filter(e => e.status === 'exported').length,
+    ready: exports.filter(e => e.status === 'ready').length,
+    avgScore: Math.round(exports.reduce((sum, e) => sum + e.fairScore, 0) / exports.length)
   }
 
   return (
@@ -136,13 +257,13 @@ export default function FAIRExportPage() {
             <p className="text-gray-600 mt-1">Export datasets with FAIR principles compliance</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => setShowNewExport(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           New Export
-        </button>
+        </Button>
       </div>
 
       {/* FAIR Principles Info */}
@@ -182,99 +303,94 @@ export default function FAIRExportPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Exports</p>
-              <p className="text-2xl font-bold text-gray-900">{exports.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <Database className="w-8 h-8 text-indigo-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Exported</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {exports.filter(e => e.status === 'exported').length}
-              </p>
+              <p className="text-2xl font-bold text-purple-600">{stats.exported}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-purple-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Ready</p>
-              <p className="text-2xl font-bold text-green-600">
-                {exports.filter(e => e.status === 'ready').length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{stats.ready}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Avg FAIR Score</p>
-              <p className="text-2xl font-bold text-indigo-600">
-                {Math.round(exports.reduce((sum, e) => sum + e.fairScore, 0) / exports.length)}
-              </p>
+              <p className="text-2xl font-bold text-indigo-600">{stats.avgScore}</p>
             </div>
             <Shield className="w-8 h-8 text-indigo-500" />
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by dataset name, ID, or creator..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="validating">Validating</option>
-            <option value="ready">Ready</option>
-            <option value="exported">Exported</option>
-            <option value="failed">Failed</option>
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="validating">Validating</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="exported">Exported</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
+      </Card>
 
       {/* Exports List */}
       <div className="space-y-4">
         {filteredExports.map((exp) => {
           const StatusIcon = statusConfig[exp.status].icon
           return (
-            <div key={exp.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <Card key={exp.id} className="p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-gray-900">{exp.datasetName}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${schemaColors[exp.schema]}`}>
+                    <Badge className={schemaColors[exp.schema]}>
                       {exp.schema}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-500 mb-3">
                     Export ID: {exp.id} • Dataset: {exp.datasetId}
                   </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${statusConfig[exp.status].color}`}>
-                  <StatusIcon className="w-4 h-4" />
-                  {exp.status}
-                </span>
+                <Badge className={statusConfig[exp.status].color}>
+                  <StatusIcon className="w-3 h-3 mr-1" />
+                  {statusConfig[exp.status].label}
+                </Badge>
               </div>
 
               {/* FAIR Score */}
@@ -289,9 +405,9 @@ export default function FAIRExportPage() {
                       </p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getFairColor(exp.fairScore)} bg-white`}>
+                  <Badge className={`${getFairColor(exp.fairScore)} bg-white`}>
                     {getFairLabel(exp.fairScore)}
-                  </span>
+                  </Badge>
                 </div>
                 {/* Progress bar */}
                 <div className="mt-3 bg-white rounded-full h-2 overflow-hidden">
@@ -333,10 +449,10 @@ export default function FAIRExportPage() {
                         </a>
                       </p>
                     </div>
-                    <button className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                      <Download className="w-4 h-4" />
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                      <Download className="w-4 h-4 mr-1" />
                       Download
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -352,143 +468,255 @@ export default function FAIRExportPage() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-4 border-t border-gray-200">
-                <button className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewDetails(exp)}
+                  className="text-indigo-600 hover:text-indigo-900"
+                >
                   View Metadata
-                </button>
+                </Button>
                 {exp.status === 'ready' && (
                   <>
-                    <button className="text-green-600 hover:text-green-900 text-sm font-medium">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleExport(exp.id)}
+                      className="text-green-600 hover:text-green-900"
+                    >
                       Export to Repository
-                    </button>
-                    <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-900"
+                    >
                       Download Package
-                    </button>
+                    </Button>
                   </>
                 )}
                 {exp.status === 'failed' && (
-                  <button className="text-orange-600 hover:text-orange-900 text-sm font-medium">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRevalidate(exp.id)}
+                    className="text-orange-600 hover:text-orange-900"
+                  >
                     Re-validate
-                  </button>
+                  </Button>
                 )}
-                <button className="text-purple-600 hover:text-purple-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-purple-600 hover:text-purple-900"
+                >
                   Validation Report
-                </button>
-                <button className="text-gray-600 hover:text-gray-900 text-sm font-medium">
-                  Edit
-                </button>
+                </Button>
+                {exp.status !== 'exported' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(exp.id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-            </div>
+            </Card>
           )
         })}
 
         {filteredExports.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Card className="p-12 text-center">
             <Database className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">No FAIR exports found matching your criteria</p>
-          </div>
+          </Card>
         )}
       </div>
 
-      {/* New Export Modal */}
-      {showNewExport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Create FAIR Data Export</h2>
+      {/* New Export Dialog */}
+      <Dialog open={showNewExport} onOpenChange={setShowNewExport}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create FAIR Data Export</DialogTitle>
+            <DialogDescription>
+              Configure a new FAIR-compliant data export
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dataset Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter descriptive dataset name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Data Source</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option>Sample Tracking Data</option>
-                  <option>Lab Notebook Entries</option>
-                  <option>Experimental Results</option>
-                  <option>Quality Control Records</option>
-                  <option>Equipment Logs</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Metadata Schema</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option>RO-Crate (Research Object)</option>
-                  <option>JSON-LD (Linked Data)</option>
-                  <option>DataCite</option>
-                  <option>DCAT (Data Catalog)</option>
-                  <option>Schema.org</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Target Repository</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option>Zenodo</option>
-                  <option>Figshare</option>
-                  <option>Dryad</option>
-                  <option>OSF (Open Science Framework)</option>
-                  <option>Institutional Repository</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">License</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                  <option>CC BY 4.0</option>
-                  <option>CC BY-SA 4.0</option>
-                  <option>CC0 (Public Domain)</option>
-                  <option>MIT License</option>
-                  <option>Custom</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">FAIR Options</label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Generate persistent identifier (DOI)
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Include rich metadata
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    Add ontology terms
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Embargo period (specify duration)
-                  </label>
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Dataset Name *
+              </label>
+              <Input
+                value={newExport.datasetName}
+                onChange={(e) => setNewExport({ ...newExport, datasetName: e.target.value })}
+                placeholder="Enter descriptive dataset name"
+              />
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowNewExport(false)}
-                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Select Data Source *
+              </label>
+              <Select
+                value={newExport.dataSource}
+                onValueChange={(value) => setNewExport({ ...newExport, dataSource: value })}
               >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowNewExport(false)}
-                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                <SelectTrigger>
+                  <SelectValue placeholder="Select data source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="samples">Sample Tracking Data</SelectItem>
+                  <SelectItem value="notebooks">Lab Notebook Entries</SelectItem>
+                  <SelectItem value="experiments">Experimental Results</SelectItem>
+                  <SelectItem value="qc">Quality Control Records</SelectItem>
+                  <SelectItem value="equipment">Equipment Logs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Metadata Schema *
+              </label>
+              <Select
+                value={newExport.schema}
+                onValueChange={(value: any) => setNewExport({ ...newExport, schema: value })}
               >
-                Create Export
-              </button>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RO-Crate">RO-Crate (Research Object)</SelectItem>
+                  <SelectItem value="JSON-LD">JSON-LD (Linked Data)</SelectItem>
+                  <SelectItem value="DataCite">DataCite</SelectItem>
+                  <SelectItem value="DCAT">DCAT (Data Catalog)</SelectItem>
+                  <SelectItem value="Schema.org">Schema.org</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Target Repository *
+              </label>
+              <Select
+                value={newExport.repository}
+                onValueChange={(value) => setNewExport({ ...newExport, repository: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Zenodo">Zenodo</SelectItem>
+                  <SelectItem value="Figshare">Figshare</SelectItem>
+                  <SelectItem value="Dryad">Dryad</SelectItem>
+                  <SelectItem value="OSF">OSF (Open Science Framework)</SelectItem>
+                  <SelectItem value="Institutional">Institutional Repository</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewExport(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateExport}>
+              Create Export
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>FAIR Export Metadata</DialogTitle>
+            <DialogDescription>
+              {selectedExport?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedExport && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{selectedExport.datasetName}</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Badge className={schemaColors[selectedExport.schema]}>
+                    {selectedExport.schema}
+                  </Badge>
+                  <Badge className={statusConfig[selectedExport.status].color}>
+                    {statusConfig[selectedExport.status].label}
+                  </Badge>
+                  <Badge className={getFairColor(selectedExport.fairScore)}>
+                    FAIR Score: {selectedExport.fairScore}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Dataset ID</p>
+                    <p className="text-base text-gray-900">{selectedExport.datasetId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Created By</p>
+                    <p className="text-base text-gray-900">{selectedExport.createdBy}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Created Date</p>
+                    <p className="text-base text-gray-900">{selectedExport.createdDate}</p>
+                  </div>
+                  {selectedExport.exportedDate && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Exported Date</p>
+                      <p className="text-base text-gray-900">{selectedExport.exportedDate}</p>
+                    </div>
+                  )}
+                  {selectedExport.size && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Package Size</p>
+                      <p className="text-base text-gray-900">{selectedExport.size}</p>
+                    </div>
+                  )}
+                  {selectedExport.repository && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Repository</p>
+                      <p className="text-base text-gray-900">{selectedExport.repository}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedExport.doi && (
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-sm font-medium text-gray-500 mb-2">Digital Object Identifier</p>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <a href={`https://doi.org/${selectedExport.doi}`} className="text-sm text-indigo-600 hover:text-indigo-900 underline" target="_blank" rel="noopener noreferrer">
+                      {selectedExport.doi}
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowDetailsDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

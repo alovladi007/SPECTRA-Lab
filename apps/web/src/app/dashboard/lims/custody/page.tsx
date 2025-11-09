@@ -1,6 +1,26 @@
 'use client'
-import { useState } from 'react'
-import { Shield, Search, Plus, ArrowRight, User, Calendar, MapPin, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Shield, Search, Plus, ArrowRight, User, Calendar, MapPin, FileText, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 interface CustodyRecord {
   id: string
@@ -21,7 +41,18 @@ interface CustodyRecord {
   conditions?: string
 }
 
-const mockCustodyRecords: CustodyRecord[] = [
+interface NewTransferForm {
+  sampleId: string
+  sampleName: string
+  fromPerson: string
+  fromLocation: string
+  toPerson: string
+  toLocation: string
+  purpose: string
+  conditions: string
+}
+
+const generateMockCustodyRecords = (): CustodyRecord[] => [
   {
     id: 'COC-001',
     sampleId: 'SMP-001',
@@ -93,21 +124,111 @@ const mockCustodyRecords: CustodyRecord[] = [
     purpose: 'Initial vendor delivery',
     status: 'completed',
     conditions: 'Sealed package, ambient conditions'
+  },
+  {
+    id: 'COC-005',
+    sampleId: 'SMP-007',
+    sampleName: 'Optical Component Array',
+    from: {
+      person: 'Dr. Zhang',
+      location: 'Fabrication-C1',
+      date: '2024-11-09 11:00'
+    },
+    to: {
+      person: 'Dr. Brown',
+      location: 'Optical-Testing',
+      date: ''
+    },
+    purpose: 'Optical characterization',
+    status: 'pending',
+    conditions: 'Light-sensitive, keep in dark container'
+  },
+  {
+    id: 'COC-006',
+    sampleId: 'SMP-008',
+    sampleName: 'MEMS Device Series',
+    from: {
+      person: 'Dr. Lee',
+      location: 'MEMS-Lab',
+      date: '2024-11-08 13:30'
+    },
+    to: {
+      person: 'Dr. Wilson',
+      location: 'Reliability-Test',
+      date: '2024-11-08 16:00'
+    },
+    purpose: 'Environmental stress testing',
+    status: 'in_transit',
+    conditions: 'Vacuum sealed packaging'
+  },
+  {
+    id: 'COC-007',
+    sampleId: 'SMP-010',
+    sampleName: 'Biosensor Prototype',
+    from: {
+      person: 'Dr. Garcia',
+      location: 'Bio-Lab',
+      date: '2024-11-07 10:00'
+    },
+    to: {
+      person: 'Dr. Anderson',
+      location: 'Testing-Lab2',
+      date: '2024-11-07 14:30'
+    },
+    purpose: 'Sensitivity testing',
+    status: 'completed',
+    conditions: '4°C storage required'
+  },
+  {
+    id: 'COC-008',
+    sampleId: 'SMP-012',
+    sampleName: 'Quantum Dot Samples',
+    from: {
+      person: 'Dr. Thompson',
+      location: 'Synthesis-Lab',
+      date: '2024-11-09 09:45'
+    },
+    to: {
+      person: 'Dr. White',
+      location: 'Spectroscopy-Lab',
+      date: ''
+    },
+    purpose: 'Photoluminescence analysis',
+    status: 'pending',
+    conditions: 'Inert atmosphere required'
   }
 ]
 
 const statusConfig = {
-  pending: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
-  in_transit: { color: 'bg-blue-100 text-blue-800', icon: ArrowRight },
-  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  rejected: { color: 'bg-red-100 text-red-800', icon: AlertCircle }
+  pending: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle, label: 'Pending' },
+  in_transit: { color: 'bg-blue-100 text-blue-800', icon: ArrowRight, label: 'In Transit' },
+  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Completed' },
+  rejected: { color: 'bg-red-100 text-red-800', icon: AlertCircle, label: 'Rejected' }
 }
 
 export default function CustodyPage() {
-  const [records, setRecords] = useState(mockCustodyRecords)
+  const [records, setRecords] = useState<CustodyRecord[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNewTransfer, setShowNewTransfer] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<CustodyRecord | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+
+  const [newTransfer, setNewTransfer] = useState<NewTransferForm>({
+    sampleId: '',
+    sampleName: '',
+    fromPerson: '',
+    fromLocation: '',
+    toPerson: '',
+    toLocation: '',
+    purpose: '',
+    conditions: ''
+  })
+
+  // Generate mock data on client side to prevent hydration errors
+  useEffect(() => {
+    setRecords(generateMockCustodyRecords())
+  }, [])
 
   const filteredRecords = records.filter(record => {
     const matchesSearch =
@@ -120,6 +241,87 @@ export default function CustodyPage() {
 
     return matchesSearch && matchesStatus
   })
+
+  const handleCreateTransfer = () => {
+    if (!newTransfer.sampleId || !newTransfer.sampleName || !newTransfer.fromPerson ||
+        !newTransfer.fromLocation || !newTransfer.toPerson || !newTransfer.toLocation ||
+        !newTransfer.purpose) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const newRecord: CustodyRecord = {
+      id: `COC-${String(records.length + 1).padStart(3, '0')}`,
+      sampleId: newTransfer.sampleId,
+      sampleName: newTransfer.sampleName,
+      from: {
+        person: newTransfer.fromPerson,
+        location: newTransfer.fromLocation,
+        date: new Date().toISOString().slice(0, 16).replace('T', ' ')
+      },
+      to: {
+        person: newTransfer.toPerson,
+        location: newTransfer.toLocation,
+        date: ''
+      },
+      purpose: newTransfer.purpose,
+      status: 'pending',
+      conditions: newTransfer.conditions
+    }
+
+    setRecords([newRecord, ...records])
+    setShowNewTransfer(false)
+    setNewTransfer({
+      sampleId: '',
+      sampleName: '',
+      fromPerson: '',
+      fromLocation: '',
+      toPerson: '',
+      toLocation: '',
+      purpose: '',
+      conditions: ''
+    })
+  }
+
+  const handleCompleteTransfer = (recordId: string) => {
+    setRecords(records.map(record => {
+      if (record.id === recordId && record.status === 'in_transit') {
+        return {
+          ...record,
+          status: 'completed' as const,
+          to: {
+            ...record.to,
+            date: new Date().toISOString().slice(0, 16).replace('T', ' ')
+          }
+        }
+      }
+      return record
+    }))
+  }
+
+  const handleStartTransfer = (recordId: string) => {
+    setRecords(records.map(record => {
+      if (record.id === recordId && record.status === 'pending') {
+        return {
+          ...record,
+          status: 'in_transit' as const
+        }
+      }
+      return record
+    }))
+  }
+
+  const handleViewDetails = (record: CustodyRecord) => {
+    setSelectedRecord(record)
+    setShowDetailsDialog(true)
+  }
+
+  const stats = {
+    total: records.length,
+    in_transit: records.filter(r => r.status === 'in_transit').length,
+    pending: records.filter(r => r.status === 'pending').length,
+    completed: records.filter(r => r.status === 'completed').length
+  }
 
   return (
     <div className="space-y-6">
@@ -134,94 +336,89 @@ export default function CustodyPage() {
             <p className="text-gray-600 mt-1">Track sample transfers with audit trail</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => setShowNewTransfer(true)}
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          className="flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           New Transfer
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Transfers</p>
-              <p className="text-2xl font-bold text-gray-900">{records.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <Shield className="w-8 h-8 text-purple-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">In Transit</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {records.filter(r => r.status === 'in_transit').length}
-              </p>
+              <p className="text-2xl font-bold text-blue-600">{stats.in_transit}</p>
             </div>
             <ArrowRight className="w-8 h-8 text-blue-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {records.filter(r => r.status === 'pending').length}
-              </p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
             </div>
             <AlertCircle className="w-8 h-8 text-yellow-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {records.filter(r => r.status === 'completed').length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by sample, person, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="in_transit">In Transit</option>
-            <option value="completed">Completed</option>
-            <option value="rejected">Rejected</option>
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_transit">In Transit</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
+      </Card>
 
       {/* Transfer Records */}
       <div className="space-y-4">
         {filteredRecords.map((record) => {
           const StatusIcon = statusConfig[record.status].icon
           return (
-            <div key={record.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <Card key={record.id} className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -232,10 +429,10 @@ export default function CustodyPage() {
                     <p className="text-sm text-gray-500">COC ID: {record.id} • Sample: {record.sampleId}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${statusConfig[record.status].color}`}>
-                  <StatusIcon className="w-4 h-4" />
-                  {record.status.replace('_', ' ')}
-                </span>
+                <Badge className={statusConfig[record.status].color}>
+                  <StatusIcon className="w-4 h-4 mr-1" />
+                  {statusConfig[record.status].label}
+                </Badge>
               </div>
 
               {/* Transfer Timeline */}
@@ -302,45 +499,255 @@ export default function CustodyPage() {
 
               {/* Actions */}
               <div className="mt-4 pt-4 border-t border-gray-200 flex gap-2">
-                <button className="text-purple-600 hover:text-purple-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewDetails(record)}
+                  className="text-purple-600 hover:text-purple-900"
+                >
                   View Details
-                </button>
-                <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-900"
+                >
                   Print COC Form
-                </button>
+                </Button>
+                {record.status === 'pending' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartTransfer(record.id)}
+                    className="text-blue-600 hover:text-blue-900"
+                  >
+                    Start Transfer
+                  </Button>
+                )}
                 {record.status === 'in_transit' && (
-                  <button className="text-green-600 hover:text-green-900 text-sm font-medium">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCompleteTransfer(record.id)}
+                    className="text-green-600 hover:text-green-900"
+                  >
                     Complete Transfer
-                  </button>
+                  </Button>
                 )}
               </div>
-            </div>
+            </Card>
           )
         })}
 
         {filteredRecords.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Card className="p-12 text-center">
             <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">No custody records found matching your criteria</p>
-          </div>
+          </Card>
         )}
       </div>
 
-      {/* New Transfer Modal */}
-      {showNewTransfer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">New Chain of Custody Transfer</h2>
-            <p className="text-gray-600 mb-4">COC transfer form will be implemented here</p>
-            <button
-              onClick={() => setShowNewTransfer(false)}
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-            >
-              Close
-            </button>
+      {/* New Transfer Dialog */}
+      <Dialog open={showNewTransfer} onOpenChange={setShowNewTransfer}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Chain of Custody Transfer</DialogTitle>
+            <DialogDescription>
+              Create a new custody transfer record for sample tracking
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Sample ID *
+                </label>
+                <Input
+                  value={newTransfer.sampleId}
+                  onChange={(e) => setNewTransfer({ ...newTransfer, sampleId: e.target.value })}
+                  placeholder="e.g., SMP-001"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Sample Name *
+                </label>
+                <Input
+                  value={newTransfer.sampleName}
+                  onChange={(e) => setNewTransfer({ ...newTransfer, sampleName: e.target.value })}
+                  placeholder="e.g., Silicon Wafer"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Transfer From</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Person *
+                  </label>
+                  <Input
+                    value={newTransfer.fromPerson}
+                    onChange={(e) => setNewTransfer({ ...newTransfer, fromPerson: e.target.value })}
+                    placeholder="e.g., Dr. Smith"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Location *
+                  </label>
+                  <Input
+                    value={newTransfer.fromLocation}
+                    onChange={(e) => setNewTransfer({ ...newTransfer, fromLocation: e.target.value })}
+                    placeholder="e.g., Cleanroom-A1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Transfer To</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Person *
+                  </label>
+                  <Input
+                    value={newTransfer.toPerson}
+                    onChange={(e) => setNewTransfer({ ...newTransfer, toPerson: e.target.value })}
+                    placeholder="e.g., Dr. Johnson"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Location *
+                  </label>
+                  <Input
+                    value={newTransfer.toLocation}
+                    onChange={(e) => setNewTransfer({ ...newTransfer, toLocation: e.target.value })}
+                    placeholder="e.g., Testing-Lab1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Purpose *
+              </label>
+              <Textarea
+                value={newTransfer.purpose}
+                onChange={(e) => setNewTransfer({ ...newTransfer, purpose: e.target.value })}
+                placeholder="Describe the reason for this transfer"
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Special Conditions
+              </label>
+              <Textarea
+                value={newTransfer.conditions}
+                onChange={(e) => setNewTransfer({ ...newTransfer, conditions: e.target.value })}
+                placeholder="Any special handling or storage conditions"
+                className="min-h-[80px]"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewTransfer(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateTransfer}>
+              Create Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Chain of Custody Details</DialogTitle>
+            <DialogDescription>
+              Complete transfer information and audit trail
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRecord && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">COC ID</p>
+                  <p className="text-base font-semibold text-gray-900">{selectedRecord.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <Badge className={statusConfig[selectedRecord.status].color}>
+                    {statusConfig[selectedRecord.status].label}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Sample Information</p>
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <p className="text-sm"><span className="font-medium">ID:</span> {selectedRecord.sampleId}</p>
+                  <p className="text-sm"><span className="font-medium">Name:</span> {selectedRecord.sampleName}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Transfer From</p>
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <p className="text-sm"><span className="font-medium">Person:</span> {selectedRecord.from.person}</p>
+                  <p className="text-sm"><span className="font-medium">Location:</span> {selectedRecord.from.location}</p>
+                  <p className="text-sm"><span className="font-medium">Date:</span> {selectedRecord.from.date}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Transfer To</p>
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <p className="text-sm"><span className="font-medium">Person:</span> {selectedRecord.to.person}</p>
+                  <p className="text-sm"><span className="font-medium">Location:</span> {selectedRecord.to.location}</p>
+                  <p className="text-sm"><span className="font-medium">Date:</span> {selectedRecord.to.date || 'Pending'}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Purpose</p>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm">{selectedRecord.purpose}</p>
+                </div>
+              </div>
+
+              {selectedRecord.conditions && (
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="text-sm font-medium text-gray-500 mb-2">Special Conditions</p>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm">{selectedRecord.conditions}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowDetailsDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

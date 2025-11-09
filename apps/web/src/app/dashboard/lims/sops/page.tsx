@@ -1,6 +1,26 @@
 'use client'
-import { useState } from 'react'
-import { FileText, Plus, Search, GitBranch, CheckCircle, Clock, User, Calendar, Download } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { FileText, Plus, Search, GitBranch, CheckCircle, Clock, User, Calendar, Download, Trash2 } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 interface SOP {
   id: string
@@ -16,7 +36,14 @@ interface SOP {
   tags: string[]
 }
 
-const mockSOPs: SOP[] = [
+interface NewSOPForm {
+  title: string
+  category: string
+  description: string
+  tags: string
+}
+
+const generateMockSOPs = (): SOP[] => [
   {
     id: 'SOP-2024-015',
     title: 'Chemical Storage Safety Procedures',
@@ -79,14 +106,52 @@ const mockSOPs: SOP[] = [
     approver: 'Lab Manager',
     description: 'Archived version replaced by SOP-2024-002',
     tags: ['deprecated', 'thin-film', 'deposition']
+  },
+  {
+    id: 'SOP-2024-019',
+    title: 'Cleanroom Gowning Procedure',
+    category: 'Safety',
+    version: 'v1.2',
+    status: 'active',
+    author: 'Safety Officer',
+    effectiveDate: '2024-09-01',
+    reviewDate: '2025-03-01',
+    approver: 'Lab Manager',
+    description: 'Proper procedure for donning cleanroom garments and personal protective equipment',
+    tags: ['safety', 'cleanroom', 'PPE']
+  },
+  {
+    id: 'SOP-2024-020',
+    title: 'Emergency Spill Response Protocol',
+    category: 'Safety',
+    version: 'v2.0',
+    status: 'active',
+    author: 'Safety Officer',
+    effectiveDate: '2024-10-01',
+    reviewDate: '2025-04-01',
+    approver: 'Lab Manager',
+    description: 'Immediate response procedures for chemical spills and emergency containment',
+    tags: ['safety', 'emergency', 'spill']
+  },
+  {
+    id: 'SOP-2024-021',
+    title: 'Photolithography Best Practices',
+    category: 'Process',
+    version: 'v1.4',
+    status: 'in_review',
+    author: 'Dr. Wilson',
+    effectiveDate: '',
+    reviewDate: '2024-11-18',
+    description: 'Best practices and troubleshooting guide for photolithography processes',
+    tags: ['photolithography', 'process', 'fabrication']
   }
 ]
 
 const statusConfig = {
-  draft: { color: 'bg-gray-100 text-gray-800', icon: FileText },
-  in_review: { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  active: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  archived: { color: 'bg-red-100 text-red-800', icon: FileText }
+  draft: { color: 'bg-gray-100 text-gray-800', icon: FileText, label: 'Draft' },
+  in_review: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'In Review' },
+  active: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Active' },
+  archived: { color: 'bg-red-100 text-red-800', icon: FileText, label: 'Archived' }
 }
 
 const categoryColors: { [key: string]: string } = {
@@ -98,10 +163,24 @@ const categoryColors: { [key: string]: string } = {
 }
 
 export default function SOPsPage() {
-  const [sops, setSops] = useState(mockSOPs)
+  const [sops, setSops] = useState<SOP[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNewSOP, setShowNewSOP] = useState(false)
+  const [selectedSOP, setSelectedSOP] = useState<SOP | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+
+  const [newSOP, setNewSOP] = useState<NewSOPForm>({
+    title: '',
+    category: '',
+    description: '',
+    tags: ''
+  })
+
+  // Generate mock data on client side to prevent hydration errors
+  useEffect(() => {
+    setSops(generateMockSOPs())
+  }, [])
 
   const filteredSOPs = sops.filter(sop => {
     const matchesSearch =
@@ -113,6 +192,88 @@ export default function SOPsPage() {
 
     return matchesSearch && matchesStatus
   })
+
+  const handleCreateSOP = () => {
+    if (!newSOP.title || !newSOP.category || !newSOP.description) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const currentUser = 'Current User'
+    const sop: SOP = {
+      id: `SOP-2024-${String(sops.length + 1).padStart(3, '0')}`,
+      title: newSOP.title,
+      category: newSOP.category,
+      version: 'v1.0',
+      status: 'draft',
+      author: currentUser,
+      effectiveDate: '',
+      reviewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: newSOP.description,
+      tags: newSOP.tags.split(',').map(t => t.trim()).filter(t => t)
+    }
+
+    setSops([sop, ...sops])
+    setShowNewSOP(false)
+    setNewSOP({
+      title: '',
+      category: '',
+      description: '',
+      tags: ''
+    })
+  }
+
+  const handleSubmitForReview = (sopId: string) => {
+    setSops(sops.map(sop => {
+      if (sop.id === sopId && sop.status === 'draft') {
+        return { ...sop, status: 'in_review' as const }
+      }
+      return sop
+    }))
+  }
+
+  const handleApprove = (sopId: string) => {
+    setSops(sops.map(sop => {
+      if (sop.id === sopId && sop.status === 'in_review') {
+        return {
+          ...sop,
+          status: 'active' as const,
+          effectiveDate: new Date().toISOString().split('T')[0],
+          approver: 'Current User'
+        }
+      }
+      return sop
+    }))
+  }
+
+  const handleArchive = (sopId: string) => {
+    if (confirm('Are you sure you want to archive this SOP?')) {
+      setSops(sops.map(sop => {
+        if (sop.id === sopId) {
+          return { ...sop, status: 'archived' as const }
+        }
+        return sop
+      }))
+    }
+  }
+
+  const handleDelete = (sopId: string) => {
+    if (confirm('Are you sure you want to delete this SOP? This action cannot be undone.')) {
+      setSops(sops.filter(sop => sop.id !== sopId))
+    }
+  }
+
+  const handleViewDetails = (sop: SOP) => {
+    setSelectedSOP(sop)
+    setShowDetailsDialog(true)
+  }
+
+  const stats = {
+    total: sops.length,
+    active: sops.filter(s => s.status === 'active').length,
+    in_review: sops.filter(s => s.status === 'in_review').length,
+    draft: sops.filter(s => s.status === 'draft').length
+  }
 
   return (
     <div className="space-y-6">
@@ -127,114 +288,109 @@ export default function SOPsPage() {
             <p className="text-gray-600 mt-1">Standard Operating Procedures with version control</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => setShowNewSOP(true)}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+          className="flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           New SOP
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total SOPs</p>
-              <p className="text-2xl font-bold text-gray-900">{sops.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <FileText className="w-8 h-8 text-emerald-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">
-                {sops.filter(s => s.status === 'active').length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">In Review</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {sops.filter(s => s.status === 'in_review').length}
-              </p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.in_review}</p>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Draft</p>
-              <p className="text-2xl font-bold text-gray-600">
-                {sops.filter(s => s.status === 'draft').length}
-              </p>
+              <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
             </div>
             <FileText className="w-8 h-8 text-gray-500" />
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by title, category, or tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="pl-10"
             />
           </div>
           <div className="flex gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="in_review">In Review</option>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
-            </select>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-              <Download className="w-5 h-5" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="in_review">In Review</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
               Export
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* SOPs List */}
       <div className="space-y-4">
         {filteredSOPs.map((sop) => {
           const StatusIcon = statusConfig[sop.status].icon
           return (
-            <div key={sop.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <Card key={sop.id} className="p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-gray-900">{sop.title}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryColors[sop.category] || 'bg-gray-100 text-gray-800'}`}>
+                    <Badge className={categoryColors[sop.category] || 'bg-gray-100 text-gray-800'}>
                       {sop.category}
-                    </span>
+                    </Badge>
+                    <Badge className={statusConfig[sop.status].color}>
+                      <StatusIcon className="w-3 h-3 mr-1" />
+                      {statusConfig[sop.status].label}
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">{sop.description}</p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${statusConfig[sop.status].color}`}>
-                  <StatusIcon className="w-4 h-4" />
-                  {sop.status.replace('_', ' ')}
-                </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
@@ -276,53 +432,246 @@ export default function SOPsPage() {
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-gray-200">
-                <button className="text-emerald-600 hover:text-emerald-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewDetails(sop)}
+                  className="text-emerald-600 hover:text-emerald-900"
+                >
                   View SOP
-                </button>
+                </Button>
                 {sop.status !== 'archived' && (
-                  <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-900"
+                  >
                     Edit
-                  </button>
+                  </Button>
                 )}
-                <button className="text-purple-600 hover:text-purple-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-purple-600 hover:text-purple-900"
+                >
                   Version History
-                </button>
-                <button className="text-gray-600 hover:text-gray-900 text-sm font-medium">
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-900"
+                >
                   Download PDF
-                </button>
+                </Button>
                 {sop.status === 'draft' && (
-                  <button className="text-green-600 hover:text-green-900 text-sm font-medium">
-                    Submit for Review
-                  </button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSubmitForReview(sop.id)}
+                      className="text-green-600 hover:text-green-900"
+                    >
+                      Submit for Review
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(sop.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+                {sop.status === 'in_review' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleApprove(sop.id)}
+                    className="text-green-600 hover:text-green-900"
+                  >
+                    Approve
+                  </Button>
+                )}
+                {(sop.status === 'active' || sop.status === 'in_review') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleArchive(sop.id)}
+                    className="text-orange-600 hover:text-orange-900"
+                  >
+                    Archive
+                  </Button>
                 )}
               </div>
-            </div>
+            </Card>
           )
         })}
 
         {filteredSOPs.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Card className="p-12 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">No SOPs found matching your criteria</p>
-          </div>
+          </Card>
         )}
       </div>
 
-      {/* New SOP Modal */}
-      {showNewSOP && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">Create New SOP</h2>
-            <p className="text-gray-600 mb-4">SOP creation form will be implemented here</p>
-            <button
-              onClick={() => setShowNewSOP(false)}
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-            >
-              Close
-            </button>
+      {/* New SOP Dialog */}
+      <Dialog open={showNewSOP} onOpenChange={setShowNewSOP}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New SOP</DialogTitle>
+            <DialogDescription>
+              Create a new Standard Operating Procedure
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Title *
+              </label>
+              <Input
+                value={newSOP.title}
+                onChange={(e) => setNewSOP({ ...newSOP, title: e.target.value })}
+                placeholder="e.g., Chemical Storage Procedure"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Category *
+              </label>
+              <Select
+                value={newSOP.category}
+                onValueChange={(value) => setNewSOP({ ...newSOP, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Safety">Safety</SelectItem>
+                  <SelectItem value="Sample Preparation">Sample Preparation</SelectItem>
+                  <SelectItem value="Equipment">Equipment</SelectItem>
+                  <SelectItem value="Process">Process</SelectItem>
+                  <SelectItem value="Data Management">Data Management</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Description *
+              </label>
+              <Textarea
+                value={newSOP.description}
+                onChange={(e) => setNewSOP({ ...newSOP, description: e.target.value })}
+                placeholder="Describe the purpose and scope of this SOP..."
+                className="min-h-[120px]"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Tags
+              </label>
+              <Input
+                value={newSOP.tags}
+                onChange={(e) => setNewSOP({ ...newSOP, tags: e.target.value })}
+                placeholder="e.g., safety, chemicals, storage (comma-separated)"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewSOP(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSOP}>
+              Create SOP
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>SOP Details</DialogTitle>
+            <DialogDescription>
+              {selectedSOP?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSOP && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedSOP.title}</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Badge className={categoryColors[selectedSOP.category]}>
+                    {selectedSOP.category}
+                  </Badge>
+                  <Badge className={statusConfig[selectedSOP.status].color}>
+                    {statusConfig[selectedSOP.status].label}
+                  </Badge>
+                  <Badge variant="outline">{selectedSOP.version}</Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Description</p>
+                <p className="text-sm text-gray-900">{selectedSOP.description}</p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Author</p>
+                    <p className="text-base text-gray-900">{selectedSOP.author}</p>
+                  </div>
+                  {selectedSOP.approver && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Approver</p>
+                      <p className="text-base text-gray-900">{selectedSOP.approver}</p>
+                    </div>
+                  )}
+                  {selectedSOP.effectiveDate && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Effective Date</p>
+                      <p className="text-base text-gray-900">{selectedSOP.effectiveDate}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Review Date</p>
+                    <p className="text-base text-gray-900">{selectedSOP.reviewDate}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Tags</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSOP.tags.map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowDetailsDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

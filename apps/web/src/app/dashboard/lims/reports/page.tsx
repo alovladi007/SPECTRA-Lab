@@ -1,6 +1,25 @@
 'use client'
-import { useState } from 'react'
-import { FileText, Plus, Search, Download, Calendar, User, Clock, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { FileText, Plus, Search, Download, Calendar, User, Clock, CheckCircle, AlertCircle, FileSpreadsheet, Trash2 } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Report {
   id: string
@@ -15,7 +34,15 @@ interface Report {
   size?: string
 }
 
-const mockReports: Report[] = [
+interface NewReportForm {
+  name: string
+  type: 'sample_analysis' | 'experiment_summary' | 'compliance' | 'inventory' | 'quality_control'
+  format: 'PDF' | 'Excel' | 'CSV' | 'JSON'
+  dateFrom: string
+  dateTo: string
+}
+
+const generateMockReports = (): Report[] => [
   {
     id: 'RPT-2024-015',
     name: 'Weekly Sample Analysis Report',
@@ -81,14 +108,38 @@ const mockReports: Report[] = [
     requestedBy: 'Lab Manager',
     requestDate: '2024-11-09 06:00',
     parameters: 'Month: October 2024 | Format: JSON-LD'
+  },
+  {
+    id: 'RPT-2024-021',
+    name: 'Safety Compliance Summary',
+    type: 'compliance',
+    format: 'PDF',
+    status: 'completed',
+    requestedBy: 'Safety Officer',
+    requestDate: '2024-11-08 10:00',
+    completedDate: '2024-11-08 10:30',
+    parameters: 'Month: October 2024 | Include: Training, Incidents',
+    size: '1.8 MB'
+  },
+  {
+    id: 'RPT-2024-022',
+    name: 'Equipment Utilization Report',
+    type: 'inventory',
+    format: 'Excel',
+    status: 'completed',
+    requestedBy: 'Dr. Wilson',
+    requestDate: '2024-11-07 15:00',
+    completedDate: '2024-11-07 15:20',
+    parameters: 'Date Range: Oct 1-31, 2024 | All Equipment',
+    size: '645 KB'
   }
 ]
 
 const statusConfig = {
-  pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  generating: { color: 'bg-blue-100 text-blue-800', icon: Clock },
-  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  failed: { color: 'bg-red-100 text-red-800', icon: AlertCircle }
+  pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pending' },
+  generating: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Generating' },
+  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Completed' },
+  failed: { color: 'bg-red-100 text-red-800', icon: AlertCircle, label: 'Failed' }
 }
 
 const typeColors = {
@@ -107,10 +158,25 @@ const formatIcons = {
 }
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState(mockReports)
+  const [reports, setReports] = useState<Report[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNewReport, setShowNewReport] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+
+  const [newReport, setNewReport] = useState<NewReportForm>({
+    name: '',
+    type: 'sample_analysis',
+    format: 'PDF',
+    dateFrom: '',
+    dateTo: ''
+  })
+
+  // Generate mock data on client side to prevent hydration errors
+  useEffect(() => {
+    setReports(generateMockReports())
+  }, [])
 
   const filteredReports = reports.filter(report => {
     const matchesSearch =
@@ -122,6 +188,62 @@ export default function ReportsPage() {
 
     return matchesSearch && matchesStatus
   })
+
+  const handleCreateReport = () => {
+    if (!newReport.name || !newReport.dateFrom || !newReport.dateTo) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const currentUser = 'Current User'
+    const report: Report = {
+      id: `RPT-2024-${String(reports.length + 1).padStart(3, '0')}`,
+      name: newReport.name,
+      type: newReport.type,
+      format: newReport.format,
+      status: 'pending',
+      requestedBy: currentUser,
+      requestDate: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      parameters: `Date Range: ${newReport.dateFrom} to ${newReport.dateTo}`
+    }
+
+    setReports([report, ...reports])
+    setShowNewReport(false)
+    setNewReport({
+      name: '',
+      type: 'sample_analysis',
+      format: 'PDF',
+      dateFrom: '',
+      dateTo: ''
+    })
+  }
+
+  const handleRetryGeneration = (reportId: string) => {
+    setReports(reports.map(report => {
+      if (report.id === reportId && report.status === 'failed') {
+        return { ...report, status: 'pending' as const }
+      }
+      return report
+    }))
+  }
+
+  const handleDelete = (reportId: string) => {
+    if (confirm('Are you sure you want to delete this report?')) {
+      setReports(reports.filter(report => report.id !== reportId))
+    }
+  }
+
+  const handleViewDetails = (report: Report) => {
+    setSelectedReport(report)
+    setShowDetailsDialog(true)
+  }
+
+  const stats = {
+    total: reports.length,
+    completed: reports.filter(r => r.status === 'completed').length,
+    generating: reports.filter(r => r.status === 'generating').length,
+    pending: reports.filter(r => r.status === 'pending').length
+  }
 
   return (
     <div className="space-y-6">
@@ -136,87 +258,82 @@ export default function ReportsPage() {
             <p className="text-gray-600 mt-1">Generate and download comprehensive lab reports</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => setShowNewReport(true)}
-          className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
+          className="flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Generate Report
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Reports</p>
-              <p className="text-2xl font-bold text-gray-900">{reports.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <FileText className="w-8 h-8 text-cyan-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {reports.filter(r => r.status === 'completed').length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Generating</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {reports.filter(r => r.status === 'generating').length}
-              </p>
+              <p className="text-2xl font-bold text-blue-600">{stats.generating}</p>
             </div>
             <Clock className="w-8 h-8 text-blue-500" />
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        </Card>
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {reports.filter(r => r.status === 'pending').length}
-              </p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search by name, type, or requester..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="generating">Generating</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="generating">Generating</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
+      </Card>
 
       {/* Reports List */}
       <div className="space-y-4">
@@ -224,25 +341,25 @@ export default function ReportsPage() {
           const StatusIcon = statusConfig[report.status].icon
           const FormatIcon = formatIcons[report.format]
           return (
-            <div key={report.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <Card key={report.id} className="p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-gray-900">{report.name}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColors[report.type]}`}>
+                    <Badge className={typeColors[report.type]}>
                       {report.type.replace('_', ' ')}
-                    </span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium flex items-center gap-1">
+                    </Badge>
+                    <Badge variant="outline" className="flex items-center gap-1">
                       <FormatIcon className="w-3 h-3" />
                       {report.format}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-500 mb-3">Report ID: {report.id}</p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${statusConfig[report.status].color}`}>
-                  <StatusIcon className="w-4 h-4" />
-                  {report.status}
-                </span>
+                <Badge className={statusConfig[report.status].color}>
+                  <StatusIcon className="w-3 h-3 mr-1" />
+                  {statusConfig[report.status].label}
+                </Badge>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
@@ -280,10 +397,10 @@ export default function ReportsPage() {
                       <CheckCircle className="w-4 h-4 inline mr-1" />
                       Report ready for download
                     </p>
-                    <button className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                      <Download className="w-4 h-4" />
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                      <Download className="w-4 h-4 mr-1" />
                       Download
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -298,124 +415,225 @@ export default function ReportsPage() {
               )}
 
               <div className="flex gap-2 pt-4 border-t border-gray-200">
-                <button className="text-cyan-600 hover:text-cyan-900 text-sm font-medium">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleViewDetails(report)}
+                  className="text-cyan-600 hover:text-cyan-900"
+                >
                   View Details
-                </button>
+                </Button>
                 {report.status === 'completed' && (
                   <>
-                    <button className="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-900"
+                    >
                       Share
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 text-sm font-medium">
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-green-600 hover:text-green-900"
+                    >
                       Schedule
-                    </button>
+                    </Button>
                   </>
                 )}
                 {report.status === 'failed' && (
-                  <button className="text-orange-600 hover:text-orange-900 text-sm font-medium">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRetryGeneration(report.id)}
+                    className="text-orange-600 hover:text-orange-900"
+                  >
                     Retry Generation
-                  </button>
+                  </Button>
                 )}
-                <button className="text-gray-600 hover:text-gray-900 text-sm font-medium">
-                  Delete
-                </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(report.id)}
+                  className="text-red-600 hover:text-red-900"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
-            </div>
+            </Card>
           )
         })}
 
         {filteredReports.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Card className="p-12 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">No reports found matching your criteria</p>
-          </div>
+          </Card>
         )}
       </div>
 
-      {/* New Report Modal */}
-      {showNewReport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Generate New Report</h2>
+      {/* New Report Dialog */}
+      <Dialog open={showNewReport} onOpenChange={setShowNewReport}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Generate New Report</DialogTitle>
+            <DialogDescription>
+              Configure and generate a new lab report
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500">
-                  <option>Sample Analysis Report</option>
-                  <option>Experiment Summary Report</option>
-                  <option>Compliance Audit Report</option>
-                  <option>Inventory Status Report</option>
-                  <option>Quality Control Metrics</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center">
-                    <input type="radio" name="format" value="pdf" className="mr-2" defaultChecked />
-                    PDF
-                  </label>
-                  <label className="flex items-center">
-                    <input type="radio" name="format" value="excel" className="mr-2" />
-                    Excel
-                  </label>
-                  <label className="flex items-center">
-                    <input type="radio" name="format" value="csv" className="mr-2" />
-                    CSV
-                  </label>
-                  <label className="flex items-center">
-                    <input type="radio" name="format" value="json" className="mr-2" />
-                    JSON
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg" />
-                  <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Additional Options</label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Include detailed statistics
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Include charts and graphs
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    Include raw data appendix
-                  </label>
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Report Name *
+              </label>
+              <Input
+                value={newReport.name}
+                onChange={(e) => setNewReport({ ...newReport, name: e.target.value })}
+                placeholder="e.g., Weekly Sample Analysis Report"
+              />
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowNewReport(false)}
-                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Report Type *
+              </label>
+              <Select
+                value={newReport.type}
+                onValueChange={(value: any) => setNewReport({ ...newReport, type: value })}
               >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowNewReport(false)}
-                className="flex-1 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700"
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sample_analysis">Sample Analysis Report</SelectItem>
+                  <SelectItem value="experiment_summary">Experiment Summary Report</SelectItem>
+                  <SelectItem value="compliance">Compliance Audit Report</SelectItem>
+                  <SelectItem value="inventory">Inventory Status Report</SelectItem>
+                  <SelectItem value="quality_control">Quality Control Metrics</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Output Format *
+              </label>
+              <Select
+                value={newReport.format}
+                onValueChange={(value: any) => setNewReport({ ...newReport, format: value })}
               >
-                Generate Report
-              </button>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PDF">PDF</SelectItem>
+                  <SelectItem value="Excel">Excel</SelectItem>
+                  <SelectItem value="CSV">CSV</SelectItem>
+                  <SelectItem value="JSON">JSON</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Date Range *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  type="date"
+                  value={newReport.dateFrom}
+                  onChange={(e) => setNewReport({ ...newReport, dateFrom: e.target.value })}
+                />
+                <Input
+                  type="date"
+                  value={newReport.dateTo}
+                  onChange={(e) => setNewReport({ ...newReport, dateTo: e.target.value })}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewReport(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateReport}>
+              Generate Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Report Details</DialogTitle>
+            <DialogDescription>
+              {selectedReport?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedReport && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{selectedReport.name}</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Badge className={typeColors[selectedReport.type]}>
+                    {selectedReport.type.replace('_', ' ')}
+                  </Badge>
+                  <Badge className={statusConfig[selectedReport.status].color}>
+                    {statusConfig[selectedReport.status].label}
+                  </Badge>
+                  <Badge variant="outline">{selectedReport.format}</Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Parameters</p>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-900">{selectedReport.parameters}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Requested By</p>
+                    <p className="text-base text-gray-900">{selectedReport.requestedBy}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Request Date</p>
+                    <p className="text-base text-gray-900">{selectedReport.requestDate}</p>
+                  </div>
+                  {selectedReport.completedDate && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Completed Date</p>
+                      <p className="text-base text-gray-900">{selectedReport.completedDate}</p>
+                    </div>
+                  )}
+                  {selectedReport.size && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">File Size</p>
+                      <p className="text-base text-gray-900">{selectedReport.size}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowDetailsDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

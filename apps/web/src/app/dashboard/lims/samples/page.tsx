@@ -1,6 +1,18 @@
 'use client'
-import { useState } from 'react'
-import { ClipboardCheck, Barcode, Plus, Search, Filter, Download, QrCode, MapPin, Calendar, User } from 'lucide-react'
+
+import { useState, useMemo, useEffect } from 'react'
+import {
+  ClipboardCheck, Plus, Search, Filter, Download, Eye, Edit2, Trash2,
+  QrCode, MapPin, Calendar, User, Tag, AlertCircle, CheckCircle2, Package
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 interface Sample {
   id: string
@@ -12,89 +24,135 @@ interface Sample {
   owner: string
   received: string
   temperature?: string
+  notes?: string
+  experiments: number
 }
 
-const mockSamples: Sample[] = [
-  {
-    id: 'SMP-001',
-    barcode: 'WAF-2024-001-A1',
-    name: 'Silicon Wafer Batch A',
-    type: 'Wafer',
-    location: 'Cleanroom-B2',
-    status: 'in_progress',
-    owner: 'Dr. Chen',
-    received: '2024-11-08',
-    temperature: '-20°C'
-  },
-  {
-    id: 'SMP-002',
-    barcode: 'FILM-2024-002-B3',
-    name: 'Thin Film Sample Set',
-    type: 'Film',
-    location: 'Storage-A3',
-    status: 'received',
-    owner: 'Dr. Martinez',
-    received: '2024-11-09',
-    temperature: 'RT'
-  },
-  {
-    id: 'SMP-003',
-    barcode: 'DEV-2024-003-C2',
-    name: 'Device Prototype Rev3',
-    type: 'Device',
-    location: 'Testing-Lab1',
-    status: 'in_progress',
-    owner: 'Dr. Patel',
-    received: '2024-11-07',
-    temperature: 'RT'
-  },
-  {
-    id: 'SMP-004',
-    barcode: 'MAT-2024-004-D1',
-    name: 'Reference Material Std',
-    type: 'Material',
-    location: 'Archive-B1',
-    status: 'completed',
-    owner: 'Lab Manager',
-    received: '2024-10-15',
-    temperature: '4°C'
-  },
-  {
-    id: 'SMP-005',
-    barcode: 'WAF-2024-005-A2',
-    name: 'GaN on Sapphire',
-    type: 'Wafer',
-    location: 'Cleanroom-A1',
-    status: 'received',
-    owner: 'Dr. Kim',
-    received: '2024-11-09',
-    temperature: 'RT'
-  }
-]
+// Mock data generator
+const generateMockSamples = (): Sample[] => {
+  const types = ['Wafer', 'Film', 'Device', 'Material', 'Substrate', 'Powder']
+  const locations = ['Cleanroom-A1', 'Cleanroom-B2', 'Storage-A3', 'Testing-Lab1', 'Archive-B1', 'Receiving']
+  const statuses: Sample['status'][] = ['received', 'in_progress', 'completed', 'archived']
+  const owners = ['Dr. Chen', 'Dr. Martinez', 'Dr. Patel', 'Dr. Kim', 'Lab Manager']
+  const temps = ['RT', '-20°C', '4°C', '-80°C']
 
-const statusColors = {
-  received: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-green-100 text-green-800',
-  archived: 'bg-gray-100 text-gray-800'
+  return Array.from({ length: 25 }, (_, i) => {
+    const type = types[Math.floor(Math.random() * types.length)]
+    const status = statuses[Math.floor(Math.random() * statuses.length)]
+    const date = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+
+    return {
+      id: `SMP-${String(i + 1).padStart(3, '0')}`,
+      barcode: `${type.substring(0, 3).toUpperCase()}-2024-${String(i + 1).padStart(3, '0')}-${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 9) + 1}`,
+      name: `${type} Sample ${i + 1}`,
+      type,
+      location: locations[Math.floor(Math.random() * locations.length)],
+      status,
+      owner: owners[Math.floor(Math.random() * owners.length)],
+      received: date.toISOString().split('T')[0],
+      temperature: Math.random() > 0.3 ? temps[Math.floor(Math.random() * temps.length)] : undefined,
+      notes: Math.random() > 0.5 ? 'Sample prepared for characterization' : '',
+      experiments: Math.floor(Math.random() * 8)
+    }
+  })
 }
 
 export default function SamplesPage() {
-  const [samples, setSamples] = useState(mockSamples)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showNewSampleForm, setShowNewSampleForm] = useState(false)
+  const [samples, setSamples] = useState<Sample[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [selectedSample, setSelectedSample] = useState<Sample | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
-  const filteredSamples = samples.filter(sample => {
-    const matchesSearch =
-      sample.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sample.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sample.type.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === 'all' || sample.status === statusFilter
-
-    return matchesSearch && matchesStatus
+  // New sample form state
+  const [newSample, setNewSample] = useState({
+    name: '',
+    type: 'Wafer',
+    location: '',
+    owner: '',
+    temperature: 'RT',
+    notes: ''
   })
+
+  // Generate mock data on client side only
+  useEffect(() => {
+    setSamples(generateMockSamples())
+  }, [])
+
+  // Filtered samples
+  const filteredSamples = useMemo(() => {
+    return samples.filter(sample => {
+      const matchesSearch =
+        sample.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sample.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sample.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sample.type.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const matchesType = filterType === 'all' || sample.type === filterType
+      const matchesStatus = filterStatus === 'all' || sample.status === filterStatus
+
+      return matchesSearch && matchesType && matchesStatus
+    })
+  }, [samples, searchQuery, filterType, filterStatus])
+
+  // Statistics
+  const stats = useMemo(() => ({
+    total: samples.length,
+    received: samples.filter(s => s.status === 'received').length,
+    inProgress: samples.filter(s => s.status === 'in_progress').length,
+    completed: samples.filter(s => s.status === 'completed').length
+  }), [samples])
+
+  const handleCreateSample = () => {
+    const id = `SMP-${String(samples.length + 1).padStart(3, '0')}`
+    const now = new Date().toISOString().split('T')[0]
+
+    const sample: Sample = {
+      id,
+      barcode: `${newSample.type.substring(0, 3).toUpperCase()}-2024-${String(samples.length + 1).padStart(3, '0')}-A1`,
+      name: newSample.name,
+      type: newSample.type,
+      location: newSample.location,
+      status: 'received',
+      owner: newSample.owner,
+      received: now,
+      temperature: newSample.temperature,
+      notes: newSample.notes,
+      experiments: 0
+    }
+
+    setSamples(prev => [sample, ...prev])
+    setIsCreateDialogOpen(false)
+
+    // Reset form
+    setNewSample({
+      name: '',
+      type: 'Wafer',
+      location: '',
+      owner: '',
+      temperature: 'RT',
+      notes: ''
+    })
+  }
+
+  const handleDeleteSample = (id: string) => {
+    if (confirm('Are you sure you want to delete this sample?')) {
+      setSamples(prev => prev.filter(s => s.id !== id))
+      setIsDetailsDialogOpen(false)
+    }
+  }
+
+  const getStatusColor = (status: Sample['status']) => {
+    switch (status) {
+      case 'received': return 'bg-blue-100 text-blue-800'
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800'
+      case 'completed': return 'bg-green-100 text-green-800'
+      case 'archived': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -109,201 +167,418 @@ export default function SamplesPage() {
             <p className="text-gray-600 mt-1">Manage sample lifecycle with barcode/QR tracking</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowNewSampleForm(true)}
-          className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors"
+
+        <Button
+          className="flex items-center gap-2"
+          onClick={() => setIsCreateDialogOpen(true)}
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           New Sample
-        </button>
+        </Button>
+
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Register New Sample</DialogTitle>
+              <DialogDescription>
+                Enter the details for the new sample
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Sample Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Silicon Wafer Batch A"
+                  value={newSample.name}
+                  onChange={(e) => setNewSample({ ...newSample, name: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="type">Sample Type *</Label>
+                <Select
+                  value={newSample.type}
+                  onValueChange={(value) => setNewSample({ ...newSample, type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Wafer">Wafer</SelectItem>
+                    <SelectItem value="Film">Film</SelectItem>
+                    <SelectItem value="Device">Device</SelectItem>
+                    <SelectItem value="Material">Material</SelectItem>
+                    <SelectItem value="Substrate">Substrate</SelectItem>
+                    <SelectItem value="Powder">Powder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
+                <Input
+                  id="location"
+                  placeholder="e.g., Cleanroom-A1"
+                  value={newSample.location}
+                  onChange={(e) => setNewSample({ ...newSample, location: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="owner">Owner *</Label>
+                <Input
+                  id="owner"
+                  placeholder="e.g., Dr. Smith"
+                  value={newSample.owner}
+                  onChange={(e) => setNewSample({ ...newSample, owner: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="temperature">Storage Temperature</Label>
+                <Select
+                  value={newSample.temperature}
+                  onValueChange={(value) => setNewSample({ ...newSample, temperature: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RT">Room Temperature (RT)</SelectItem>
+                    <SelectItem value="4°C">4°C</SelectItem>
+                    <SelectItem value="-20°C">-20°C</SelectItem>
+                    <SelectItem value="-80°C">-80°C</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Additional information about the sample..."
+                  value={newSample.notes}
+                  onChange={(e) => setNewSample({ ...newSample, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateSample}
+                disabled={!newSample.name || !newSample.location || !newSample.owner}
+              >
+                Register Sample
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Stats Cards */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Samples</p>
-              <p className="text-2xl font-bold text-gray-900">{samples.length}</p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Samples</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Package className="w-8 h-8 text-teal-500" />
             </div>
-            <Barcode className="w-8 h-8 text-teal-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">In Progress</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {samples.filter(s => s.status === 'in_progress').length}
-              </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Received</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.received}</p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-blue-500" />
             </div>
-            <ClipboardCheck className="w-8 h-8 text-yellow-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {samples.filter(s => s.status === 'completed').length}
-              </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.inProgress}</p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-yellow-500" />
             </div>
-            <ClipboardCheck className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">New Arrivals</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {samples.filter(s => s.status === 'received').length}
-              </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
             </div>
-            <ClipboardCheck className="w-8 h-8 text-blue-500" />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by name, barcode, or type..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            />
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="received">Received</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="archived">Archived</option>
-            </select>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-              <Download className="w-5 h-5" />
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by ID, name, barcode, or type..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4" />
+                  <SelectValue placeholder="Type" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="Wafer">Wafer</SelectItem>
+                <SelectItem value="Film">Film</SelectItem>
+                <SelectItem value="Device">Device</SelectItem>
+                <SelectItem value="Material">Material</SelectItem>
+                <SelectItem value="Substrate">Substrate</SelectItem>
+                <SelectItem value="Powder">Powder</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4" />
+                  <SelectValue placeholder="Status" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="received">Received</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="outline" className="w-full md:w-auto">
+              <Download className="w-4 h-4 mr-2" />
               Export
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Samples Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sample ID / Barcode
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name & Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Owner
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Received
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSamples.map((sample) => (
-                <tr key={sample.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <QrCode className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{sample.id}</div>
-                        <div className="text-sm text-gray-500 font-mono">{sample.barcode}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{sample.name}</div>
-                    <div className="text-sm text-gray-500">{sample.type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-sm text-gray-900">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      {sample.location}
-                    </div>
-                    {sample.temperature && (
-                      <div className="text-xs text-gray-500 mt-1">Temp: {sample.temperature}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[sample.status]}`}>
-                      {sample.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-sm text-gray-900">
-                      <User className="w-4 h-4 text-gray-400" />
-                      {sample.owner}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      {sample.received}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex gap-2">
-                      <button className="text-teal-600 hover:text-teal-900">View</button>
-                      <button className="text-blue-600 hover:text-blue-900">Edit</button>
-                      <button className="text-gray-600 hover:text-gray-900">QR</button>
-                    </div>
-                  </td>
+      <Card>
+        <CardHeader>
+          <CardTitle>Samples ({filteredSamples.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b">
+                <tr className="text-left">
+                  <th className="pb-3 font-medium text-muted-foreground">ID / Barcode</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Name & Type</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Location</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Status</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Owner</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Received</th>
+                  <th className="pb-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredSamples.map((sample) => (
+                  <tr key={sample.id} className="border-b hover:bg-muted/50 transition-colors">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <QrCode className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-mono text-sm font-medium">{sample.id}</div>
+                          <div className="font-mono text-xs text-muted-foreground">{sample.barcode}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <div className="font-medium">{sample.name}</div>
+                      <div className="text-sm text-muted-foreground">{sample.type}</div>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-1 text-sm">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+                        {sample.location}
+                      </div>
+                      {sample.temperature && (
+                        <div className="text-xs text-muted-foreground mt-1">Temp: {sample.temperature}</div>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      <Badge className={getStatusColor(sample.status)}>
+                        {sample.status.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        {sample.owner}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {sample.received}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSample(sample)
+                            setIsDetailsDialogOpen(true)
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteSample(sample.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-        {filteredSamples.length === 0 && (
-          <div className="text-center py-12">
-            <Barcode className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No samples found matching your criteria</p>
+            {filteredSamples.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium text-muted-foreground mb-2">No samples found</p>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'Register your first sample to get started'}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* New Sample Form Modal (placeholder) */}
-      {showNewSampleForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">Register New Sample</h2>
-            <p className="text-gray-600 mb-4">Sample registration form will be implemented here</p>
-            <button
-              onClick={() => setShowNewSampleForm(false)}
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Sample Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Sample Details</DialogTitle>
+            <DialogDescription>
+              Complete information for {selectedSample?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSample && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Sample ID</Label>
+                  <p className="font-mono font-medium">{selectedSample.id}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Barcode</Label>
+                  <p className="font-mono font-medium">{selectedSample.barcode}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Name</Label>
+                  <p className="font-medium">{selectedSample.name}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Type</Label>
+                  <Badge variant="outline">{selectedSample.type}</Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Location</Label>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <p className="font-medium">{selectedSample.location}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Status</Label>
+                  <Badge className={getStatusColor(selectedSample.status)}>
+                    {selectedSample.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Owner</Label>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <p className="font-medium">{selectedSample.owner}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Received</Label>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <p className="font-medium">{selectedSample.received}</p>
+                  </div>
+                </div>
+
+                {selectedSample.temperature && (
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground">Storage Temperature</Label>
+                    <p className="font-medium">{selectedSample.temperature}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Experiments</Label>
+                  <p className="font-medium">{selectedSample.experiments} linked experiments</p>
+                </div>
+              </div>
+
+              {selectedSample.notes && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Notes</Label>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm">{selectedSample.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
