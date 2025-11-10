@@ -1,7 +1,7 @@
 """Ion Implantation Hardware-in-Loop (HIL) Simulator with SRIM-like physics."""
 
 import numpy as np
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import logging

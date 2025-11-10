@@ -52,14 +52,27 @@ app.add_middleware(
 )
 
 # Include routers
-from app.api.endpoints import implant_router, rtp_router, spc_router, vm_router
-from app.api.safety_endpoints import safety_router
+# New API v2 routers (with RBAC, Celery, WebSocket)
+from app.routers.ion import router as ion_router
+from app.routers.rtp import router as rtp_router
+from app.routers.jobs import router as jobs_router
+from app.routers.websocket import router as websocket_router
 
-app.include_router(implant_router)
+# Legacy routers (keep for backward compatibility)
+try:
+    from app.api.endpoints import spc_router, vm_router
+    from app.api.safety_endpoints import safety_router
+    app.include_router(spc_router)
+    app.include_router(vm_router)
+    app.include_router(safety_router)
+except ImportError:
+    logger.warning("Legacy API routers not found, skipping")
+
+# Register new routers
+app.include_router(ion_router)
 app.include_router(rtp_router)
-app.include_router(spc_router)
-app.include_router(vm_router)
-app.include_router(safety_router)
+app.include_router(jobs_router)
+app.include_router(websocket_router)
 
 
 # Health check endpoint
