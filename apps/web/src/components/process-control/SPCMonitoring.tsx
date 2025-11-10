@@ -10,7 +10,6 @@ import {
   ResponsiveContainer, ReferenceLine, Dot
 } from 'recharts';
 import { AlertTriangle, TrendingUp, CheckCircle, XCircle, Bell } from 'lucide-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
 
 interface SPCPoint {
   id: number;
@@ -51,52 +50,66 @@ interface SPCAlert {
 export const SPCMonitoring: React.FC = () => {
   const [selectedSeries, setSelectedSeries] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState('1h');
+  const [series, setSeries] = useState<SPCSeries[]>([]);
+  const [points, setPoints] = useState<SPCPoint[]>([]);
+  const [alerts, setAlerts] = useState<SPCAlert[]>([]);
 
   // Fetch SPC series
-  const { data: series } = useQuery({
-    queryKey: ['spc-series'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/spc/series');
-      const data = await res.json();
-      return data.series || [];
-    },
-  });
+  useEffect(() => {
+    fetch('/api/v1/spc/series')
+      .then(res => res.json())
+      .then(data => setSeries(data.series || []))
+      .catch(err => console.error('Failed to load series:', err));
+  }, []);
 
   // Fetch SPC points for selected series
-  const { data: points, refetch: refetchPoints } = useQuery({
-    queryKey: ['spc-points', selectedSeries],
-    queryFn: async () => {
-      if (!selectedSeries) return [];
-      const res = await fetch(`/api/v1/spc/points/${selectedSeries}?limit=100`);
-      const data = await res.json();
-      return data.points || [];
-    },
-    enabled: !!selectedSeries,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
-  });
+  useEffect(() => {
+    if (!selectedSeries) return;
+
+    const loadPoints = () => {
+      fetch(`/api/v1/spc/points/${selectedSeries}?limit=100`)
+        .then(res => res.json())
+        .then(data => setPoints(data.points || []))
+        .catch(err => console.error('Failed to load points:', err));
+    };
+
+    loadPoints();
+    const interval = setInterval(loadPoints, 5000); // Auto-refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedSeries]);
 
   // Fetch SPC alerts
-  const { data: alerts } = useQuery({
-    queryKey: ['spc-alerts'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/spc/alerts?acknowledged=false&limit=50');
-      const data = await res.json();
-      return data.alerts || [];
-    },
-    refetchInterval: 10000,
-  });
+  useEffect(() => {
+    const loadAlerts = () => {
+      fetch('/api/v1/spc/alerts?acknowledged=false&limit=50')
+        .then(res => res.json())
+        .then(data => setAlerts(data.alerts || []))
+        .catch(err => console.error('Failed to load alerts:', err));
+    };
 
-  // Acknowledge alert mutation
-  const acknowledgeAlert = useMutation({
-    mutationFn: async (alertId: number) => {
-      const res = await fetch(`/api/v1/spc/alerts/${alertId}/acknowledge`, {
+    loadAlerts();
+    const interval = setInterval(loadAlerts, 10000); // Auto-refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Acknowledge alert
+  const handleAcknowledgeAlert = async (alertId: number) => {
+    try {
+      await fetch(`/api/v1/spc/alerts/${alertId}/acknowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolution_notes: 'Acknowledged' }),
       });
-      return res.json();
-    },
-  });
+      // Refresh alerts list
+      const res = await fetch('/api/v1/spc/alerts?acknowledged=false&limit=50');
+      const data = await res.json();
+      setAlerts(data.alerts || []);
+    } catch (err) {
+      console.error('Failed to acknowledge alert:', err);
+    }
+  };
 
   const currentSeries = series?.find((s: SPCSeries) => s.id === selectedSeries);
 
@@ -365,7 +378,7 @@ export const SPCMonitoring: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => acknowledgeAlert.mutate(alert.id)}
+                        onClick={() => handleAcknowledgeAlert(alert.id)}
                       >
                         Acknowledge
                       </Button>

@@ -13,9 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Play, Square, AlertCircle, Activity, Zap, Target, TrendingUp } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 interface BeamParameters {
   ionSpecies: string;
@@ -66,87 +63,48 @@ export const IonImplantationControl: React.FC = () => {
 
   const [telemetryData, setTelemetryData] = useState<TelemetryPoint[]>([]);
   const [uniformityMap, setUniformityMap] = useState<number[][]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
 
-  // WebSocket connection for real-time data
-  const { data: wsData, isConnected } = useWebSocket('/api/v1/implant/ws');
+  // Load profiles on mount
+  useEffect(() => {
+    fetch('/api/v1/implant/profiles')
+      .then(res => res.json())
+      .then(data => setProfiles(data.profiles || []))
+      .catch(err => console.error('Failed to load profiles:', err));
+  }, []);
 
-  // API queries
-  const { data: profiles } = useQuery({
-    queryKey: ['implant-profiles'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/implant/profiles');
-      const data = await res.json();
-      return data.profiles || [];
-    },
-  });
-
-  const startImplant = useMutation({
-    mutationFn: async (params: BeamParameters) => {
+  const handleStart = async () => {
+    try {
       const res = await fetch('/api/v1/implant/control/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           run_id: Date.now(),
-          target_dose_cm2: params.dose,
+          target_dose_cm2: parameters.dose,
         }),
       });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success('Implantation started');
+      await res.json();
+      alert('Implantation started');
       setStatus(prev => ({ ...prev, running: true, beamOn: true }));
-    },
-    onError: () => {
-      toast.error('Failed to start implantation');
-    },
-  });
+    } catch (err) {
+      console.error('Failed to start implantation:', err);
+      alert('Failed to start implantation');
+    }
+  };
 
-  const stopImplant = useMutation({
-    mutationFn: async () => {
+  const handleStop = async () => {
+    try {
       const res = await fetch('/api/v1/implant/control/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ run_id: Date.now() }),
       });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success('Implantation stopped');
+      await res.json();
+      alert('Implantation stopped');
       setStatus(prev => ({ ...prev, running: false, beamOn: false }));
-    },
-  });
-
-  // Update telemetry from WebSocket
-  useEffect(() => {
-    if (wsData && wsData.module === 'implant' && wsData.type === 'telemetry') {
-      const point: TelemetryPoint = {
-        timestamp: wsData.timestamp,
-        beamCurrent: wsData.data.beam_current_mA,
-        pressure: wsData.data.pressure_mTorr,
-        dose: wsData.data.dose_count_C_cm2,
-        energy: wsData.data.accel_voltage_kV,
-      };
-
-      setTelemetryData(prev => {
-        const updated = [...prev, point];
-        return updated.slice(-100); // Keep last 100 points
-      });
-
-      setStatus(prev => ({
-        ...prev,
-        beamCurrent: point.beamCurrent,
-        pressure: point.pressure,
-        currentDose: point.dose,
-      }));
+    } catch (err) {
+      console.error('Failed to stop implantation:', err);
     }
-  }, [wsData]);
-
-  const handleStart = () => {
-    startImplant.mutate(parameters);
-  };
-
-  const handleStop = () => {
-    stopImplant.mutate();
   };
 
   const doseProgress = (status.currentDose / status.targetDose) * 100;

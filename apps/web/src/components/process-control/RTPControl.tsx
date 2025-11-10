@@ -11,17 +11,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  LineChart, Line, Area, AreaChart, XAxis, YAxis, CartesianGrid, 
+import {
+  LineChart, Line, Area, AreaChart, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { 
-  Play, Square, Thermometer, Wind, Gauge, TrendingUp, 
+import {
+  Play, Square, Thermometer, Wind, Gauge, TrendingUp,
   AlertTriangle, Flame, Timer, Settings
 } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 interface RecipeSegment {
   time_s: number;
@@ -85,22 +82,18 @@ export const RTPControl: React.FC = () => {
 
   const [telemetryData, setTelemetryData] = useState<TelemetryPoint[]>([]);
   const [editingSegment, setEditingSegment] = useState<number | null>(null);
+  const [profiles, setProfiles] = useState<any[]>([]);
 
-  // WebSocket for real-time data
-  const { data: wsData, isConnected } = useWebSocket('/api/v1/rtp/ws');
+  // Load profiles on mount
+  useEffect(() => {
+    fetch('/api/v1/rtp/profiles')
+      .then(res => res.json())
+      .then(data => setProfiles(data.profiles || []))
+      .catch(err => console.error('Failed to load profiles:', err));
+  }, []);
 
-  // API queries
-  const { data: profiles } = useQuery({
-    queryKey: ['rtp-profiles'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/rtp/profiles');
-      const data = await res.json();
-      return data.profiles || [];
-    },
-  });
-
-  const startRecipe = useMutation({
-    mutationFn: async (profileId: number) => {
+  const handleStartRecipe = async (profileId: number) => {
+    try {
       const res = await fetch('/api/v1/rtp/control/start-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,65 +102,28 @@ export const RTPControl: React.FC = () => {
           run_id: Date.now(),
         }),
       });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success('Recipe started');
+      await res.json();
+      alert('Recipe started');
       setStatus(prev => ({ ...prev, running: true, recipeActive: true }));
-    },
-    onError: () => {
-      toast.error('Failed to start recipe');
-    },
-  });
+    } catch (err) {
+      console.error('Failed to start recipe:', err);
+      alert('Failed to start recipe');
+    }
+  };
 
-  const stopRecipe = useMutation({
-    mutationFn: async () => {
+  const handleStopRecipe = async () => {
+    try {
       const res = await fetch('/api/v1/rtp/control/stop-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ run_id: Date.now() }),
       });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast.success('Recipe stopped');
+      await res.json();
+      alert('Recipe stopped');
       setStatus(prev => ({ ...prev, running: false, recipeActive: false }));
-    },
-  });
-
-  // Update telemetry from WebSocket
-  useEffect(() => {
-    if (wsData && wsData.module === 'rtp' && wsData.type === 'telemetry') {
-      const point: TelemetryPoint = {
-        timestamp: wsData.timestamp,
-        setpoint_T_C: wsData.data.setpoint_T_C,
-        pyrometer_T_C: wsData.data.pyrometer_T_C,
-        lamp_power_avg: wsData.data.lamp_power_pct.reduce((a: number, b: number) => a + b, 0) / 12,
-      };
-
-      setTelemetryData(prev => {
-        const updated = [...prev, point];
-        return updated.slice(-200); // Keep last 200 points
-      });
-
-      setStatus(prev => ({
-        ...prev,
-        temperature: point.pyrometer_T_C,
-        setpoint: point.setpoint_T_C,
-        lampPower: wsData.data.lamp_power_pct,
-        pressure: wsData.data.chamber_pressure_Torr,
-        gasFlows: wsData.data.flow_sccm,
-      }));
+    } catch (err) {
+      console.error('Failed to stop recipe:', err);
     }
-  }, [wsData]);
-
-  const handleStart = () => {
-    // Save profile first if needed
-    startRecipe.mutate(profile.id || 1);
-  };
-
-  const handleStop = () => {
-    stopRecipe.mutate();
   };
 
   const addSegment = () => {
