@@ -9,10 +9,10 @@ import json
 from datetime import datetime
 
 # Create routers
-implant_router = APIRouter(prefix="/api/implant", tags=["Ion Implantation"])
-rtp_router = APIRouter(prefix="/api/rtp", tags=["RTP"])
-spc_router = APIRouter(prefix="/api/spc", tags=["SPC"])
-vm_router = APIRouter(prefix="/api/vm", tags=["Virtual Metrology"])
+implant_router = APIRouter(prefix="/api/v1/implant", tags=["Ion Implantation"])
+rtp_router = APIRouter(prefix="/api/v1/rtp", tags=["RTP"])
+spc_router = APIRouter(prefix="/api/v1/spc", tags=["SPC"])
+vm_router = APIRouter(prefix="/api/v1/vm", tags=["Virtual Metrology"])
 
 # WebSocket connection management
 active_connections: List[WebSocket] = []
@@ -93,6 +93,16 @@ class VMFeatureSetCreate(BaseModel):
 # Ion Implantation Endpoints
 # ============================================================================
 
+@implant_router.get("/profiles")
+async def list_implant_profiles(org_id: Optional[UUID] = None):
+    """List all ion implantation profiles."""
+    # TODO: Implement database query
+    return {
+        "profiles": [],
+        "count": 0
+    }
+
+
 @implant_router.post("/profiles")
 async def create_implant_profile(profile: ImplantDoseProfileCreate):
     """Create a new ion implantation dose profile."""
@@ -150,6 +160,16 @@ async def stop_implantation(run_id: UUID):
 # ============================================================================
 # RTP Endpoints
 # ============================================================================
+
+@rtp_router.get("/profiles")
+async def list_rtp_profiles(org_id: Optional[UUID] = None):
+    """List all RTP profiles."""
+    # TODO: Implement database query
+    return {
+        "profiles": [],
+        "count": 0
+    }
+
 
 @rtp_router.post("/profiles")
 async def create_rtp_profile(profile: RTPProfileCreate):
