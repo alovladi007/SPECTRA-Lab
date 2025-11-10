@@ -1,4 +1,4 @@
-"""React component for Ion Implantation control and monitoring."""
+// React component for Ion Implantation control and monitoring
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

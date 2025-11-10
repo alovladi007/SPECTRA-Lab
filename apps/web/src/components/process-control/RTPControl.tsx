@@ -1,4 +1,4 @@
-"""React component for Rapid Thermal Processing control and monitoring."""
+// React component for Rapid Thermal Processing control and monitoring
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
