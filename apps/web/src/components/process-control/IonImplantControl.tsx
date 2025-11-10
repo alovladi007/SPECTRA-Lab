@@ -75,7 +75,8 @@ export const IonImplantationControl: React.FC = () => {
     queryKey: ['implant-profiles'],
     queryFn: async () => {
       const res = await fetch('/api/v1/implant/profiles');
-      return res.json();
+      const data = await res.json();
+      return data.profiles || [];
     },
   });
 

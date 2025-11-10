@@ -94,7 +94,8 @@ export const RTPControl: React.FC = () => {
     queryKey: ['rtp-profiles'],
     queryFn: async () => {
       const res = await fetch('/api/v1/rtp/profiles');
-      return res.json();
+      const data = await res.json();
+      return data.profiles || [];
     },
   });
 
