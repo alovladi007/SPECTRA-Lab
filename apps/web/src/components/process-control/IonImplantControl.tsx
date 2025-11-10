@@ -65,6 +65,7 @@ export const IonImplantationControl: React.FC = () => {
   const [uniformityMap, setUniformityMap] = useState<number[][]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Load profiles on mount
   useEffect(() => {
@@ -75,6 +76,7 @@ export const IonImplantationControl: React.FC = () => {
   }, []);
 
   const handleStart = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/v1/implant/control/start', {
         method: 'POST',
@@ -90,10 +92,13 @@ export const IonImplantationControl: React.FC = () => {
     } catch (err) {
       console.error('Failed to start implantation:', err);
       alert('Failed to start implantation');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleStop = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/v1/implant/control/stop', {
         method: 'POST',
@@ -105,6 +110,8 @@ export const IonImplantationControl: React.FC = () => {
       setStatus(prev => ({ ...prev, running: false, beamOn: false }));
     } catch (err) {
       console.error('Failed to stop implantation:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -302,7 +309,7 @@ export const IonImplantationControl: React.FC = () => {
                     <Button
                       onClick={handleStart}
                       className="flex-1"
-                      disabled={startImplant.isPending}
+                      disabled={isLoading}
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Start Implant
@@ -312,7 +319,7 @@ export const IonImplantationControl: React.FC = () => {
                       onClick={handleStop}
                       variant="destructive"
                       className="flex-1"
-                      disabled={stopImplant.isPending}
+                      disabled={isLoading}
                     >
                       <Square className="w-4 h-4 mr-2" />
                       Stop Implant

@@ -84,6 +84,7 @@ export const RTPControl: React.FC = () => {
   const [editingSegment, setEditingSegment] = useState<number | null>(null);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Load profiles on mount
   useEffect(() => {
@@ -93,13 +94,14 @@ export const RTPControl: React.FC = () => {
       .catch(err => console.error('Failed to load profiles:', err));
   }, []);
 
-  const handleStartRecipe = async (profileId: number) => {
+  const handleStartRecipe = async (profileId?: number) => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/v1/rtp/control/start-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          profile_id: profileId,
+          profile_id: profileId || profile.id,
           run_id: Date.now(),
         }),
       });
@@ -109,10 +111,13 @@ export const RTPControl: React.FC = () => {
     } catch (err) {
       console.error('Failed to start recipe:', err);
       alert('Failed to start recipe');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleStopRecipe = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/v1/rtp/control/stop-recipe', {
         method: 'POST',
@@ -124,6 +129,8 @@ export const RTPControl: React.FC = () => {
       setStatus(prev => ({ ...prev, running: false, recipeActive: false }));
     } catch (err) {
       console.error('Failed to stop recipe:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -360,19 +367,19 @@ export const RTPControl: React.FC = () => {
                 <div className="flex gap-2 pt-4">
                   {!status.running ? (
                     <Button
-                      onClick={handleStart}
+                      onClick={() => handleStartRecipe()}
                       className="flex-1"
-                      disabled={startRecipe.isPending}
+                      disabled={isLoading}
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Start Recipe
                     </Button>
                   ) : (
                     <Button
-                      onClick={handleStop}
+                      onClick={handleStopRecipe}
                       variant="destructive"
                       className="flex-1"
-                      disabled={stopRecipe.isPending}
+                      disabled={isLoading}
                     >
                       <Square className="w-4 h-4 mr-2" />
                       Stop Recipe
