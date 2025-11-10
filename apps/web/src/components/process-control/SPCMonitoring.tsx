@@ -160,7 +160,7 @@ export const SPCMonitoring: React.FC = () => {
   const capability = calculateCpk();
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold">SPC Monitoring</h2>

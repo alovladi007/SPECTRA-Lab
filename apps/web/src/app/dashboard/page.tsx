@@ -75,6 +75,14 @@ const categories = [
     href: '/lims/samples',
   },
   {
+    name: 'Process Simulation',
+    icon: Activity,
+    color: 'from-violet-500 to-purple-500',
+    methods: 6,
+    description: 'Diffusion, Oxidation Planning, SPC Monitoring, Calibration, Batch Jobs, Predictive Maintenance',
+    href: '/dashboard/simulation/diffusion',
+  },
+  {
     name: 'Process Control',
     icon: Gauge,
     color: 'from-amber-500 to-orange-500',
@@ -141,7 +149,7 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Platform Capabilities</h2>
-          <span className="text-sm text-gray-600">36+ Features • 8 Categories</span>
+          <span className="text-sm text-gray-600">42+ Features • 9 Categories</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category) => (

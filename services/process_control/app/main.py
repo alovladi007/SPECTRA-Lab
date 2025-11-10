@@ -53,11 +53,13 @@ app.add_middleware(
 
 # Include routers
 from app.api.endpoints import implant_router, rtp_router, spc_router, vm_router
+from app.api.safety_endpoints import safety_router
 
 app.include_router(implant_router)
 app.include_router(rtp_router)
 app.include_router(spc_router)
 app.include_router(vm_router)
+app.include_router(safety_router)
 
 
 # Health check endpoint
