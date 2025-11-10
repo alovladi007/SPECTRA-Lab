@@ -399,7 +399,7 @@ def execute_rtp_run(
         while current_segment < len(segments):
             # Check for cancellation
             job = JobStore.get_job(job_id)
-            if job.status == JobStatusEnum.CANCELLED:
+            if job and job.status == JobStatusEnum.CANCELLED:
                 log("Run cancelled by user")
                 raise Ignore()
 

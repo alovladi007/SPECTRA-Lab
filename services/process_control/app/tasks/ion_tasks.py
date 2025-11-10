@@ -401,7 +401,7 @@ def execute_ion_run(
         for step in range(num_steps):
             # Check for cancellation
             job = JobStore.get_job(job_id)
-            if job.status == JobStatusEnum.CANCELLED:
+            if job and job.status == JobStatusEnum.CANCELLED:
                 log("Run cancelled by user")
                 raise Ignore()
 
