@@ -74,6 +74,14 @@ const categories = [
     description: 'Sample Tracking, Chain of Custody, Lab Notebook, E-Signatures, SOP Management, Reports, FAIR Export',
     href: '/lims/samples',
   },
+  {
+    name: 'Process Control',
+    icon: Gauge,
+    color: 'from-amber-500 to-orange-500',
+    methods: 3,
+    description: 'Ion Implantation, Rapid Thermal Processing (RTP), Statistical Process Control (SPC)',
+    href: '/process-control',
+  },
 ]
 
 // Recent Activity
@@ -132,8 +140,8 @@ export default function DashboardPage() {
       {/* Characterization Categories */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Platform Capabilities</h2>
-          <span className="text-sm text-gray-600">33+ Features • 7 Categories</span>
+          <h2 className="text-lg font-bold text-gray-900">Platform Capabilities</h2>
+          <span className="text-sm text-gray-600">36+ Features • 8 Categories</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category) => (
