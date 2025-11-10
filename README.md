@@ -5,6 +5,8 @@
 Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, structural, and chemical characterization capabilities, LIMS/ELN system, SPC, advanced machine learning, and production-grade PostgreSQL backend with JWT authentication.
 
 **Latest Updates:**
+- ✅ **Process Control Safety & Governance** - Complete safety system with hazard classification, dual approvals, calibration management, and uncertainty budgets 🆕
+- ✅ **Process Simulation Dashboard** - Added to main dashboard with 6 methods (Diffusion, Oxidation, SPC, Calibration, Batch, Maintenance) 🆕
 - ✅ **All LIMS Pages Upgraded** - All 6 LIMS pages now use shadcn/ui with full CRUD functionality
 - ✅ **Data & Samples Section Complete** - All 4 pages fully implemented (Sample Manager, Experiments, Results Browser, Data Export)
 - ✅ **Dialog Component Fixed** - Modal overlays with proper backdrop and solid design
@@ -70,6 +72,9 @@ npm run dev
 
 - **Web UI**: http://localhost:3012 (Modern React/Next.js Dashboard)
 - **API Docs**: http://localhost:8000/docs
+- **Analysis Service**: http://localhost:8001/docs (Characterization methods, SPC, ML)
+- **LIMS Service**: http://localhost:8002/docs (Sample management, ELN, reports)
+- **Process Control Service**: http://localhost:8003/docs (Ion Implant, RTP, Safety) 🆕
 - **Grafana**: http://localhost:3001 (admin/admin)
 
 ## Repository Structure
@@ -110,6 +115,15 @@ SPECTRA-Lab/
 │   │       └── ml/               # Machine Learning & Virtual Metrology
 │   ├── lims/                     # LIMS/ELN service (FastAPI, Port 8002)
 │   │   └── app/lims/             # Sample management, ELN, reports
+│   ├── process_control/          # 🆕 Process Control service (FastAPI, Port 8003)
+│   │   └── app/
+│   │       ├── api/              # REST API endpoints
+│   │       │   ├── endpoints.py          # Ion Implant, RTP, SPC, VM
+│   │       │   └── safety_endpoints.py   # Safety & calibration APIs
+│   │       ├── safety.py         # Safety, calibration & governance core
+│   │       ├── control/          # Control algorithms
+│   │       ├── drivers/          # Hardware drivers
+│   │       └── simulators/       # Hardware-in-loop simulators
 │   └── platform/                 # Platform services
 │       └── app/core/             # Security, monitoring, backups
 ├── alembic/                      # 🆕 Database migrations (Session 17)
@@ -226,6 +240,20 @@ make format          # Format code
 - ✅ **Training Records** - User certification and training tracking
 - ✅ **PDF Reports** - Automated professional report generation
 
+### Process Control & Safety (NEW) 🆕
+- ✅ **Ion Implantation Control** - Real-time beam parameter control and monitoring
+- ✅ **Rapid Thermal Processing (RTP)** - Multi-zone temperature control with recipe execution
+- ✅ **Safety Classification** - 4-tier hazard levels (LOW/MEDIUM/HIGH/CRITICAL)
+- ✅ **SOP Gates** - Detailed hazard identification for Ion Implant and RTP processes
+- ✅ **Dual Approval Workflow** - Required for HIGH/CRITICAL hazard processes
+- ✅ **Calibration Management** - Automated tracking for 7 instrument types
+- ✅ **Calibration Lockouts** - Expired calibrations automatically block process runs
+- ✅ **Uncertainty Budgets** - Complete Type A/B uncertainty analysis for Ion Implant & RTP
+- ✅ **Immutable Audit Trail** - Blockchain-like integrity with e-signature support
+- ✅ **Compliance Dashboard** - Real-time calibration and approval status monitoring
+- ✅ **20+ REST API Endpoints** - Complete safety and calibration management
+- ✅ **Consistent Error Codes** - CALIBRATION_EXPIRED, APPROVAL_REQUIRED, etc.
+
 ### Production Hardening & Security (Session 16)
 - ✅ **Performance Optimization** - Redis caching, database indexes, materialized views
 - ✅ **Security Hardening** - OWASP Top 10 compliance, vulnerability scanning
@@ -277,10 +305,12 @@ make format          # Format code
 - **Sessions:** 17/17 Complete (100%)
 - **Characterization Methods:** 26+ methods across 4 domains
 - **LIMS Features:** 7 core capabilities
+- **Process Control:** 3 modules + Safety & Governance system 🆕
 - **SPC Features:** 4 chart types + Western Electric rules
 - **ML/VM Features:** 12 advanced capabilities
 - **Backend:** PostgreSQL (23 tables) + JWT Auth + 5-tier RBAC
-- **Total Integrated Files:** 220+ files
+- **Microservices:** 3 FastAPI services (ports 8001, 8002, 8003) 🆕
+- **Total Integrated Files:** 230+ files
 - **Test Coverage:** 95% (157 total tests)
 - **Status:** 🚀 **FULL-STACK PRODUCTION READY**
 
