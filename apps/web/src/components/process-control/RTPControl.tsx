@@ -83,6 +83,7 @@ export const RTPControl: React.FC = () => {
   const [telemetryData, setTelemetryData] = useState<TelemetryPoint[]>([]);
   const [editingSegment, setEditingSegment] = useState<number | null>(null);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
 
   // Load profiles on mount
   useEffect(() => {
