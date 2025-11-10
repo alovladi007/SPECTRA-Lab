@@ -57,7 +57,8 @@ export const SPCMonitoring: React.FC = () => {
     queryKey: ['spc-series'],
     queryFn: async () => {
       const res = await fetch('/api/v1/spc/series');
-      return res.json();
+      const data = await res.json();
+      return data.series || [];
     },
   });
 
@@ -67,7 +68,8 @@ export const SPCMonitoring: React.FC = () => {
     queryFn: async () => {
       if (!selectedSeries) return [];
       const res = await fetch(`/api/v1/spc/points/${selectedSeries}?limit=100`);
-      return res.json();
+      const data = await res.json();
+      return data.points || [];
     },
     enabled: !!selectedSeries,
     refetchInterval: 5000, // Auto-refresh every 5 seconds
@@ -78,7 +80,8 @@ export const SPCMonitoring: React.FC = () => {
     queryKey: ['spc-alerts'],
     queryFn: async () => {
       const res = await fetch('/api/v1/spc/alerts?acknowledged=false&limit=50');
-      return res.json();
+      const data = await res.json();
+      return data.alerts || [];
     },
     refetchInterval: 10000,
   });
