@@ -5,7 +5,8 @@
 Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, structural, and chemical characterization capabilities, LIMS/ELN system, SPC, advanced machine learning, and production-grade PostgreSQL backend with JWT authentication.
 
 **Latest Updates:**
-- ✅ **Section 6: APIs, Background Jobs & Realtime** - Complete FastAPI REST APIs with JWT authentication, RBAC (4 roles: Admin/Engineer/Operator/Viewer, 19 permissions), Celery background task processing with Redis broker, WebSocket real-time telemetry streaming. 13 new endpoints operational (Ion: 5, RTP: 5, Jobs: 3). Job lifecycle management (QUEUED→RUNNING→COMPLETED/FAILED). 🆕
+- ✅ **Background Job Execution Fixed** - Resolved controller parameter mismatches in Ion and RTP tasks. Fixed: JobStatus enum shadowing, DoseIntegrator parameters, ScanUniformityController/R2RController/BeamDriftDetector signatures, PIDController/MPCController dataclass instantiation, and VM model equipment_id removal. Added None checks for job cancellation queries. Jobs now execute successfully through full lifecycle. 🆕
+- ✅ **Section 6: APIs, Background Jobs & Realtime** - Complete FastAPI REST APIs with JWT authentication, RBAC (4 roles: Admin/Engineer/Operator/Viewer, 19 permissions), Celery background task processing with Redis broker (max_retries=3, exponential backoff), WebSocket real-time telemetry streaming. 13 new endpoints operational (Ion: 5, RTP: 5, Jobs: 3). Job lifecycle management (QUEUED→RUNNING→COMPLETED/FAILED). Fully verified and operational. ✅
 - ✅ **Process Control Drivers & HIL Simulators** - Complete Ion Implant and RTP drivers with physics-based simulators (SRIM, thermal plant) 🆕
 - ✅ **Telemetry Streaming** - Real-time telemetry at configurable Hz with buffering and JSON export 🆕
 - ✅ **Soak Tests** - 12-72 hour accelerated time tests (1000× speedup) for system stability validation 🆕
