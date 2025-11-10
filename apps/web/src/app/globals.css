@@ -6,17 +6,32 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 249, 250, 251;
   --background-end-rgb: 255, 255, 255;
+  --muted-foreground: 71, 85, 105;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+    --muted-foreground: 148, 163, 184;
+  }
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-start-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
   min-height: 100vh;
 }
 
 /* Ensure proper text contrast throughout the app */
 .text-muted-foreground {
-  color: rgb(71, 85, 105) !important; /* Tailwind gray-600 for good contrast */
+  color: rgb(var(--muted-foreground)) !important;
 }
 
 @layer utilities {
