@@ -1,0 +1,83 @@
+"""Main FastAPI application for Process Control service."""
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle."""
+    logger.info("Starting Process Control service...")
+
+    # Initialize hardware (if in production mode)
+    # await startup_hardware()
+
+    logger.info("Process Control service startup complete")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down Process Control service...")
+
+    # Cleanup hardware
+    # await shutdown_hardware()
+
+    logger.info("Process Control service shutdown complete")
+
+
+# Create FastAPI application
+app = FastAPI(
+    title="SPECTRA-Lab Process Control Service",
+    description="RTP and Ion Implantation control system with SPC and Virtual Metrology",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Update in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+from app.api.endpoints import implant_router, rtp_router, spc_router, vm_router
+
+app.include_router(implant_router)
+app.include_router(rtp_router)
+app.include_router(spc_router)
+app.include_router(vm_router)
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "process-control",
+        "version": "1.0.0"
+    }
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {
+        "message": "SPECTRA-Lab Process Control Service",
+        "modules": ["Ion Implantation", "RTP", "SPC", "Virtual Metrology"],
+        "documentation": "/docs",
+        "status": "operational"
+    }

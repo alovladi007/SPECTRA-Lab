@@ -519,7 +519,7 @@ class CustodyEvent(Base, UUIDMixin, TimestampMixin):
 class SPCSeries(Base, UUIDMixin, TimestampMixin):
     """SPC control chart series."""
     __tablename__ = "spc_series"
-    
+
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     path = Column(String(500), nullable=False)  # "project/method/metric"
@@ -532,11 +532,17 @@ class SPCSeries(Base, UUIDMixin, TimestampMixin):
     ctrl_lcl = Column(Float, nullable=True)
     ctrl_ucl = Column(Float, nullable=True)
     ruleset = Column(String(255), default="western_electric")
-    
+    chart_type = Column(String(20), default="I-MR")  # I-MR, Xbar-R, EWMA, CUSUM
+    control_limits = Column(JSONB, default={})
+    spec_limits = Column(JSONB, default={})
+    rules = Column(JSONB, default={})
+    window_size = Column(Integer, nullable=True)
+    ewma_lambda = Column(Float, nullable=True)
+
     # Relationships
     points = relationship("SPCPoint", back_populates="series", cascade="all, delete-orphan")
     alerts = relationship("SPCAlert", back_populates="series", cascade="all, delete-orphan")
-    
+
     def __repr__(self):
         return f"<SPCSeries(name='{self.name}', metric='{self.metric}')>"
 
@@ -544,17 +550,26 @@ class SPCSeries(Base, UUIDMixin, TimestampMixin):
 class SPCPoint(Base, UUIDMixin):
     """SPC data point."""
     __tablename__ = "spc_points"
-    
+
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     series_id = Column(UUID(as_uuid=True), ForeignKey("spc_series.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True, index=True)
     ts = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
     value = Column(Float, nullable=False)
     subgroup = Column(String(255), nullable=True)
+    subgroup_values = Column(ARRAY(Float), nullable=True)
+    moving_range = Column(Float, nullable=True)
+    ewma_value = Column(Float, nullable=True)
+    cusum_pos = Column(Float, nullable=True)
+    cusum_neg = Column(Float, nullable=True)
+    violations = Column(JSONB, default={})
     extra_metadata = Column(JSONB, default={})
-    
+
     # Relationships
     series = relationship("SPCSeries", back_populates="points")
-    
+    run = relationship("Run")
+    alerts = relationship("SPCAlert", back_populates="point", cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<SPCPoint(series_id='{self.series_id}', value={self.value})>"
 
@@ -562,22 +577,253 @@ class SPCPoint(Base, UUIDMixin):
 class SPCAlert(Base, UUIDMixin, TimestampMixin):
     """SPC alert/violation."""
     __tablename__ = "spc_alerts"
-    
+
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     series_id = Column(UUID(as_uuid=True), ForeignKey("spc_series.id", ondelete="CASCADE"), nullable=False, index=True)
+    point_id = Column(UUID(as_uuid=True), ForeignKey("spc_points.id", ondelete="CASCADE"), nullable=False, index=True)
     rule = Column(String(255), nullable=False)
     window = Column(String(255), nullable=True)
     severity = Column(String(50), nullable=False)
+    alert_type = Column(String(50), nullable=False)
+    rule_violated = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
     opened_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     closed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    acknowledged = Column(Boolean, default=False, nullable=False, index=True)
+    acknowledged_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    acknowledged_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
     summary = Column(Text, nullable=False)
     details = Column(JSONB, default={})
-    
+
     # Relationships
     series = relationship("SPCSeries", back_populates="alerts")
-    
+    point = relationship("SPCPoint", back_populates="alerts")
+    acknowledged_user = relationship("User")
+
     def __repr__(self):
         return f"<SPCAlert(rule='{self.rule}', severity='{self.severity}')>"
+
+
+# ============================================================================
+# Process Control: Ion Implantation
+# ============================================================================
+
+class ImplantDoseProfile(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
+    """Ion implantation dose profile and characterization data."""
+    __tablename__ = "implant_dose_profiles"
+
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id"), nullable=False, index=True)
+
+    # Ion beam parameters
+    ion_species = Column(String(10), nullable=False, index=True)  # B, P, As, Sb, etc.
+    isotope = Column(Integer, nullable=True)  # e.g., 11 for B-11
+    energy_keV = Column(Float, nullable=False)
+    tilt_deg = Column(Float, nullable=False)  # Beam tilt angle
+    twist_deg = Column(Float, nullable=False)  # Wafer rotation
+    dose_cm2 = Column(Float, nullable=False)  # ions/cm²
+
+    # SRIM/TRIM simulation results
+    projected_range_nm = Column(Float, nullable=True)  # Rp
+    straggle_nm = Column(Float, nullable=True)  # ΔRp
+    channeling_metric = Column(Float, nullable=True)
+
+    # Extended metrics
+    damage_metrics = Column(JSONB, default={})  # DPA, vacancies, etc.
+    beam_uniformity = Column(JSONB, default={})  # Spatial uniformity map
+    wafer_map_uri = Column(String(500), nullable=True)
+    sims_profile_uri = Column(String(500), nullable=True)  # SIMS depth profile
+
+    # Relationships
+    run = relationship("Run")
+    telemetry = relationship("ImplantTelemetry", back_populates="profile", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_implant_dose_org_run', 'organization_id', 'run_id'),
+    )
+
+    def __repr__(self):
+        return f"<ImplantDoseProfile(species='{self.ion_species}', energy={self.energy_keV}keV)>"
+
+
+class ImplantTelemetry(Base, UUIDMixin):
+    """Real-time telemetry data from ion implanter."""
+    __tablename__ = "implant_telemetry"
+
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("implant_dose_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id"), nullable=False, index=True)
+    ts = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+
+    # Beam parameters
+    beam_current_mA = Column(Float, nullable=False)
+    pressure_mTorr = Column(Float, nullable=False)
+    accel_voltage_kV = Column(Float, nullable=False)
+    analyzer_magnet_T = Column(Float, nullable=True)  # Mass analyzer
+
+    # Beam steering
+    steering_X = Column(Float, nullable=True)
+    steering_Y = Column(Float, nullable=True)
+
+    # Dose integration
+    dose_count_C_cm2 = Column(Float, nullable=False)  # Cumulative dose
+
+    # Diagnostics
+    beam_profile_uri = Column(String(500), nullable=True)
+    faraday_currents = Column(ARRAY(Float), nullable=True)  # Multi-cup array
+    gas_flows = Column(JSONB, default={})  # Source gas flows
+    extra_metadata = Column(JSONB, default={})
+
+    # Relationships
+    profile = relationship("ImplantDoseProfile", back_populates="telemetry")
+    run = relationship("Run")
+
+    __table_args__ = (
+        Index('idx_implant_telem_run_ts', 'run_id', 'ts'),
+    )
+
+    def __repr__(self):
+        return f"<ImplantTelemetry(current={self.beam_current_mA}mA)>"
+
+
+# ============================================================================
+# Process Control: Rapid Thermal Processing (RTP)
+# ============================================================================
+
+class RTPProfile(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
+    """Rapid Thermal Processing temperature profiles and parameters."""
+    __tablename__ = "rtp_profiles"
+
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id"), nullable=False, index=True)
+
+    # Temperature profile
+    recipe_curve = Column(JSONB, nullable=False)  # Ramp/soak segments
+    peak_T_C = Column(Float, nullable=False)
+
+    # Process parameters
+    ambient_gas = Column(String(50), nullable=False)  # N2, O2, NH3, etc.
+    pressure_Torr = Column(Float, nullable=False)
+    emissivity = Column(Float, nullable=False)  # Wafer emissivity
+    pyrometer_cal_id = Column(UUID(as_uuid=True), ForeignKey("calibrations.id"), nullable=True)
+
+    # Multi-zone control
+    zone_setpoints = Column(JSONB, default={})  # Per-zone lamp settings
+    uniformity_metrics = Column(JSONB, default={})
+    wafer_rotation_rpm = Column(Float, nullable=True)
+
+    # Relationships
+    run = relationship("Run")
+    pyrometer_calibration = relationship("Calibration")
+    telemetry = relationship("RTPTelemetry", back_populates="profile", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_rtp_profile_org_run', 'organization_id', 'run_id'),
+        Index('idx_rtp_recipe_gin', 'recipe_curve', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<RTPProfile(peak={self.peak_T_C}°C, gas={self.ambient_gas})>"
+
+
+class RTPTelemetry(Base, UUIDMixin):
+    """Real-time telemetry from RTP system."""
+    __tablename__ = "rtp_telemetry"
+
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("rtp_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("runs.id"), nullable=False, index=True)
+    ts = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
+
+    # Temperature measurements
+    setpoint_T_C = Column(Float, nullable=False)
+    pyrometer_T_C = Column(Float, nullable=False)  # Primary measurement
+    tc_T_C = Column(ARRAY(Float), nullable=True)  # Thermocouple array
+
+    # Lamp control
+    lamp_power_pct = Column(ARRAY(Float), nullable=False)  # Per-zone
+
+    # Process parameters
+    emissivity_used = Column(Float, nullable=False)
+    chamber_pressure_Torr = Column(Float, nullable=False)
+    flow_sccm = Column(JSONB, nullable=False)  # Gas flows
+
+    # Controller states
+    pid_state = Column(JSONB, default={})  # P, I, D, error, output
+    mpc_state = Column(JSONB, default={})  # MPC state vector
+    extra_metadata = Column(JSONB, default={})
+
+    # Relationships
+    profile = relationship("RTPProfile", back_populates="telemetry")
+    run = relationship("Run")
+
+    __table_args__ = (
+        Index('idx_rtp_telem_run_ts', 'run_id', 'ts'),
+        Index('idx_rtp_flow_gin', 'flow_sccm', postgresql_using='gin'),
+    )
+
+    def __repr__(self):
+        return f"<RTPTelemetry(temp={self.pyrometer_T_C}°C)>"
+
+
+# ============================================================================
+# Virtual Metrology
+# ============================================================================
+
+class VMFeatureSet(Base, UUIDMixin, TimestampMixin):
+    """Virtual Metrology feature engineering configuration."""
+    __tablename__ = "vm_feature_sets"
+
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    instrument_id = Column(UUID(as_uuid=True), ForeignKey("instruments.id"), nullable=True, index=True)
+
+    # Feature engineering
+    features = Column(JSONB, nullable=False)  # Feature definitions
+    target_metrics = Column(JSONB, nullable=False)  # What to predict
+    preprocessing = Column(JSONB, default={})  # Scaling, transforms
+
+    active = Column(Boolean, default=True, nullable=False, index=True)
+
+    # Relationships
+    instrument = relationship("Instrument")
+    models = relationship("VMModel", back_populates="feature_set", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<VMFeatureSet(name='{self.name}')>"
+
+
+class VMModel(Base, UUIDMixin, TimestampMixin):
+    """Virtual Metrology predictive models."""
+    __tablename__ = "vm_models"
+
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    feature_set_id = Column(UUID(as_uuid=True), ForeignKey("vm_feature_sets.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Model identification
+    name = Column(String(200), nullable=False)
+    version = Column(String(50), nullable=False)
+    model_type = Column(String(50), nullable=False)  # neural, xgboost, physics
+
+    # Model storage
+    model_uri = Column(String(500), nullable=True)  # S3/Minio path
+    hyperparameters = Column(JSONB, default={})
+    performance_metrics = Column(JSONB, default={})  # R2, RMSE, MAE
+
+    # Training data
+    training_runs = Column(ARRAY(UUID(as_uuid=True)), nullable=True)
+    validation_runs = Column(ARRAY(UUID(as_uuid=True)), nullable=True)
+
+    # Deployment status
+    deployed = Column(Boolean, default=False, nullable=False, index=True)
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    approved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Relationships
+    feature_set = relationship("VMFeatureSet", back_populates="models")
+    approved_user = relationship("User")
+
+    def __repr__(self):
+        return f"<VMModel(name='{self.name}', version='{self.version}')>"
 
 
 # ============================================================================
