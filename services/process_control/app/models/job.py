@@ -95,7 +95,7 @@ class JobProgress(BaseModel):
     estimated_completion: Optional[datetime] = None
 
 
-class JobStatus(BaseModel):
+class JobStatusResponse(BaseModel):
     """Full job status."""
     job_id: str
     run_id: str
@@ -122,7 +122,7 @@ class JobStatus(BaseModel):
 
 class JobListResponse(BaseModel):
     """List of jobs with pagination."""
-    jobs: List[JobStatus]
+    jobs: List[JobStatusResponse]
     total: int
     page: int
     page_size: int
@@ -227,13 +227,13 @@ class JobStore:
 # Helper Functions
 # ============================================================================
 
-def job_to_response(job: Job) -> JobStatus:
+def job_to_response(job: Job) -> JobStatusResponse:
     """Convert Job model to JobStatusResponse."""
     duration = None
     if job.started_at and job.completed_at:
         duration = (job.completed_at - job.started_at).total_seconds()
 
-    return JobStatus(
+    return JobStatusResponse(
         job_id=job.id,
         run_id=job.run_id,
         job_type=job.job_type,
@@ -254,12 +254,12 @@ def job_to_response(job: Job) -> JobStatus:
 
 # Export
 __all__ = [
-    "JobStatus",
-    "JobType",
+    "JobStatus",  # Enum
+    "JobType",  # Enum
     "Job",
     "JobResponse",
     "JobProgress",
-    "JobStatusResponse",
+    "JobStatusResponse",  # Pydantic model
     "JobListResponse",
     "CancelJobResponse",
     "JobStore",

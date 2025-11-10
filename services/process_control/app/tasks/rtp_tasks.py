@@ -305,7 +305,7 @@ def execute_rtp_run(
         log("Initializing RTP HIL simulator")
         update_progress(10.0, "Initializing simulator")
 
-        hil_sim = RTPHILDriver()
+        hil_sim = RTPHILDriver(equipment_id="RTP-SIM-001")
 
         segments = recipe["segments"]
         controller_type = recipe.get("controller_type", "pid")

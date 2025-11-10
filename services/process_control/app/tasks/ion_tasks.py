@@ -316,7 +316,7 @@ def execute_ion_run(
         log("Initializing HIL simulator")
         update_progress(10.0, "Initializing simulator")
 
-        hil_sim = IonImplantHILDriver()
+        hil_sim = IonImplantHILDriver(equipment_id="ION-SIM-001")
 
         # Configure from recipe
         species = recipe["species"]
