@@ -646,15 +646,31 @@ def simulate_dose_profile(
         Dictionary with 1D depth profile and 2D lateral profile
     """
     from app.models.ion_range import SRIMEstimator
+    from app.drivers.ion_implant_driver import IonSpecies
 
     estimator = SRIMEstimator()
 
+    # Convert species string to IonSpecies enum
+    ion_species = IonSpecies(species)
+
     # 1D depth profile
-    profile_1d = estimator.get_depth_profile(
-        species=species,
-        energy_kev=energy_kev,
-        dose=dose_atoms_cm2,
+    profile_1d = estimator.predict_depth_profile(
+        ion_species=ion_species,
+        energy_keV=energy_kev,
+        dose_cm2=dose_atoms_cm2,
+        tilt_angle_deg=tilt_deg,
     )
+
+    # Calculate projected range (depth at peak concentration) and straggle (std dev)
+    peak_idx = np.argmax(profile_1d.concentration_cm3)
+    projected_range_nm = float(profile_1d.depth_nm[peak_idx])
+
+    # Calculate straggle as standard deviation of the depth distribution
+    # Weight depths by concentration
+    total_dose = np.trapz(profile_1d.concentration_cm3, profile_1d.depth_nm)
+    mean_depth = np.trapz(profile_1d.depth_nm * profile_1d.concentration_cm3, profile_1d.depth_nm) / total_dose
+    variance = np.trapz((profile_1d.depth_nm - mean_depth)**2 * profile_1d.concentration_cm3, profile_1d.depth_nm) / total_dose
+    straggle_nm = float(np.sqrt(variance))
 
     # 2D lateral profile (simplified)
     x = np.linspace(-150, 150, 100)  # mm
@@ -667,10 +683,10 @@ def simulate_dose_profile(
 
     return {
         "profile_1d": {
-            "depth_nm": profile_1d["depth_nm"],
-            "concentration_cm3": profile_1d["concentration_cm3"],
-            "projected_range_nm": profile_1d["projected_range_nm"],
-            "straggle_nm": profile_1d["straggle_nm"],
+            "depth_nm": profile_1d.depth_nm.tolist(),
+            "concentration_cm3": profile_1d.concentration_cm3.tolist(),
+            "projected_range_nm": projected_range_nm,
+            "straggle_nm": straggle_nm,
         },
         "profile_2d": {
             "x_mm": x.tolist(),
