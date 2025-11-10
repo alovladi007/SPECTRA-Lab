@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home, Zap, Waves, Layers, Beaker, TrendingUp, Brain,
   ChevronDown, ChevronRight, Activity, BarChart3,
-  Microscope, Atom, Sparkles, Database, Settings, FileText, ClipboardCheck
+  Microscope, Atom, Sparkles, Database, Settings, FileText, ClipboardCheck, Gauge
 } from 'lucide-react'
 
 interface NavItem {
@@ -122,6 +122,16 @@ const navigation: NavItem[] = [
           { name: 'Predictive Maintenance', href: '/dashboard/simulation/maintenance' },
         ]
       },
+    ],
+  },
+  {
+    name: 'Process Control',
+    icon: Gauge,
+    children: [
+      { name: 'Ion Implantation', href: '/process-control/ion-implant' },
+      { name: 'Rapid Thermal Processing', href: '/process-control/rtp' },
+      { name: 'Statistical Process Control', href: '/process-control/spc' },
+      { name: 'Virtual Metrology', href: '/process-control/vm' },
     ],
   },
   {
