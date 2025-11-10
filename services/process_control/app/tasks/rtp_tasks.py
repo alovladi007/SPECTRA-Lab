@@ -326,19 +326,24 @@ def execute_rtp_run(
 
         if controller_type == "pid":
             # PID controller with tuning from recipe or defaults
+            from app.controllers.rtp import PIDGains
+
             kp = recipe.get("pid_kp", 5.0)
             ki = recipe.get("pid_ki", 0.5)
             kd = recipe.get("pid_kd", 1.0)
 
-            controller = PIDController(kp=kp, ki=ki, kd=kd)
+            gains = PIDGains(Kp=kp, Ki=ki, Kd=kd)
+            controller = PIDController(gains=gains)
             log(f"PID gains: Kp={kp}, Ki={ki}, Kd={kd}")
 
         elif controller_type == "mpc":
-            controller = MPCController(
+            from app.controllers.rtp import MPCParameters
+
+            params = MPCParameters(
                 prediction_horizon=10,
                 control_horizon=5,
-                dt=0.1,
             )
+            controller = MPCController(params=params, num_zones=4)
             log("MPC controller initialized with H_p=10, H_c=5")
 
         else:
@@ -348,7 +353,7 @@ def execute_rtp_run(
         r2r_controller = R2RController(alpha=0.2)
 
         # SPC monitor
-        spc_monitor = RTPMonitor()
+        spc_monitor = RTPMonitor(equipment_id="RTP-SIM-001")
 
         # VM model
         vm_model = RTPVirtualMetrologyModel()

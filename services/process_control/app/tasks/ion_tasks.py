@@ -338,32 +338,29 @@ def execute_ion_run(
         update_progress(15.0, "Initializing controllers")
 
         dose_integrator = DoseIntegrator(
-            target_dose=dose_atoms_cm2,
             wafer_area_cm2=wafer_area_cm2,
         )
 
         scan_controller = ScanUniformityController(
-            kp=0.8,
-            ki=0.2,
-            kd=0.1,
-            target_dose=dose_atoms_cm2,
+            target_uniformity_pct=95.0,
+            correction_gain=0.5,
         )
 
         # R2R controller (if previous runs available)
         r2r_controller = R2RController(
-            target_dose=dose_atoms_cm2,
-            alpha=0.3,
+            ewma_weight=0.3,
+            control_limits_sigma=3.0,
         )
 
         # Beam drift FDC
         beam_fdc = BeamDriftDetector(
-            target_current=beam_current_ma,
-            k=0.5,
-            h=5.0,
+            drift_threshold_mm=0.5,
+            spike_threshold_mm=2.0,
+            window_size=10,
         )
 
         # SPC monitor
-        spc_monitor = IonImplantMonitor()
+        spc_monitor = IonImplantMonitor(equipment_id="ION-SIM-001")
 
         # VM model
         vm_model = IonVirtualMetrologyModel()
