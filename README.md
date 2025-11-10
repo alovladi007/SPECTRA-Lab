@@ -5,8 +5,11 @@
 Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, structural, and chemical characterization capabilities, LIMS/ELN system, SPC, advanced machine learning, and production-grade PostgreSQL backend with JWT authentication.
 
 **Latest Updates:**
-- ✅ **Process Control Safety & Governance** - Complete safety system with hazard classification, dual approvals, calibration management, and uncertainty budgets 🆕
-- ✅ **Process Simulation Dashboard** - Added to main dashboard with 6 methods (Diffusion, Oxidation, SPC, Calibration, Batch, Maintenance) 🆕
+- ✅ **Process Control Drivers & HIL Simulators** - Complete Ion Implant and RTP drivers with physics-based simulators (SRIM, thermal plant) 🆕
+- ✅ **Telemetry Streaming** - Real-time telemetry at configurable Hz with buffering and JSON export 🆕
+- ✅ **Soak Tests** - 12-72 hour accelerated time tests (1000× speedup) for system stability validation 🆕
+- ✅ **Process Control Safety & Governance** - Complete safety system with hazard classification, dual approvals, calibration management, and uncertainty budgets
+- ✅ **Process Simulation Dashboard** - Added to main dashboard with 6 methods (Diffusion, Oxidation, SPC, Calibration, Batch, Maintenance)
 - ✅ **All LIMS Pages Upgraded** - All 6 LIMS pages now use shadcn/ui with full CRUD functionality
 - ✅ **Data & Samples Section Complete** - All 4 pages fully implemented (Sample Manager, Experiments, Results Browser, Data Export)
 - ✅ **Dialog Component Fixed** - Modal overlays with proper backdrop and solid design
@@ -116,14 +119,22 @@ SPECTRA-Lab/
 │   ├── lims/                     # LIMS/ELN service (FastAPI, Port 8002)
 │   │   └── app/lims/             # Sample management, ELN, reports
 │   ├── process_control/          # 🆕 Process Control service (FastAPI, Port 8003)
-│   │   └── app/
-│   │       ├── api/              # REST API endpoints
-│   │       │   ├── endpoints.py          # Ion Implant, RTP, SPC, VM
-│   │       │   └── safety_endpoints.py   # Safety & calibration APIs
-│   │       ├── safety.py         # Safety, calibration & governance core
-│   │       ├── control/          # Control algorithms
-│   │       ├── drivers/          # Hardware drivers
-│   │       └── simulators/       # Hardware-in-loop simulators
+│   │   ├── app/
+│   │   │   ├── api/              # REST API endpoints
+│   │   │   │   ├── endpoints.py          # Ion Implant, RTP, SPC, VM
+│   │   │   │   └── safety_endpoints.py   # Safety & calibration APIs
+│   │   │   ├── drivers/          # 🆕 Hardware control interfaces
+│   │   │   │   ├── ion_implant_driver.py # Ion implant control & mock
+│   │   │   │   └── rtp_driver.py         # RTP control & mock
+│   │   │   ├── simulators/       # 🆕 HIL physics simulations
+│   │   │   │   ├── ion_implant_hil.py    # SRIM-like physics
+│   │   │   │   └── rtp_hil.py            # Thermal plant model
+│   │   │   ├── telemetry/        # 🆕 Telemetry streaming
+│   │   │   │   ├── ion_implant_telemetry.py
+│   │   │   │   └── rtp_telemetry.py
+│   │   │   ├── safety.py         # Safety, calibration & governance core
+│   │   │   └── control/          # Control algorithms
+│   │   └── tests/soak_tests/     # 🆕 12-72h accelerated time tests
 │   └── platform/                 # Platform services
 │       └── app/core/             # Security, monitoring, backups
 ├── alembic/                      # 🆕 Database migrations (Session 17)
