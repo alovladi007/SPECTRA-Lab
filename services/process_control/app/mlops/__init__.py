@@ -36,6 +36,16 @@ from .onnx_export import (
     ONNXExportConfig,
 )
 
+from .retraining_scheduler import (
+    RetrainingScheduler,
+    RetrainingPolicy,
+    RetrainingJob,
+    RetrainingTrigger,
+    RetrainingStatus,
+    create_default_ion_vm_policy,
+    create_default_rtp_vm_policy,
+)
+
 __all__ = [
     # Feature Store
     "FeatureStore",
@@ -64,4 +74,13 @@ __all__ = [
     "ONNXInferenceRuntime",
     "ONNXMetadata",
     "ONNXExportConfig",
+
+    # Retraining Scheduler
+    "RetrainingScheduler",
+    "RetrainingPolicy",
+    "RetrainingJob",
+    "RetrainingTrigger",
+    "RetrainingStatus",
+    "create_default_ion_vm_policy",
+    "create_default_rtp_vm_policy",
 ]
