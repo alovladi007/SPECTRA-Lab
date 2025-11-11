@@ -34,6 +34,23 @@ body {
   color: rgb(var(--muted-foreground)) !important;
 }
 
+/* Force dropdown items to be visible */
+[role="option"],
+[data-radix-select-item],
+.select-item,
+div[class*="cursor-pointer"] {
+  color: #111827 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  [role="option"],
+  [data-radix-select-item],
+  .select-item,
+  div[class*="cursor-pointer"] {
+    color: #f3f4f6 !important;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

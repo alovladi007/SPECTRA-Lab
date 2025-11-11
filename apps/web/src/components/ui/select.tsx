@@ -46,7 +46,7 @@ export const SelectTrigger = ({ children, disabled }: { children?: React.ReactNo
       type="button"
       onClick={() => context?.setOpen(!context.open)}
       disabled={disabled}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
     >
       {children}
       <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@ export const SelectTrigger = ({ children, disabled }: { children?: React.ReactNo
 
 export const SelectValue = () => {
   const context = React.useContext(SelectContext)
-  return <span>{context?.value || 'Select...'}</span>
+  return <span className="text-gray-900 dark:text-gray-100">{context?.value || 'Select...'}</span>
 }
 
 export const SelectContent = ({ children }: { children: React.ReactNode }) => {
@@ -72,7 +72,7 @@ export const SelectContent = ({ children }: { children: React.ReactNode }) => {
         className="fixed inset-0 z-40"
         onClick={() => context.setOpen(false)}
       />
-      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
         {children}
       </div>
     </>
@@ -89,7 +89,7 @@ export const SelectItem = ({ value, children }: SelectItemProps) => {
         context?.setOpen(false)
       }}
       className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
-        context?.value === value ? 'bg-blue-50 text-blue-600' : ''
+        context?.value === value ? 'bg-blue-50 !text-blue-600 font-semibold' : '!text-gray-900 dark:!text-gray-100'
       }`}
     >
       {children}
