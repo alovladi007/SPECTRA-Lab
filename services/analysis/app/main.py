@@ -18,7 +18,11 @@ from app.api.v1.simulation import simulation_router
 from app.api import runs_router, calibrations_router
 
 # Import CVD router
+<<<<<<< Updated upstream
 from app.routers.cvd import router as cvd_router
+=======
+from app.routers import cvd
+>>>>>>> Stashed changes
 
 # Import database initialization
 from sqlalchemy import create_engine
@@ -78,8 +82,13 @@ app.include_router(simulation_router, prefix="/api/v1")
 app.include_router(runs_router)
 app.include_router(calibrations_router)
 
+<<<<<<< Updated upstream
 # Register CVD router (already has /api/v1/cvd prefix)
 app.include_router(cvd_router)
+=======
+# Register CVD router
+app.include_router(cvd.router, prefix="/api/v1")
+>>>>>>> Stashed changes
 
 @app.get("/")
 async def root():
@@ -95,8 +104,12 @@ async def root():
             "simulation": "/api/v1/simulation",
             "runs": "/api/v1/runs",
             "calibrations": "/api/v1/calibrations",
+<<<<<<< Updated upstream
             "cvd": "/api/v1/cvd",
             "cvd_docs": "/api/v1/cvd/docs (See /docs for full API)"
+=======
+            "cvd": "/api/v1/cvd"
+>>>>>>> Stashed changes
         }
     }
 
