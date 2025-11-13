@@ -130,6 +130,7 @@ const navigation: NavItem[] = [
     children: [
       { name: 'Ion Implantation', href: '/process-control/ion-implant' },
       { name: 'Rapid Thermal Processing', href: '/process-control/rtp' },
+      { name: 'CVD Platform', href: '/cvd/workspace', badge: 'NEW' },
       { name: 'Statistical Process Control', href: '/process-control/spc' },
       { name: 'Virtual Metrology', href: '/process-control/vm' },
     ],
