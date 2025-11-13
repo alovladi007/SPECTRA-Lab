@@ -17,6 +17,9 @@ from app.api.v1.simulation import simulation_router
 # Import runs and calibrations routers
 from app.api import runs_router, calibrations_router
 
+# Import CVD router
+from app.routers.cvd import router as cvd_router
+
 # Import database initialization
 from sqlalchemy import create_engine
 import os
@@ -45,6 +48,7 @@ async def init_database():
     try:
         from services.shared.db.base import Base
         from services.shared.db import models  # Import all models
+        from app.models import cvd  # Import CVD models
 
         # Use environment variable or default for Docker access
         database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
@@ -74,6 +78,9 @@ app.include_router(simulation_router, prefix="/api/v1")
 app.include_router(runs_router)
 app.include_router(calibrations_router)
 
+# Register CVD router (already has /api/v1/cvd prefix)
+app.include_router(cvd_router)
+
 @app.get("/")
 async def root():
     return {
@@ -87,7 +94,9 @@ async def root():
             "monitoring": "/api/v1/monitoring",
             "simulation": "/api/v1/simulation",
             "runs": "/api/v1/runs",
-            "calibrations": "/api/v1/calibrations"
+            "calibrations": "/api/v1/calibrations",
+            "cvd": "/api/v1/cvd",
+            "cvd_docs": "/api/v1/cvd/docs (See /docs for full API)"
         }
     }
 
