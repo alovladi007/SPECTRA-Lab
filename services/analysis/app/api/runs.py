@@ -7,12 +7,17 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, UUID4
 from datetime import datetime
+import sys
+from pathlib import Path
 
-from services.shared.db.deps import (
+# Add services/shared to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared"))
+
+from db.deps import (
     get_db, get_current_user, require_engineer_or_above,
     check_instrument_calibration
 )
-from services.shared.db.models import Run, RunStatus, User, Instrument, Recipe
+from db.models import Run, RunStatus, User, Instrument, Recipe
 
 router = APIRouter(prefix="/api/v1/runs", tags=["runs"])
 

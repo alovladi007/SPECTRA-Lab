@@ -11,8 +11,13 @@ from enum import Enum
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, List, Any
+import sys
+from pathlib import Path
 
-from ..database import Base
+# Add services/shared to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared"))
+
+from db.base import Base
 
 
 # Enums for CVD classifications
@@ -155,7 +160,7 @@ class CVDRecipe(Base):
     status = Column(String(50), nullable=False, default='draft')
     approval_date = Column(DateTime(timezone=True), nullable=True)
     approved_by_id = Column(UUID(as_uuid=True), nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    custom_metadata = Column(JSONB, nullable=True)
 
     created_by_id = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -208,7 +213,7 @@ class CVDRun(Base):
 
     # Metadata
     operator_id = Column(UUID(as_uuid=True), nullable=False)
-    metadata = Column(JSONB, nullable=True)
+    custom_metadata = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

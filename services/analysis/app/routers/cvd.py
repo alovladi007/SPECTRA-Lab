@@ -16,8 +16,13 @@ from sqlalchemy.orm import joinedload
 import logging
 import json
 import asyncio
+import sys
+from pathlib import Path
 
-from services.shared.db.deps import get_db
+# Add services/shared to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared"))
+
+from db.deps import get_db
 from ..models.cvd import (
     CVDProcessMode,
     CVDRecipe,

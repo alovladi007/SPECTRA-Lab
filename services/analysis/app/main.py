@@ -46,8 +46,8 @@ app.add_middleware(
 async def init_database():
     """Create all database tables on startup"""
     try:
-        from services.shared.db.base import Base
-        from services.shared.db import models  # Import all models
+        from db.base import Base
+        from db import models  # Import all models
         from app.models import cvd  # Import CVD models
 
         # Use environment variable or default for Docker access
