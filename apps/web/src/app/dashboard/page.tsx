@@ -90,6 +90,14 @@ const categories = [
     description: 'Ion Implantation, Rapid Thermal Processing (RTP), Statistical Process Control (SPC)',
     href: '/process-control',
   },
+  {
+    name: 'CVD Platform',
+    icon: Layers,
+    color: 'from-sky-500 to-blue-500',
+    methods: 4,
+    description: 'PECVD, LPCVD, MOCVD, AACVD with real-time monitoring and SPC',
+    href: '/cvd/workspace',
+  },
 ]
 
 // Recent Activity
