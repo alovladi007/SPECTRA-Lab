@@ -39,3 +39,11 @@ export const CardContent = ({ children, className = '', ...props }: React.HTMLAt
     </div>
   )
 }
+
+export const CardFooter = ({ children, className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  return (
+    <div className={`p-6 pt-0 ${className}`} {...props}>
+      {children}
+    </div>
+  )
+}

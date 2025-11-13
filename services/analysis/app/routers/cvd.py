@@ -113,7 +113,6 @@ async def list_process_modes(
     organization_id: Optional[UUID] = None,
     pressure_mode: Optional[str] = None,
     energy_mode: Optional[str] = None,
-    is_active: bool = True,
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
@@ -125,13 +124,11 @@ async def list_process_modes(
         # Apply filters
         filters = []
         if organization_id:
-            filters.append(CVDProcessMode.organization_id == organization_id)
+            filters.append(CVDProcessMode.org_id == organization_id)
         if pressure_mode:
             filters.append(CVDProcessMode.pressure_mode == pressure_mode)
         if energy_mode:
             filters.append(CVDProcessMode.energy_mode == energy_mode)
-        if is_active is not None:
-            filters.append(CVDProcessMode.is_active == is_active)
 
         if filters:
             query = query.where(and_(*filters))

@@ -2,11 +2,11 @@
 
 /**
  * CVD Workspace Page
- * Main workspace for CVD operations - process modes, recipes, runs, and monitoring
+ * Main workspace for CVD operations - integrated with all CVD components
  */
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -16,24 +16,6 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -45,27 +27,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
 import {
   Activity,
   Beaker,
   ChevronRight,
   Database,
-  FileText,
   Play,
   Plus,
   RefreshCw,
   Settings,
   TrendingUp,
   Zap,
+  BarChart3,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-// API client (to be implemented)
+// API client
 import { cvdApi } from "@/lib/api/cvd";
+
+// CVD Components
+import TelemetryDashboard from "@/components/cvd/TelemetryDashboard";
+import RecipeEditor from "@/components/cvd/RecipeEditor";
+import RunConfigurationWizard from "@/components/cvd/RunConfigurationWizard";
+import SPCDashboard from "@/components/cvd/SPCDashboard";
 
 // Types
 interface CVDProcessMode {
   id: string;
+  organization_id: string;
   pressure_mode: string;
   energy_mode: string;
   reactor_type: string;
@@ -110,17 +105,19 @@ interface CVDRun {
 export default function CVDWorkspacePage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedProcessMode, setSelectedProcessMode] = useState<string | null>(null);
-  const [selectedRecipe, setSelectedRecipe] = useState<string | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<CVDRecipe | null>(null);
+  const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [isCreateRecipeOpen, setIsCreateRecipeOpen] = useState(false);
   const [isLaunchRunOpen, setIsLaunchRunOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<CVDRecipe | null>(null);
 
-  const queryClient = useQueryClient();
+  // Organization ID (should come from auth context in production)
+  const organizationId = "default-org";
 
   // Fetch process modes
   const {
     data: processModes,
     isLoading: isLoadingProcessModes,
-    error: processModesError,
   } = useQuery({
     queryKey: ["cvd", "process-modes"],
     queryFn: () => cvdApi.getProcessModes(),
@@ -130,36 +127,26 @@ export default function CVDWorkspacePage() {
   const {
     data: recipes,
     isLoading: isLoadingRecipes,
-    error: recipesError,
   } = useQuery({
     queryKey: ["cvd", "recipes", selectedProcessMode],
-    queryFn: () => cvdApi.getRecipes({ process_mode_id: selectedProcessMode }),
+    queryFn: () =>
+      cvdApi.getRecipes({
+        process_mode_id: selectedProcessMode || undefined,
+      }),
     enabled: !!selectedProcessMode,
   });
 
   // Fetch runs
-  const {
-    data: runs,
-    isLoading: isLoadingRuns,
-    error: runsError,
-  } = useQuery({
+  const { data: runs, isLoading: isLoadingRuns } = useQuery({
     queryKey: ["cvd", "runs"],
     queryFn: () => cvdApi.getRuns({ limit: 50 }),
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  // Create run mutation
-  const createRunMutation = useMutation({
-    mutationFn: (runData: any) => cvdApi.createRun(runData),
-    onSuccess: () => {
-      toast.success("Run created successfully");
-      queryClient.invalidateQueries({ queryKey: ["cvd", "runs"] });
-      setIsLaunchRunOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to create run: ${error.message}`);
-    },
-  });
+  // Get active runs
+  const activeRuns = runs?.filter((r: CVDRun) =>
+    ["INITIALIZING", "PUMPING_DOWN", "HEATING", "STABILIZING", "PROCESSING"].includes(r.status)
+  ) || [];
 
   // Get status badge color
   const getStatusColor = (status: string) => {
@@ -179,6 +166,17 @@ export default function CVDWorkspacePage() {
     return colors[status] || "bg-gray-500";
   };
 
+  const handleRecipeSave = async (recipe: any) => {
+    // Create or update recipe via API
+    if (editingRecipe) {
+      await cvdApi.updateRecipe(editingRecipe.id, recipe);
+    } else {
+      await cvdApi.createRecipe(recipe);
+    }
+    setIsCreateRecipeOpen(false);
+    setEditingRecipe(null);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -186,7 +184,7 @@ export default function CVDWorkspacePage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">CVD Workspace</h1>
           <p className="text-muted-foreground">
-            Chemical Vapor Deposition - Process Management & Monitoring
+            Chemical Vapor Deposition - Real-Time Process Management & Monitoring
           </p>
         </div>
         <div className="flex gap-2">
@@ -205,7 +203,7 @@ export default function CVDWorkspacePage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">
             <Activity className="mr-2 h-4 w-4" />
             Overview
@@ -220,11 +218,15 @@ export default function CVDWorkspacePage() {
           </TabsTrigger>
           <TabsTrigger value="runs">
             <Play className="mr-2 h-4 w-4" />
-            Runs
+            Active Runs
           </TabsTrigger>
-          <TabsTrigger value="analytics">
+          <TabsTrigger value="monitoring">
+            <Zap className="mr-2 h-4 w-4" />
+            Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="spc">
             <TrendingUp className="mr-2 h-4 w-4" />
-            Analytics
+            SPC
           </TabsTrigger>
         </TabsList>
 
@@ -237,9 +239,7 @@ export default function CVDWorkspacePage() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {runs?.filter((r: CVDRun) => r.status === "PROCESSING").length || 0}
-                </div>
+                <div className="text-2xl font-bold">{activeRuns.length}</div>
                 <p className="text-xs text-muted-foreground">Currently processing</p>
               </CardContent>
             </Card>
@@ -265,16 +265,8 @@ export default function CVDWorkspacePage() {
                 <Beaker className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {
-                    processModes
-                      ?.map((pm: CVDProcessMode) =>
-                        cvdApi.getRecipes({ process_mode_id: pm.id })
-                      )
-                      .flat().length
-                  }
-                </div>
-                <p className="text-xs text-muted-foreground">Across all modes</p>
+                <div className="text-2xl font-bold">{recipes?.length || 0}</div>
+                <p className="text-xs text-muted-foreground">Active recipes</p>
               </CardContent>
             </Card>
 
@@ -289,8 +281,7 @@ export default function CVDWorkspacePage() {
                     runs?.filter(
                       (r: CVDRun) =>
                         r.status === "COMPLETED" &&
-                        new Date(r.created_at).toDateString() ===
-                          new Date().toDateString()
+                        new Date(r.created_at).toDateString() === new Date().toDateString()
                     ).length || 0
                   }
                 </div>
@@ -315,28 +306,38 @@ export default function CVDWorkspacePage() {
                     <TableHead>Wafers</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {runs?.slice(0, 5).map((run: CVDRun) => (
+                  {runs?.slice(0, 10).map((run: CVDRun) => (
                     <TableRow key={run.id}>
                       <TableCell className="font-mono text-sm">
                         {run.id.slice(0, 8)}...
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(run.status)}>
-                          {run.status}
-                        </Badge>
+                        <Badge className={getStatusColor(run.status)}>{run.status}</Badge>
                       </TableCell>
                       <TableCell>{run.lot_id || "-"}</TableCell>
                       <TableCell>{run.wafer_ids.length}</TableCell>
                       <TableCell>
-                        {run.duration_s
-                          ? `${Math.round(run.duration_s / 60)}m`
-                          : "-"}
+                        {run.duration_s ? `${Math.round(run.duration_s / 60)}m` : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {new Date(run.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        {new Date(run.created_at).toLocaleString()}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedRun(run.id);
+                            setActiveTab("monitoring");
+                          }}
+                        >
+                          Monitor
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -354,7 +355,7 @@ export default function CVDWorkspacePage() {
                 <div>
                   <CardTitle>CVD Process Modes</CardTitle>
                   <CardDescription>
-                    Available CVD variants and configurations
+                    Available CVD variants and configurations (PECVD, LPCVD, MOCVD, AACVD)
                   </CardDescription>
                 </div>
                 <Button size="sm">
@@ -368,17 +369,18 @@ export default function CVDWorkspacePage() {
                 <div className="flex items-center justify-center p-8">
                   <RefreshCw className="h-6 w-6 animate-spin" />
                 </div>
-              ) : (
+              ) : processModes && processModes.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {processModes?.map((mode: CVDProcessMode) => (
+                  {processModes.map((mode: CVDProcessMode) => (
                     <Card
                       key={mode.id}
                       className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedProcessMode === mode.id
-                          ? "ring-2 ring-primary"
-                          : ""
+                        selectedProcessMode === mode.id ? "ring-2 ring-primary" : ""
                       }`}
-                      onClick={() => setSelectedProcessMode(mode.id)}
+                      onClick={() => {
+                        setSelectedProcessMode(mode.id);
+                        setActiveTab("recipes");
+                      }}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -424,6 +426,15 @@ export default function CVDWorkspacePage() {
                     </Card>
                   ))}
                 </div>
+              ) : (
+                <Alert>
+                  <Database className="h-4 w-4" />
+                  <AlertTitle>No Process Modes Found</AlertTitle>
+                  <AlertDescription>
+                    No CVD process modes are configured. Start Docker and run the seed script to
+                    populate sample data.
+                  </AlertDescription>
+                </Alert>
               )}
             </CardContent>
           </Card>
@@ -436,10 +447,20 @@ export default function CVDWorkspacePage() {
               <Beaker className="h-4 w-4" />
               <AlertTitle>Select a Process Mode</AlertTitle>
               <AlertDescription>
-                Please select a process mode from the Process Modes tab to view and
-                manage recipes.
+                Please select a process mode from the Process Modes tab to view and manage
+                recipes.
               </AlertDescription>
             </Alert>
+          ) : isCreateRecipeOpen || editingRecipe ? (
+            <RecipeEditor
+              processMode={processModes?.find((pm: CVDProcessMode) => pm.id === selectedProcessMode)}
+              initialRecipe={editingRecipe || undefined}
+              onSave={handleRecipeSave}
+              onCancel={() => {
+                setIsCreateRecipeOpen(false);
+                setEditingRecipe(null);
+              }}
+            />
           ) : (
             <Card>
               <CardHeader>
@@ -461,7 +482,7 @@ export default function CVDWorkspacePage() {
                   <div className="flex items-center justify-center p-8">
                     <RefreshCw className="h-6 w-6 animate-spin" />
                   </div>
-                ) : (
+                ) : recipes && recipes.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -474,7 +495,7 @@ export default function CVDWorkspacePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recipes?.map((recipe: CVDRecipe) => (
+                      {recipes.map((recipe: CVDRecipe) => (
                         <TableRow key={recipe.id}>
                           <TableCell>
                             <div>
@@ -487,13 +508,9 @@ export default function CVDWorkspacePage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {recipe.target_thickness_nm
-                              ? `${recipe.target_thickness_nm} nm`
-                              : "-"}
+                            {recipe.target_thickness_nm ? `${recipe.target_thickness_nm} nm` : "-"}
                           </TableCell>
-                          <TableCell>
-                            {Math.round(recipe.process_time_s / 60)} min
-                          </TableCell>
+                          <TableCell>{Math.round(recipe.process_time_s / 60)} min</TableCell>
                           <TableCell>{recipe.run_count}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -518,9 +535,9 @@ export default function CVDWorkspacePage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setSelectedRecipe(recipe.id)}
+                              onClick={() => setEditingRecipe(recipe)}
                             >
-                              View
+                              Edit
                               <ChevronRight className="ml-1 h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -528,71 +545,190 @@ export default function CVDWorkspacePage() {
                       ))}
                     </TableBody>
                   </Table>
+                ) : (
+                  <Alert>
+                    <Beaker className="h-4 w-4" />
+                    <AlertTitle>No Recipes Found</AlertTitle>
+                    <AlertDescription>
+                      No recipes found for this process mode. Click "Create Recipe" to get started.
+                    </AlertDescription>
+                  </Alert>
                 )}
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
-        {/* Runs Tab */}
+        {/* Active Runs Tab */}
         <TabsContent value="runs" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Process Runs</CardTitle>
-              <CardDescription>Monitor and manage CVD runs</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Active Process Runs</CardTitle>
+                  <CardDescription>Currently processing runs</CardDescription>
+                </div>
+                <Button size="sm" variant="outline">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {/* Run list implementation */}
-              <div className="text-muted-foreground">
-                Run monitoring interface - implementation in progress
-              </div>
+              {isLoadingRuns ? (
+                <div className="flex items-center justify-center p-8">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : activeRuns.length > 0 ? (
+                <div className="space-y-4">
+                  {activeRuns.map((run: CVDRun) => (
+                    <Card key={run.id} className="border-l-4 border-l-green-500">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base">Run {run.id.slice(0, 8)}</CardTitle>
+                            <CardDescription>Lot: {run.lot_id}</CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getStatusColor(run.status)}>{run.status}</Badge>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedRun(run.id);
+                                setActiveTab("monitoring");
+                              }}
+                            >
+                              Monitor
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Wafers:</span>
+                            <span className="ml-2 font-medium">{run.wafer_ids.length}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Started:</span>
+                            <span className="ml-2 font-medium">
+                              {run.start_time
+                                ? new Date(run.start_time).toLocaleTimeString()
+                                : "-"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Duration:</span>
+                            <span className="ml-2 font-medium">
+                              {run.duration_s ? `${Math.round(run.duration_s / 60)}m` : "-"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Recipe:</span>
+                            <span className="ml-2 font-medium">
+                              {run.recipe_id.slice(0, 8)}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Alert>
+                  <Play className="h-4 w-4" />
+                  <AlertTitle>No Active Runs</AlertTitle>
+                  <AlertDescription>
+                    No CVD runs are currently processing. Click "Launch Run" to start a new
+                    process.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Process Analytics</CardTitle>
-              <CardDescription>
-                Statistical analysis and process capability
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Analytics implementation */}
-              <div className="text-muted-foreground">
-                Analytics dashboard - implementation in progress
-              </div>
-            </CardContent>
-          </Card>
+        {/* Real-Time Monitoring Tab */}
+        <TabsContent value="monitoring" className="space-y-4">
+          {selectedRun ? (
+            <TelemetryDashboard runId={selectedRun} />
+          ) : activeRuns.length > 0 ? (
+            <>
+              <Alert>
+                <Zap className="h-4 w-4" />
+                <AlertTitle>Select a Run to Monitor</AlertTitle>
+                <AlertDescription>
+                  Choose an active run from the list below to view real-time telemetry.
+                </AlertDescription>
+              </Alert>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Available Runs for Monitoring</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {activeRuns.map((run: CVDRun) => (
+                      <Button
+                        key={run.id}
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => setSelectedRun(run.id)}
+                      >
+                        <Activity className="mr-2 h-4 w-4" />
+                        Run {run.id.slice(0, 8)} - {run.status} - Lot: {run.lot_id}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Alert>
+              <Zap className="h-4 w-4" />
+              <AlertTitle>No Active Runs to Monitor</AlertTitle>
+              <AlertDescription>
+                Start a CVD run from the "Active Runs" tab to view real-time telemetry data here.
+              </AlertDescription>
+            </Alert>
+          )}
+        </TabsContent>
+
+        {/* SPC Tab */}
+        <TabsContent value="spc" className="space-y-4">
+          {selectedProcessMode ? (
+            <SPCDashboard
+              organizationId={organizationId}
+              processModId={selectedProcessMode}
+              recipeId={selectedRecipe?.id}
+              autoRefresh={true}
+              refreshInterval={10000}
+            />
+          ) : (
+            <Alert>
+              <BarChart3 className="h-4 w-4" />
+              <AlertTitle>Select a Process Mode</AlertTitle>
+              <AlertDescription>
+                Please select a process mode from the Process Modes tab to view SPC charts and
+                process capability metrics.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
       </Tabs>
 
-      {/* Launch Run Dialog */}
+      {/* Launch Run Wizard Dialog */}
       <Dialog open={isLaunchRunOpen} onOpenChange={setIsLaunchRunOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Launch CVD Run</DialogTitle>
             <DialogDescription>
-              Configure and launch a new CVD process run
+              Configure and launch new CVD process run(s) using the step-by-step wizard
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {/* Run configuration form - simplified */}
-            <div className="text-sm text-muted-foreground">
-              Run configuration interface - implementation in progress
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLaunchRunOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => {}}>
-              <Play className="mr-2 h-4 w-4" />
-              Launch
-            </Button>
-          </DialogFooter>
+          <RunConfigurationWizard
+            onComplete={() => setIsLaunchRunOpen(false)}
+            onCancel={() => setIsLaunchRunOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
