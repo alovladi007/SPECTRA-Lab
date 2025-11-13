@@ -49,6 +49,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
       - JWT_ALGORITHM=HS256
       - JWT_ISSUER=spectra-lab
@@ -71,6 +73,80 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - spectra-network
+
+  # Celery Worker (CVD Background Tasks)
+  celery-worker:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: spectra-celery-worker
+    environment:
+      - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/analysis:/app
+      - ./services/shared:/app/services/shared
+    command: celery -A app.tasks.cvd_tasks worker --loglevel=info --concurrency=4
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.cvd_tasks inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - spectra-network
+
+  # Celery Beat (Scheduled Tasks)
+  celery-beat:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: spectra-celery-beat
+    environment:
+      - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/analysis:/app
+      - ./services/shared:/app/services/shared
+    command: celery -A app.tasks.cvd_tasks beat --loglevel=info
+    networks:
+      - spectra-network
+
+  # Flower (Celery Monitoring)
+  flower:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: spectra-flower
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/2
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    volumes:
+      - ./services/analysis:/app
+    command: celery -A app.tasks.cvd_tasks flower --port=5555
     networks:
       - spectra-network
 
