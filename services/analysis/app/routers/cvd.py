@@ -17,7 +17,7 @@ import logging
 import json
 import asyncio
 
-from ..database import get_db
+from services.shared.db.deps import get_db
 from ..models.cvd import (
     CVDProcessMode,
     CVDRecipe,
