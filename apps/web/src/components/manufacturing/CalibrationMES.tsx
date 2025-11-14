@@ -211,7 +211,7 @@ export const CalibrationMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Calibration Certificates</CardTitle>
               <CardDescription>Certificate repository and documentation</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="text-center py-12 text-muted-foreground">
                 Certificate management and PDF viewer
@@ -226,7 +226,7 @@ export const CalibrationMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Compliance Reports</CardTitle>
               <CardDescription>ISO 9001, ISO/IEC 17025 compliance tracking</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="p-4 border rounded-lg">
