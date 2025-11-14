@@ -228,7 +228,7 @@ export const PredictiveMaintenanceMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Preventive Maintenance Schedule</CardTitle>
               <CardDescription>Optimized PM scheduling based on health predictions</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {equipment.map((eq) => (
@@ -257,7 +257,7 @@ export const PredictiveMaintenanceMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Maintenance Analytics</CardTitle>
               <CardDescription>Historical trends, cost analysis, and downtime optimization</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 border rounded-lg">

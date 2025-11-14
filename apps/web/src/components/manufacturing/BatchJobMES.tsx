@@ -234,7 +234,7 @@ export const BatchJobMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Resource Allocation</CardTitle>
               <CardDescription>Equipment availability and utilization</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {[
