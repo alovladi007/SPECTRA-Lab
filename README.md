@@ -5,11 +5,13 @@
 Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, structural, and chemical characterization capabilities, LIMS/ELN system, SPC, advanced machine learning, and production-grade PostgreSQL backend with JWT authentication.
 
 **Latest Updates:**
-- ✅ **Background Job Execution Fixed** - Resolved controller parameter mismatches in Ion and RTP tasks. Fixed: JobStatus enum shadowing, DoseIntegrator parameters, ScanUniformityController/R2RController/BeamDriftDetector signatures, PIDController/MPCController dataclass instantiation, and VM model equipment_id removal. Added None checks for job cancellation queries. Jobs now execute successfully through full lifecycle. 🆕
+- ✅ **Diffusion Manufacturing Platform** - Complete manufacturing-grade diffusion module added! 7 database tables, 40+ REST endpoints, WebSocket telemetry streaming, SPC integration, batch run creation, equipment tracking, recipe approval workflow. Matches CVD/Ion/RTP architecture (~2,320 lines). 🆕
+- ✅ **CVD Platform Fixes** - Fixed parameter naming (org_id), WebSocket reconnection cycles, UUID validation in frontend components. All CVD endpoints operational. 🆕
+- ✅ **Background Job Execution Fixed** - Resolved controller parameter mismatches in Ion and RTP tasks. Fixed: JobStatus enum shadowing, DoseIntegrator parameters, ScanUniformityController/R2RController/BeamDriftDetector signatures, PIDController/MPCController dataclass instantiation, and VM model equipment_id removal. Added None checks for job cancellation queries. Jobs now execute successfully through full lifecycle.
 - ✅ **Section 6: APIs, Background Jobs & Realtime** - Complete FastAPI REST APIs with JWT authentication, RBAC (4 roles: Admin/Engineer/Operator/Viewer, 19 permissions), Celery background task processing with Redis broker (max_retries=3, exponential backoff), WebSocket real-time telemetry streaming. 13 new endpoints operational (Ion: 5, RTP: 5, Jobs: 3). Job lifecycle management (QUEUED→RUNNING→COMPLETED/FAILED). Fully verified and operational. ✅
-- ✅ **Process Control Drivers & HIL Simulators** - Complete Ion Implant and RTP drivers with physics-based simulators (SRIM, thermal plant) 🆕
-- ✅ **Telemetry Streaming** - Real-time telemetry at configurable Hz with buffering and JSON export 🆕
-- ✅ **Soak Tests** - 12-72 hour accelerated time tests (1000× speedup) for system stability validation 🆕
+- ✅ **Process Control Drivers & HIL Simulators** - Complete Ion Implant and RTP drivers with physics-based simulators (SRIM, thermal plant)
+- ✅ **Telemetry Streaming** - Real-time telemetry at configurable Hz with buffering and JSON export
+- ✅ **Soak Tests** - 12-72 hour accelerated time tests (1000× speedup) for system stability validation
 - ✅ **Process Control Safety & Governance** - Complete safety system with hazard classification, dual approvals, calibration management, and uncertainty budgets
 - ✅ **Process Simulation Dashboard** - Added to main dashboard with 6 methods (Diffusion, Oxidation, SPC, Calibration, Batch, Maintenance)
 - ✅ **All LIMS Pages Upgraded** - All 6 LIMS pages now use shadcn/ui with full CRUD functionality
@@ -253,7 +255,34 @@ make format          # Format code
 - ✅ **Training Records** - User certification and training tracking
 - ✅ **PDF Reports** - Automated professional report generation
 
-### Process Control & Safety (NEW) 🆕
+### Manufacturing Execution Systems (MES) 🆕
+
+#### CVD (Chemical Vapor Deposition) Manufacturing Platform
+- ✅ **Equipment Management** - CVD reactor tracking with chamber types and capabilities
+- ✅ **Recipe Versioning** - Process recipes with gas flow profiles, pressure control, temperature zones
+- ✅ **Run Lifecycle** - QUEUED → RUNNING → COMPLETED/FAILED with real-time status
+- ✅ **WebSocket Telemetry** - Real-time streaming of temperature, pressure, flow, power data
+- ✅ **SPC Integration** - Statistical process control with violation detection
+- ✅ **Batch Processing** - Multi-wafer lot handling with run grouping
+- ✅ **40+ REST Endpoints** - Complete CRUD operations for reactors, recipes, runs, telemetry, results
+- ✅ **Database Schema** - 7 interconnected tables with UUID primary keys and JSONB fields
+- ✅ **Analytics** - Recipe performance analysis and equipment utilization metrics
+
+#### Diffusion Manufacturing Platform 🆕
+- ✅ **Furnace Equipment** - Diffusion furnace tracking with zone configuration and dopant capabilities
+- ✅ **Thermal Diffusion Recipes** - Temperature profiles, ambient control, dopant source management
+- ✅ **Dopant Support** - Boron, Phosphorus, Arsenic, Antimony with solid/liquid/gas sources
+- ✅ **Process Control** - Multi-zone temperature control with step-by-step recipe execution
+- ✅ **Run Management** - Full lifecycle tracking with Celery job queue integration
+- ✅ **Real-time Telemetry** - WebSocket streaming of temperature, pressure, ambient gas, time
+- ✅ **SPC Charts** - X-bar/R, I-MR control charts with Western Electric rule violations
+- ✅ **Batch Operations** - Multi-wafer lot processing with automatic run numbering
+- ✅ **Recipe Approval Workflow** - Draft → Approved status with approval tracking
+- ✅ **40+ REST Endpoints** - Furnaces, recipes, runs, telemetry, results, SPC, analytics
+- ✅ **Database Schema** - 7 tables (DiffusionFurnace, DiffusionRecipe, DiffusionRun, DiffusionTelemetry, DiffusionResult, DiffusionSPCSeries, DiffusionSPCPoint)
+- ✅ **Analytics Dashboard** - Recipe performance, equipment utilization, yield metrics
+
+#### Ion Implantation & RTP Process Control
 - ✅ **Ion Implantation Control** - Real-time beam parameter control and monitoring
 - ✅ **Rapid Thermal Processing (RTP)** - Multi-zone temperature control with recipe execution
 - ✅ **Safety Classification** - 4-tier hazard levels (LOW/MEDIUM/HIGH/CRITICAL)
@@ -317,13 +346,14 @@ make format          # Format code
 **Platform Metrics:**
 - **Sessions:** 17/17 Complete (100%)
 - **Characterization Methods:** 26+ methods across 4 domains
+- **Manufacturing Platforms:** 4 modules (CVD, Diffusion, Ion Implant, RTP) 🆕
 - **LIMS Features:** 7 core capabilities
-- **Process Control:** 3 modules + Safety & Governance system 🆕
+- **Process Control:** Safety & Governance + Calibration Management
 - **SPC Features:** 4 chart types + Western Electric rules
 - **ML/VM Features:** 12 advanced capabilities
-- **Backend:** PostgreSQL (23 tables) + JWT Auth + 5-tier RBAC
-- **Microservices:** 3 FastAPI services (ports 8001, 8002, 8003) 🆕
-- **Total Integrated Files:** 230+ files
+- **Backend:** PostgreSQL (36 tables) + JWT Auth + 5-tier RBAC 🆕
+- **Microservices:** 3 FastAPI services (ports 8001, 8002, 8003)
+- **Total Integrated Files:** 240+ files
 - **Test Coverage:** 95% (157 total tests)
 - **Status:** 🚀 **FULL-STACK PRODUCTION READY**
 
