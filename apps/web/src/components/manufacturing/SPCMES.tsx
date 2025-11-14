@@ -193,7 +193,7 @@ export const SPCMES: React.FC = () => {
             <CardHeader>
               <CardTitle>Process Capability Analysis</CardTitle>
               <CardDescription>Cp, Cpk, Pp, Ppk metrics and capability indices</CardDescription>
-            </CardContent>
+            </CardHeader>
             <CardContent>
               <div className="text-center py-12 text-muted-foreground">
                 Capability analysis will be displayed here
