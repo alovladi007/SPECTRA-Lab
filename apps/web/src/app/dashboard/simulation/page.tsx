@@ -2,9 +2,9 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { Zap, Layers, Activity, ArrowRight, Beaker } from 'lucide-react'
+import { Zap, Layers, Activity, ArrowRight, Beaker, Wrench, LayoutGrid, Gauge } from 'lucide-react'
 
-const simulations = [
+const coreSimulations = [
   {
     name: 'Diffusion Simulation',
     description: 'Dopant diffusion profiles using ERFC analytical solutions',
@@ -31,6 +31,36 @@ const simulations = [
     href: '/dashboard/simulation/spc',
     status: 'active',
     features: ['Western Electric rules', 'EWMA charts', 'Change point detection', 'Violation alerts']
+  },
+]
+
+const advancedTools = [
+  {
+    name: 'Calibration',
+    description: 'Equipment calibration tracking and management',
+    icon: Wrench,
+    color: 'from-orange-500 to-red-500',
+    href: '/dashboard/simulation/calibration',
+    status: 'active',
+    features: ['Calibration schedules', 'Equipment tracking', 'Compliance reports', 'Certificate management']
+  },
+  {
+    name: 'Batch Job Manager',
+    description: 'Batch processing and job queue management',
+    icon: LayoutGrid,
+    color: 'from-indigo-500 to-purple-500',
+    href: '/dashboard/simulation/batch',
+    status: 'active',
+    features: ['Job scheduling', 'Queue management', 'Status monitoring', 'Resource allocation']
+  },
+  {
+    name: 'Predictive Maintenance',
+    description: 'Predictive maintenance scheduling and tracking',
+    icon: Gauge,
+    color: 'from-yellow-500 to-orange-500',
+    href: '/dashboard/simulation/maintenance',
+    status: 'active',
+    features: ['Failure prediction', 'Maintenance schedules', 'Equipment health', 'Downtime optimization']
   },
 ]
 
@@ -61,7 +91,7 @@ export default function SimulationPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">Active Modules</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">3</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">6</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">Simulations Run</p>
@@ -77,50 +107,106 @@ export default function SimulationPage() {
           </div>
         </div>
 
-        {/* Simulation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {simulations.map((sim) => (
-            <Link
-              key={sim.name}
-              href={sim.href}
-              className="group block bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
-            >
-              <div className="p-6">
-                <div className={`inline-flex p-3 bg-gradient-to-r ${sim.color} rounded-lg mb-4`}>
-                  <sim.icon className="w-6 h-6 text-white" />
+        {/* Core Simulations Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            Core Simulations
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {coreSimulations.map((sim) => (
+              <Link
+                key={sim.name}
+                href={sim.href}
+                className="group block bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+              >
+                <div className="p-6">
+                  <div className={`inline-flex p-3 bg-gradient-to-r ${sim.color} rounded-lg mb-4`}>
+                    <sim.icon className="w-6 h-6 text-white" />
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                    {sim.name}
+                  </h3>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {sim.description}
+                  </p>
+
+                  {/* Features */}
+                  <ul className="space-y-1 mb-4">
+                    {sim.features.map((feature, idx) => (
+                      <li key={idx} className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-2">
+                        <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      sim.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {sim.status === 'active' ? 'Active' : 'Coming Soon'}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                  </div>
                 </div>
+              </Link>
+            ))}
+          </div>
+        </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                  {sim.name}
-                </h3>
+        {/* Advanced Tools Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            Advanced Tools
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {advancedTools.map((tool) => (
+              <Link
+                key={tool.name}
+                href={tool.href}
+                className="group block bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+              >
+                <div className="p-6">
+                  <div className={`inline-flex p-3 bg-gradient-to-r ${tool.color} rounded-lg mb-4`}>
+                    <tool.icon className="w-6 h-6 text-white" />
+                  </div>
 
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  {sim.description}
-                </p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                    {tool.name}
+                  </h3>
 
-                {/* Features */}
-                <ul className="space-y-1 mb-4">
-                  {sim.features.map((feature, idx) => (
-                    <li key={idx} className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-2">
-                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {tool.description}
+                  </p>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    sim.status === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
-                    {sim.status === 'active' ? 'Active' : 'Coming Soon'}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                  {/* Features */}
+                  <ul className="space-y-1 mb-4">
+                    {tool.features.map((feature, idx) => (
+                      <li key={idx} className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-2">
+                        <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      tool.status === 'active'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {tool.status === 'active' ? 'Active' : 'Coming Soon'}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* Info Section */}
