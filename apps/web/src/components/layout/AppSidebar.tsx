@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home, Zap, Waves, Layers, Beaker, TrendingUp, Brain,
   ChevronDown, ChevronRight, Activity, BarChart3,
-  Microscope, Atom, Sparkles, Database, Settings, FileText, ClipboardCheck, Gauge
+  Microscope, Atom, Sparkles, Database, Settings, FileText, ClipboardCheck, Gauge, Factory
 } from 'lucide-react'
 
 interface NavItem {
@@ -133,6 +133,29 @@ const navigation: NavItem[] = [
       { name: 'CVD Platform', href: '/cvd/workspace', badge: 'NEW' },
       { name: 'Statistical Process Control', href: '/process-control/spc' },
       { name: 'Virtual Metrology', href: '/process-control/vm' },
+    ],
+  },
+  {
+    name: 'Manufacturing Execution Systems',
+    icon: Factory,
+    badge: 'NEW',
+    children: [
+      {
+        name: 'Process Control',
+        children: [
+          { name: 'Oxidation MES', href: '/dashboard/manufacturing/oxidation' },
+          { name: 'CVD MES', href: '/dashboard/manufacturing/cvd' },
+          { name: 'Diffusion MES', href: '/dashboard/manufacturing/diffusion' },
+        ]
+      },
+      {
+        name: 'Quality & Maintenance',
+        children: [
+          { name: 'SPC Dashboard', href: '/dashboard/manufacturing/spc' },
+          { name: 'Calibration Tracking', href: '/dashboard/manufacturing/calibration' },
+          { name: 'Predictive Maintenance', href: '/dashboard/manufacturing/predictive-maintenance' },
+        ]
+      },
     ],
   },
   {
