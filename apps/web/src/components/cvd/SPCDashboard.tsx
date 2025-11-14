@@ -110,10 +110,15 @@ export default function SPCDashboard({
 
   const loadRecipes = async () => {
     try {
-      const recipes = await cvdApi.getRecipes({
-        organization_id: organizationId,
-        is_active: true,
-      });
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const params: any = {};
+
+      // Only include org_id if it's a valid UUID
+      if (organizationId && uuidRegex.test(organizationId)) {
+        params.org_id = organizationId;
+      }
+
+      const recipes = await cvdApi.getRecipes(params);
 
       setAvailableRecipes(
         recipes.map((r) => ({
@@ -134,10 +139,13 @@ export default function SPCDashboard({
     try {
       setIsLoading(true);
 
-      const params: any = {
-        organization_id: organizationId,
-        is_active: true,
-      };
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const params: any = {};
+
+      // Only include org_id if it's a valid UUID
+      if (organizationId && uuidRegex.test(organizationId)) {
+        params.org_id = organizationId;
+      }
 
       if (selectedRecipe) params.recipe_id = selectedRecipe;
       if (processModId) params.process_mode_id = processModId;

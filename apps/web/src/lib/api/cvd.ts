@@ -3,7 +3,7 @@
  * TypeScript client for CVD REST API
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_ANALYSIS_API_URL || "http://localhost:8001/api/v1";
 
 // ============================================================================
 // Types
@@ -11,7 +11,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/a
 
 export interface CVDProcessMode {
   id: string;
-  organization_id: string;
+  org_id: string;
   pressure_mode: string;
   energy_mode: string;
   reactor_type: string;
@@ -22,7 +22,7 @@ export interface CVDProcessMode {
   temperature_range_c: { min: number; max: number };
   capabilities: Record<string, any>;
   materials: string[];
-  tool_id?: string;
+  instrument_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -34,7 +34,7 @@ export interface CVDRecipe {
   name: string;
   description?: string;
   process_mode_id: string;
-  organization_id: string;
+  org_id: string;
   temperature_profile: Record<string, any>;
   gas_flows: Record<string, any>;
   pressure_profile: Record<string, any>;
@@ -58,10 +58,10 @@ export interface CVDRecipe {
 
 export interface CVDRun {
   id: string;
-  recipe_id: string;
+  cvd_recipe_id: string;
   process_mode_id: string;
-  tool_id: string;
-  organization_id: string;
+  instrument_id: string;
+  org_id: string;
   status: string;
   lot_id?: string;
   wafer_ids: string[];
@@ -73,7 +73,7 @@ export interface CVDRun {
   notes?: string;
   start_time?: string;
   end_time?: string;
-  duration_s?: number;
+  duration_seconds?: number;
   created_at: string;
   updated_at: string;
   recipe?: CVDRecipe;
@@ -114,9 +114,9 @@ export interface CVDResult {
 
 export interface SPCSeries {
   id: string;
-  recipe_id?: string;
+  cvd_recipe_id?: string;
   process_mode_id?: string;
-  organization_id: string;
+  org_id: string;
   metric_name: string;
   chart_type: string;
   ucl: number;
@@ -146,7 +146,7 @@ export interface SPCPoint {
 
 // Query parameters
 export interface ProcessModeQuery {
-  organization_id?: string;
+  org_id?: string;
   pressure_mode?: string;
   energy_mode?: string;
   is_active?: boolean;
@@ -155,7 +155,7 @@ export interface ProcessModeQuery {
 }
 
 export interface RecipeQuery {
-  organization_id?: string;
+  org_id?: string;
   process_mode_id?: string;
   is_active?: boolean;
   is_baseline?: boolean;
@@ -167,10 +167,10 @@ export interface RecipeQuery {
 }
 
 export interface RunQuery {
-  organization_id?: string;
+  org_id?: string;
   process_mode_id?: string;
-  recipe_id?: string;
-  tool_id?: string;
+  cvd_recipe_id?: string;
+  instrument_id?: string;
   status?: string;
   lot_id?: string;
   start_date?: string;
@@ -311,10 +311,10 @@ class CVDAPIClient {
   }
 
   async createBatchRuns(data: {
-    recipe_id: string;
+    cvd_recipe_id: string;
     process_mode_id: string;
-    tool_id: string;
-    organization_id: string;
+    instrument_id: string;
+    org_id: string;
     lot_id: string;
     wafer_ids: string[];
     operator_id?: string;
@@ -394,8 +394,8 @@ class CVDAPIClient {
   // ========================================================================
 
   async getSPCSeries(params?: {
-    organization_id?: string;
-    recipe_id?: string;
+    org_id?: string;
+    cvd_recipe_id?: string;
     metric_name?: string;
     is_active?: boolean;
   }): Promise<SPCSeries[]> {
@@ -437,10 +437,10 @@ class CVDAPIClient {
   async getAnalytics(data: {
     metric: string;
     aggregation?: string;
-    organization_id: string;
+    org_id: string;
     process_mode_id?: string;
-    recipe_id?: string;
-    tool_id?: string;
+    cvd_recipe_id?: string;
+    instrument_id?: string;
     start_date: string;
     end_date: string;
     group_by?: string[];

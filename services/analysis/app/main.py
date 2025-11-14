@@ -20,6 +20,9 @@ from app.api import runs_router, calibrations_router
 # Import CVD router
 from app.routers.cvd import router as cvd_router
 
+# Import Diffusion router
+from app.routers.diffusion import router as diffusion_router
+
 # Import database initialization
 from sqlalchemy import create_engine
 import os
@@ -49,6 +52,7 @@ async def init_database():
         from db.base import Base
         from db import models  # Import all models
         from app.models import cvd  # Import CVD models
+        from app.models import diffusion  # Import Diffusion models
 
         # Use environment variable or default for Docker access
         database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
@@ -81,6 +85,9 @@ app.include_router(calibrations_router)
 # Register CVD router (already has /api/v1/cvd prefix)
 app.include_router(cvd_router)
 
+# Register Diffusion router (already has /api/v1/diffusion prefix)
+app.include_router(diffusion_router)
+
 @app.get("/")
 async def root():
     return {
@@ -96,7 +103,9 @@ async def root():
             "runs": "/api/v1/runs",
             "calibrations": "/api/v1/calibrations",
             "cvd": "/api/v1/cvd",
-            "cvd_docs": "/api/v1/cvd/docs (See /docs for full API)"
+            "cvd_docs": "/api/v1/cvd/docs (See /docs for full API)",
+            "diffusion": "/api/v1/diffusion",
+            "diffusion_docs": "/api/v1/diffusion/docs (See /docs for full API)"
         }
     }
 

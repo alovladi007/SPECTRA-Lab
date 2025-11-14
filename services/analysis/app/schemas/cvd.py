@@ -27,48 +27,49 @@ class PressureMode(str, Enum):
 
 class EnergyMode(str, Enum):
     """CVD Energy Activation Mode"""
-    THERMAL = "THERMAL"  # Pure thermal activation
-    PLASMA = "PLASMA"  # Plasma-enhanced
-    LASER = "LASER"  # Laser-assisted
-    HOT_WIRE = "HOT_WIRE"  # Hot-wire/filament
-    PHOTO = "PHOTO"  # Photo-assisted
-    HYBRID = "HYBRID"  # Multiple energy sources
+    THERMAL = "thermal"  # Pure thermal activation
+    PLASMA = "plasma"  # Plasma-enhanced
+    HOT_WIRE = "hot_wire"  # Hot-wire/filament
+    LASER = "laser"  # Laser-assisted
+    PHOTO = "photo"  # Photo-assisted
+    MICROWAVE = "microwave"  # Microwave plasma
+    REMOTE_PLASMA = "remote_plasma"  # Remote plasma source
+    COMBUSTION = "combustion"  # Combustion CVD
 
 
 class ReactorType(str, Enum):
     """CVD Reactor Configuration"""
-    HORIZONTAL = "HORIZONTAL"
-    VERTICAL = "VERTICAL"
-    PANCAKE = "PANCAKE"
-    SHOWERHEAD = "SHOWERHEAD"
-    BATCH = "BATCH"
-    SINGLE_WAFER = "SINGLE_WAFER"
-    ROTARY = "ROTARY"
+    COLD_WALL = "cold_wall"
+    HOT_WALL = "hot_wall"
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
+    PANCAKE = "pancake"
+    SHOWERHEAD = "showerhead"
+    ROTATING_DISK = "rotating_disk"
+    COLD_FINGER = "cold_finger"
 
 
 class ChemistryType(str, Enum):
     """CVD Chemistry/Precursor Type"""
-    INORGANIC = "INORGANIC"  # Silane, NH3, etc.
-    METALORGANIC = "METALORGANIC"  # TMGa, TEGa, etc.
-    ORGANOMETALLIC = "ORGANOMETALLIC"  # Metal alkyls
-    HALIDE = "HALIDE"  # Chlorides, fluorides
-    HYDRIDE = "HYDRIDE"  # SiH4, GeH4
-    HYBRID = "HYBRID"  # Mixed chemistry
+    MOCVD = "MOCVD"  # Metal-organic
+    OMCVD = "OMCVD"  # Organo-metallic
+    HCVD = "HCVD"  # Halide
+    HYDRIDE = "hydride"  # SiH4, GeH4
+    AACVD = "AACVD"  # Aerosol-assisted
+    STANDARD = "standard"  # Standard chemistry
+    ORGANOMETALLIC = "organometallic"  # Metal alkyls
+    HALIDE = "halide"  # Chlorides, fluorides
 
 
 class RunStatus(str, Enum):
     """CVD Run Status"""
-    QUEUED = "QUEUED"
-    INITIALIZING = "INITIALIZING"
-    PUMPING_DOWN = "PUMPING_DOWN"
-    HEATING = "HEATING"
-    STABILIZING = "STABILIZING"
-    PROCESSING = "PROCESSING"
-    COOLING = "COOLING"
-    VENTING = "VENTING"
-    COMPLETED = "COMPLETED"
-    ABORTED = "ABORTED"
-    ERROR = "ERROR"
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    ABORTED = "aborted"
+    BLOCKED = "blocked"
+    PAUSED = "paused"
 
 
 class AlarmSeverity(str, Enum):
@@ -85,6 +86,7 @@ class AlarmSeverity(str, Enum):
 
 class CVDProcessModeBase(BaseModel):
     """Base schema for CVD Process Mode"""
+    name: str = Field(..., min_length=1, max_length=255, description="Process mode name")
     pressure_mode: PressureMode
     energy_mode: EnergyMode
     reactor_type: ReactorType
@@ -92,68 +94,32 @@ class CVDProcessModeBase(BaseModel):
     variant: Optional[str] = Field(None, max_length=100, description="Specific variant name (e.g., 'MOCVD', 'PECVD-ICP')")
     description: Optional[str] = Field(None, description="Process mode description")
 
-    # Operating ranges
-    pressure_range_pa: Dict[str, float] = Field(
-        ...,
-        description="Pressure range in Pascals",
-        examples=[{"min": 10, "max": 1000}]
-    )
-    temperature_range_c: Dict[str, float] = Field(
-        ...,
-        description="Temperature range in Celsius",
-        examples=[{"min": 300, "max": 800}]
-    )
-
-    # Capabilities
+    # Capabilities (includes ranges, materials, etc.)
     capabilities: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Process capabilities (e.g., plasma_power_range, rotation_speed, pulsing)"
+        description="Process capabilities including pressure_range_pa, temperature_range_c, materials, etc."
     )
-
-    # Material compatibility
-    materials: List[str] = Field(
-        default_factory=list,
-        description="Compatible materials (e.g., ['SiO2', 'Si3N4', 'Poly-Si'])"
-    )
-
-    @field_validator('pressure_range_pa', 'temperature_range_c')
-    @classmethod
-    def validate_range(cls, v: Dict[str, float]) -> Dict[str, float]:
-        """Validate range has min and max"""
-        if 'min' not in v or 'max' not in v:
-            raise ValueError("Range must have 'min' and 'max' keys")
-        if v['min'] >= v['max']:
-            raise ValueError("min must be less than max")
-        return v
 
 
 class CVDProcessModeCreate(CVDProcessModeBase):
     """Schema for creating a CVD Process Mode"""
-    organization_id: UUID
-    tool_id: Optional[UUID] = None
-    is_active: bool = True
+    org_id: UUID
 
 
 class CVDProcessModeUpdate(BaseModel):
     """Schema for updating a CVD Process Mode"""
+    name: Optional[str] = None
     variant: Optional[str] = None
     description: Optional[str] = None
-    pressure_range_pa: Optional[Dict[str, float]] = None
-    temperature_range_c: Optional[Dict[str, float]] = None
     capabilities: Optional[Dict[str, Any]] = None
-    materials: Optional[List[str]] = None
-    is_active: Optional[bool] = None
 
 
 class CVDProcessModeSchema(CVDProcessModeBase):
     """Schema for CVD Process Mode response"""
     id: UUID
-    organization_id: UUID
-    tool_id: Optional[UUID]
-    is_active: bool
+    org_id: UUID
     created_at: datetime
-    updated_at: datetime
-    created_by: UUID
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -166,6 +132,7 @@ class CVDRecipeBase(BaseModel):
     """Base schema for CVD Recipe"""
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
+    film_target: str = Field(..., max_length=100, description="Target film material (e.g., 'Si3N4', 'SiO2')")
 
     # Temperature profile (JSONB)
     temperature_profile: Dict[str, Any] = Field(
@@ -194,10 +161,10 @@ class CVDRecipeBase(BaseModel):
         }]
     )
 
-    # Pressure profile (JSONB)
-    pressure_profile: Dict[str, Any] = Field(
+    # Pressure setpoints (JSONB)
+    pressure_setpoints: Dict[str, Any] = Field(
         ...,
-        description="Pressure profile configuration",
+        description="Pressure setpoint configuration",
         examples=[{
             "base_pressure_pa": 50,
             "process_pressure_pa": 200,
@@ -231,13 +198,12 @@ class CVDRecipeBase(BaseModel):
     )
 
     # Process parameters
-    process_time_s: float = Field(..., gt=0, description="Total process time in seconds")
-    target_thickness_nm: Optional[float] = Field(None, gt=0, description="Target film thickness in nm")
-    target_uniformity_pct: Optional[float] = Field(None, gt=0, le=100, description="Target uniformity percentage")
+    thickness_target_nm: float = Field(..., gt=0, description="Target film thickness in nm")
+    uniformity_target_pct: Optional[float] = Field(None, gt=0, le=100, description="Target uniformity percentage")
 
     # Metadata
     tags: List[str] = Field(default_factory=list, description="Recipe tags for searching")
-    version: str = Field(default="1.0", description="Recipe version")
+    version: int = Field(default=1, description="Recipe version number")
 
     @field_validator('recipe_steps')
     @classmethod
@@ -256,43 +222,33 @@ class CVDRecipeBase(BaseModel):
 class CVDRecipeCreate(CVDRecipeBase):
     """Schema for creating a CVD Recipe"""
     process_mode_id: UUID
-    organization_id: UUID
-    is_baseline: bool = False
-    is_golden: bool = False
+    org_id: UUID
 
 
 class CVDRecipeUpdate(BaseModel):
     """Schema for updating a CVD Recipe"""
     name: Optional[str] = None
     description: Optional[str] = None
+    film_target: Optional[str] = None
     temperature_profile: Optional[Dict[str, Any]] = None
     gas_flows: Optional[Dict[str, Any]] = None
-    pressure_profile: Optional[Dict[str, Any]] = None
+    pressure_setpoints: Optional[Dict[str, Any]] = None
     plasma_settings: Optional[Dict[str, Any]] = None
     recipe_steps: Optional[List[Dict[str, Any]]] = None
-    process_time_s: Optional[float] = None
-    target_thickness_nm: Optional[float] = None
-    target_uniformity_pct: Optional[float] = None
+    thickness_target_nm: Optional[float] = None
+    uniformity_target_pct: Optional[float] = None
     tags: Optional[List[str]] = None
-    version: Optional[str] = None
-    is_baseline: Optional[bool] = None
-    is_golden: Optional[bool] = None
-    is_active: Optional[bool] = None
+    version: Optional[int] = None
 
 
 class CVDRecipeSchema(CVDRecipeBase):
     """Schema for CVD Recipe response"""
     id: UUID
     process_mode_id: UUID
-    organization_id: UUID
-    is_baseline: bool
-    is_golden: bool
-    is_active: bool
-    run_count: int
-    last_run_at: Optional[datetime]
+    org_id: UUID
     created_at: datetime
-    updated_at: datetime
-    created_by: UUID
+    updated_at: Optional[datetime] = None
+    created_by_id: UUID
 
     # Optional nested process mode
     process_mode: Optional[CVDProcessModeSchema] = None
@@ -322,10 +278,10 @@ class CVDRunBase(BaseModel):
 
 class CVDRunCreate(CVDRunBase):
     """Schema for creating a CVD Run"""
-    recipe_id: UUID
+    cvd_recipe_id: UUID
     process_mode_id: UUID
-    tool_id: UUID
-    organization_id: UUID
+    instrument_id: UUID
+    org_id: UUID
 
 
 class CVDRunUpdate(BaseModel):
@@ -342,16 +298,15 @@ class CVDRunUpdate(BaseModel):
 class CVDRunSchema(CVDRunBase):
     """Schema for CVD Run response"""
     id: UUID
-    recipe_id: UUID
+    cvd_recipe_id: UUID
     process_mode_id: UUID
-    tool_id: UUID
-    organization_id: UUID
+    instrument_id: UUID
+    org_id: UUID
     status: RunStatus
     start_time: Optional[datetime]
     end_time: Optional[datetime]
-    duration_s: Optional[float]
+    duration_seconds: Optional[float]
     created_at: datetime
-    updated_at: datetime
 
     # Optional nested relationships
     recipe: Optional[CVDRecipeSchema] = None
@@ -526,9 +481,9 @@ class CVDSPCSeriesBase(BaseModel):
 
 class CVDSPCSeriesCreate(CVDSPCSeriesBase):
     """Schema for creating an SPC Series"""
-    recipe_id: Optional[UUID] = None
+    cvd_recipe_id: Optional[UUID] = None
     process_mode_id: Optional[UUID] = None
-    organization_id: UUID
+    org_id: UUID
 
 
 class CVDSPCSeriesUpdate(BaseModel):
@@ -544,11 +499,11 @@ class CVDSPCSeriesUpdate(BaseModel):
 class CVDSPCSeriesSchema(CVDSPCSeriesBase):
     """Schema for SPC Series response"""
     id: UUID
-    recipe_id: Optional[UUID]
+    cvd_recipe_id: Optional[UUID]
     process_mode_id: Optional[UUID]
-    organization_id: UUID
+    org_id: UUID
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -590,10 +545,10 @@ class CVDSPCPointSchema(CVDSPCPointBase):
 
 class CVDRunQuery(BaseModel):
     """Schema for querying CVD runs"""
-    organization_id: Optional[UUID] = None
+    org_id: Optional[UUID] = None
     process_mode_id: Optional[UUID] = None
-    recipe_id: Optional[UUID] = None
-    tool_id: Optional[UUID] = None
+    cvd_recipe_id: Optional[UUID] = None
+    instrument_id: Optional[UUID] = None
     status: Optional[RunStatus] = None
     lot_id: Optional[str] = None
 
@@ -615,10 +570,10 @@ class CVDAnalyticsRequest(BaseModel):
     aggregation: str = Field(default="mean", description="Aggregation function (mean, median, std, min, max)")
 
     # Filters
-    organization_id: UUID
+    org_id: UUID
     process_mode_id: Optional[UUID] = None
-    recipe_id: Optional[UUID] = None
-    tool_id: Optional[UUID] = None
+    cvd_recipe_id: Optional[UUID] = None
+    instrument_id: Optional[UUID] = None
 
     start_date: datetime
     end_date: datetime
@@ -626,7 +581,7 @@ class CVDAnalyticsRequest(BaseModel):
     # Grouping
     group_by: Optional[List[str]] = Field(
         None,
-        description="Group by fields (e.g., ['recipe_id', 'tool_id'])"
+        description="Group by fields (e.g., ['cvd_recipe_id', 'instrument_id'])"
     )
 
     # Time binning
@@ -680,7 +635,7 @@ class CVDAlarmBase(BaseModel):
 class CVDAlarmCreate(CVDAlarmBase):
     """Schema for creating a CVD Alarm"""
     run_id: Optional[UUID] = None
-    tool_id: Optional[UUID] = None
+    instrument_id: Optional[UUID] = None
     timestamp: datetime
 
 
@@ -688,7 +643,7 @@ class CVDAlarmSchema(CVDAlarmBase):
     """Schema for CVD Alarm response"""
     id: UUID
     run_id: Optional[UUID]
-    tool_id: Optional[UUID]
+    instrument_id: Optional[UUID]
     timestamp: datetime
     acknowledged: bool
     acknowledged_by: Optional[UUID]
@@ -739,7 +694,7 @@ class CVDControlActionBase(BaseModel):
 class CVDControlActionCreate(CVDControlActionBase):
     """Schema for creating a Control Action"""
     run_id: UUID
-    recipe_id: UUID
+    cvd_recipe_id: UUID
     timestamp: datetime
 
 
@@ -747,7 +702,7 @@ class CVDControlActionSchema(CVDControlActionBase):
     """Schema for Control Action response"""
     id: UUID
     run_id: UUID
-    recipe_id: UUID
+    cvd_recipe_id: UUID
     timestamp: datetime
     created_at: datetime
 
@@ -760,10 +715,10 @@ class CVDControlActionSchema(CVDControlActionBase):
 
 class CVDBatchRunCreate(BaseModel):
     """Schema for creating batch CVD runs"""
-    recipe_id: UUID
+    cvd_recipe_id: UUID
     process_mode_id: UUID
-    tool_id: UUID
-    organization_id: UUID
+    instrument_id: UUID
+    org_id: UUID
     lot_id: str
     wafer_ids: List[str] = Field(..., min_length=1, max_length=25, description="List of wafer IDs (max 25)")
     operator_id: Optional[UUID] = None
@@ -795,12 +750,12 @@ class CVDExportRequest(BaseModel):
     format: str = Field(default="csv", description="Export format (csv, json, parquet)")
 
     # Filters
-    organization_id: UUID
+    org_id: UUID
     start_date: datetime
     end_date: datetime
 
-    recipe_ids: Optional[List[UUID]] = None
-    tool_ids: Optional[List[UUID]] = None
+    cvd_recipe_ids: Optional[List[UUID]] = None
+    instrument_ids: Optional[List[UUID]] = None
 
     # Options
     include_telemetry: bool = False

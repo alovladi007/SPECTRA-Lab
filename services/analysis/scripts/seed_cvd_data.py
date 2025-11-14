@@ -14,7 +14,7 @@ import asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from db.base import Base
@@ -29,7 +29,7 @@ from app.models.cvd import (
 )
 
 # Use environment variable or default
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5435/spectra")
 
 
 def create_tables(engine):
@@ -37,6 +37,25 @@ def create_tables(engine):
     print("Creating CVD tables...")
     Base.metadata.create_all(bind=engine)
     print("✓ Tables created")
+
+
+def clean_existing_data(session: Session):
+    """Clean existing CVD data before seeding"""
+    print("\nCleaning existing data...")
+    try:
+        # Delete in order to respect foreign keys
+        session.execute(text("DELETE FROM cvd_spc_points"))
+        session.execute(text("DELETE FROM cvd_spc_series"))
+        session.execute(text("DELETE FROM cvd_results"))
+        session.execute(text("DELETE FROM cvd_telemetry"))
+        session.execute(text("DELETE FROM cvd_runs"))
+        session.execute(text("DELETE FROM cvd_recipes"))
+        session.execute(text("DELETE FROM cvd_process_modes"))
+        session.commit()
+        print("✓ Existing data cleaned")
+    except Exception as e:
+        print(f"⚠ Error cleaning data (may not exist yet): {e}")
+        session.rollback()
 
 
 def seed_process_modes(session: Session, org_id: str) -> dict:
@@ -48,92 +67,88 @@ def seed_process_modes(session: Session, org_id: str) -> dict:
     # 1. LPCVD for silicon nitride
     lpcvd_sin = CVDProcessMode(
         id=uuid4(),
-        organization_id=org_id,
+        org_id=org_id,
+        name="LPCVD Silicon Nitride",
         pressure_mode="LPCVD",
-        energy_mode="THERMAL",
-        reactor_type="HORIZONTAL",
-        chemistry_type="INORGANIC",
+        energy_mode="thermal",
+        reactor_type="horizontal",
+        chemistry_type="standard",
         variant="LPCVD-Si3N4",
         description="Low pressure CVD for silicon nitride deposition",
-        pressure_range_pa={"min": 20, "max": 200},
-        temperature_range_c={"min": 650, "max": 850},
         capabilities={
+            "pressure_range_pa": {"min": 20, "max": 200},
+            "temperature_range_c": {"min": 650, "max": 850},
+            "materials": ["Si3N4", "SiO2", "Poly-Si"],
             "multi_zone_heating": True,
             "max_wafer_capacity": 150,
             "uniformity_target_pct": 95,
         },
-        materials=["Si3N4", "SiO2", "Poly-Si"],
-        is_active=True,
-        created_by=org_id,
     )
     process_modes.append(lpcvd_sin)
 
     # 2. PECVD for SiO2
     pecvd_oxide = CVDProcessMode(
         id=uuid4(),
-        organization_id=org_id,
+        org_id=org_id,
+        name="PECVD Silicon Dioxide",
         pressure_mode="PECVD",
-        energy_mode="PLASMA",
-        reactor_type="SHOWERHEAD",
-        chemistry_type="INORGANIC",
+        energy_mode="plasma",
+        reactor_type="showerhead",
+        chemistry_type="standard",
         variant="PECVD-SiO2",
         description="Plasma-enhanced CVD for silicon dioxide",
-        pressure_range_pa={"min": 100, "max": 1000},
-        temperature_range_c={"min": 250, "max": 400},
         capabilities={
+            "pressure_range_pa": {"min": 100, "max": 1000},
+            "temperature_range_c": {"min": 250, "max": 400},
+            "materials": ["SiO2", "SiON", "SiN"],
             "plasma_power_range_w": {"min": 100, "max": 1000},
             "plasma_frequency_mhz": 13.56,
             "gas_flow_control": "MFC",
         },
-        materials=["SiO2", "SiON", "SiN"],
-        is_active=True,
-        created_by=org_id,
     )
     process_modes.append(pecvd_oxide)
 
     # 3. MOCVD for GaN
     mocvd_gan = CVDProcessMode(
         id=uuid4(),
-        organization_id=org_id,
+        org_id=org_id,
+        name="MOCVD Gallium Nitride",
         pressure_mode="LPCVD",
-        energy_mode="THERMAL",
-        reactor_type="ROTATING_DISK",
-        chemistry_type="METALORGANIC",
+        energy_mode="thermal",
+        reactor_type="rotating_disk",
+        chemistry_type="organometallic",
         variant="MOCVD-GaN",
         description="Metal-organic CVD for gallium nitride epitaxy",
-        pressure_range_pa={"min": 10000, "max": 40000},
-        temperature_range_c={"min": 900, "max": 1150},
         capabilities={
+            "pressure_range_pa": {"min": 10000, "max": 40000},
+            "temperature_range_c": {"min": 900, "max": 1150},
+            "materials": ["GaN", "InGaN", "AlGaN"],
             "rotation_rpm": {"min": 100, "max": 1500},
             "precursors": ["TMGa", "NH3", "H2"],
             "v_iii_ratio_range": {"min": 1000, "max": 5000},
         },
-        materials=["GaN", "InGaN", "AlGaN"],
-        is_active=True,
-        created_by=org_id,
     )
     process_modes.append(mocvd_gan)
 
     # 4. AACVD for ZnO
     aacvd_zno = CVDProcessMode(
         id=uuid4(),
-        organization_id=org_id,
+        org_id=org_id,
+        name="AACVD Zinc Oxide",
         pressure_mode="APCVD",
-        energy_mode="THERMAL",
-        reactor_type="HORIZONTAL_TUBE",
-        chemistry_type="INORGANIC",
+        energy_mode="thermal",
+        reactor_type="horizontal",
+        chemistry_type="AACVD",
         variant="AACVD-ZnO",
         description="Aerosol-assisted CVD for zinc oxide thin films",
-        pressure_range_pa={"min": 101325, "max": 101325},
-        temperature_range_c={"min": 350, "max": 550},
         capabilities={
+            "pressure_range_pa": {"min": 101325, "max": 101325},
+            "temperature_range_c": {"min": 350, "max": 550},
+            "materials": ["ZnO", "SnO2", "TiO2"],
             "aerosol_generation": "ultrasonic",
             "atomizer_frequency_khz": 1700,
             "droplet_size_um": 3.0,
         },
-        materials=["ZnO", "SnO2", "TiO2"],
-        is_active=True,
-        created_by=org_id,
     )
     process_modes.append(aacvd_zno)
 
@@ -161,9 +176,12 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
     lpcvd_recipe = CVDRecipe(
         id=uuid4(),
         name="LPCVD Si3N4 Standard",
-        description="Standard silicon nitride deposition for passivation",
+        version=1,
         process_mode_id=process_mode_ids["lpcvd_sin"],
-        organization_id=org_id,
+        org_id=org_id,
+        film_target="Si3N4",
+        thickness_target_nm=100.0,
+        uniformity_target_pct=95.0,
         temperature_profile={
             "zones": [
                 {"zone": 1, "setpoint_c": 780, "ramp_rate_c_per_min": 10},
@@ -171,6 +189,11 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
                 {"zone": 3, "setpoint_c": 780, "ramp_rate_c_per_min": 10},
             ],
             "soak_time_s": 300,
+        },
+        pressure_setpoints={
+            "base_pressure_pa": 133,
+            "process_pressure_pa": 133,
+            "ramp_rate_pa_per_min": 50,
         },
         gas_flows={
             "gases": [
@@ -180,26 +203,12 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
             "carrier_gas": "N2",
             "carrier_flow_sccm": 2000,
         },
-        pressure_profile={
-            "base_pressure_pa": 133,
-            "process_pressure_pa": 133,
-            "ramp_rate_pa_per_min": 50,
-        },
         recipe_steps=[
             {"step": 1, "name": "Stabilize", "duration_s": 180, "action": "stabilize"},
             {"step": 2, "name": "Deposition", "duration_s": 1800, "action": "deposit"},
             {"step": 3, "name": "Purge", "duration_s": 120, "action": "purge"},
         ],
-        process_time_s=2100,
-        target_thickness_nm=100.0,
-        target_uniformity_pct=95.0,
-        tags=["si3n4", "passivation", "lpcvd"],
-        version="1.0",
-        is_baseline=True,
-        is_golden=False,
-        is_active=True,
-        run_count=0,
-        created_by=org_id,
+        created_by_id=org_id,
     )
     recipes.append(lpcvd_recipe)
 
@@ -207,14 +216,22 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
     pecvd_recipe = CVDRecipe(
         id=uuid4(),
         name="PECVD SiO2 ILD",
-        description="Interlayer dielectric oxide deposition",
+        version=2,
         process_mode_id=process_mode_ids["pecvd_oxide"],
-        organization_id=org_id,
+        org_id=org_id,
+        film_target="SiO2",
+        thickness_target_nm=500.0,
+        uniformity_target_pct=92.0,
         temperature_profile={
             "zones": [
                 {"zone": 1, "setpoint_c": 350, "ramp_rate_c_per_min": 15},
             ],
             "soak_time_s": 120,
+        },
+        pressure_setpoints={
+            "base_pressure_pa": 400,
+            "process_pressure_pa": 400,
+            "ramp_rate_pa_per_min": 100,
         },
         gas_flows={
             "gases": [
@@ -223,11 +240,6 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
             ],
             "carrier_gas": "N2",
             "carrier_flow_sccm": 500,
-        },
-        pressure_profile={
-            "base_pressure_pa": 400,
-            "process_pressure_pa": 400,
-            "ramp_rate_pa_per_min": 100,
         },
         plasma_settings={
             "power_w": 300,
@@ -240,16 +252,7 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
             {"step": 3, "name": "Deposition", "duration_s": 600, "action": "deposit"},
             {"step": 4, "name": "Cool Down", "duration_s": 180, "action": "cool"},
         ],
-        process_time_s=910,
-        target_thickness_nm=500.0,
-        target_uniformity_pct=92.0,
-        tags=["sio2", "ild", "pecvd", "oxide"],
-        version="2.1",
-        is_baseline=False,
-        is_golden=True,
-        is_active=True,
-        run_count=0,
-        created_by=org_id,
+        created_by_id=org_id,
     )
     recipes.append(pecvd_recipe)
 
@@ -257,14 +260,22 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
     mocvd_recipe = CVDRecipe(
         id=uuid4(),
         name="MOCVD GaN Epitaxy",
-        description="Gallium nitride epitaxial growth for LEDs",
+        version=1,
         process_mode_id=process_mode_ids["mocvd_gan"],
-        organization_id=org_id,
+        org_id=org_id,
+        film_target="GaN",
+        thickness_target_nm=2000.0,
+        uniformity_target_pct=97.0,
         temperature_profile={
             "zones": [
                 {"zone": 1, "setpoint_c": 1050, "ramp_rate_c_per_min": 20},
             ],
             "soak_time_s": 600,
+        },
+        pressure_setpoints={
+            "base_pressure_pa": 26664,
+            "process_pressure_pa": 26664,
+            "ramp_rate_pa_per_min": 1000,
         },
         gas_flows={
             "gases": [
@@ -274,27 +285,13 @@ def seed_recipes(session: Session, org_id: str, process_mode_ids: dict) -> dict:
             "carrier_gas": "H2",
             "carrier_flow_sccm": 8000,
         },
-        pressure_profile={
-            "base_pressure_pa": 26664,
-            "process_pressure_pa": 26664,
-            "ramp_rate_pa_per_min": 1000,
-        },
         recipe_steps=[
             {"step": 1, "name": "Heat Up", "duration_s": 900, "action": "heat"},
             {"step": 2, "name": "Nitridation", "duration_s": 300, "action": "nitridation"},
             {"step": 3, "name": "GaN Growth", "duration_s": 3600, "action": "deposit"},
             {"step": 4, "name": "Cool Down", "duration_s": 1200, "action": "cool"},
         ],
-        process_time_s=6000,
-        target_thickness_nm=2000.0,
-        target_uniformity_pct=97.0,
-        tags=["gan", "mocvd", "epitaxy", "led"],
-        version="1.5",
-        is_baseline=True,
-        is_golden=True,
-        is_active=True,
-        run_count=0,
-        created_by=org_id,
+        created_by_id=org_id,
     )
     recipes.append(mocvd_recipe)
 
@@ -324,23 +321,24 @@ def seed_runs(session: Session, org_id: str, recipe_ids: dict, process_mode_ids:
     for i in range(5):
         run = CVDRun(
             id=uuid4(),
-            recipe_id=recipe_ids["lpcvd_sin"],
+            cvd_recipe_id=recipe_ids["lpcvd_sin"],
             process_mode_id=process_mode_ids["lpcvd_sin"],
-            tool_id=tool_id,
-            organization_id=org_id,
-            status="COMPLETED",
-            lot_id=f"LOT-2024-00{i+1}",
-            wafer_ids=[f"W{j:03d}" for j in range(1, 26)],  # 25 wafers
+            instrument_id=tool_id,
+            org_id=org_id,
             operator_id=org_id,
             run_number=f"RUN-{2024000 + i}",
-            actual_temperature_c=780.0 + (i * 0.5),
-            actual_pressure_pa=133.0 + (i * 2),
-            actual_time_s=2100 + (i * 10),
-            notes=f"Production run {i+1}",
+            status="succeeded",
             start_time=base_time + timedelta(days=i),
             end_time=base_time + timedelta(days=i, minutes=35),
-            duration_s=2100,
-            created_by=org_id,
+            duration_seconds=2100.0,
+            custom_metadata={
+                "lot_id": f"LOT-2024-00{i+1}",
+                "wafer_ids": [f"W{j:03d}" for j in range(1, 26)],
+                "actual_temperature_c": 780.0 + (i * 0.5),
+                "actual_pressure_pa": 133.0 + (i * 2),
+                "actual_time_s": 2100 + (i * 10),
+                "notes": f"Production run {i+1}",
+            },
         )
         runs.append(run)
 
@@ -348,39 +346,41 @@ def seed_runs(session: Session, org_id: str, recipe_ids: dict, process_mode_ids:
     for i in range(3):
         run = CVDRun(
             id=uuid4(),
-            recipe_id=recipe_ids["pecvd_oxide"],
+            cvd_recipe_id=recipe_ids["pecvd_oxide"],
             process_mode_id=process_mode_ids["pecvd_oxide"],
-            tool_id=tool_id,
-            organization_id=org_id,
-            status="COMPLETED",
-            lot_id=f"LOT-PECVD-{i+1}",
-            wafer_ids=[f"P{j:03d}" for j in range(1, 51)],  # 50 wafers
+            instrument_id=tool_id,
+            org_id=org_id,
             operator_id=org_id,
             run_number=f"PECVD-{2024010 + i}",
-            actual_temperature_c=350.0,
-            actual_pressure_pa=400.0,
-            actual_time_s=910,
+            status="succeeded",
             start_time=base_time + timedelta(days=i+2, hours=3),
             end_time=base_time + timedelta(days=i+2, hours=3, minutes=15),
-            duration_s=910,
-            created_by=org_id,
+            duration_seconds=910.0,
+            custom_metadata={
+                "lot_id": f"LOT-PECVD-{i+1}",
+                "wafer_ids": [f"P{j:03d}" for j in range(1, 51)],
+                "actual_temperature_c": 350.0,
+                "actual_pressure_pa": 400.0,
+                "actual_time_s": 910,
+            },
         )
         runs.append(run)
 
     # Create one in-progress run
     in_progress_run = CVDRun(
         id=uuid4(),
-        recipe_id=recipe_ids["pecvd_oxide"],
+        cvd_recipe_id=recipe_ids["pecvd_oxide"],
         process_mode_id=process_mode_ids["pecvd_oxide"],
-        tool_id=tool_id,
-        organization_id=org_id,
-        status="PROCESSING",
-        lot_id="LOT-CURRENT",
-        wafer_ids=[f"C{j:03d}" for j in range(1, 26)],
+        instrument_id=tool_id,
+        org_id=org_id,
         operator_id=org_id,
         run_number="PECVD-2024099",
+        status="running",
         start_time=datetime.utcnow() - timedelta(minutes=5),
-        created_by=org_id,
+        custom_metadata={
+            "lot_id": "LOT-CURRENT",
+            "wafer_ids": [f"C{j:03d}" for j in range(1, 26)],
+        },
     )
     runs.append(in_progress_run)
 
@@ -403,7 +403,7 @@ def seed_spc_series(session: Session, org_id: str, recipe_ids: dict) -> None:
     thickness_series = CVDSPCSeries(
         id=uuid4(),
         recipe_id=recipe_ids["lpcvd_sin"],
-        organization_id=org_id,
+        org_id=org_id,
         metric_name="thickness_nm",
         chart_type="xbar-r",
         ucl=110.0,
@@ -420,7 +420,7 @@ def seed_spc_series(session: Session, org_id: str, recipe_ids: dict) -> None:
     uniformity_series = CVDSPCSeries(
         id=uuid4(),
         recipe_id=recipe_ids["lpcvd_sin"],
-        organization_id=org_id,
+        org_id=org_id,
         metric_name="uniformity_pct",
         chart_type="i-mr",
         ucl=98.0,
@@ -453,6 +453,9 @@ def main():
     session = Session(engine)
 
     try:
+        # Clean existing data
+        clean_existing_data(session)
+
         # Use a fixed organization ID for demo
         org_id = str(uuid4())
         print(f"\nUsing Organization ID: {org_id}")
@@ -461,7 +464,7 @@ def main():
         process_mode_ids = seed_process_modes(session, org_id)
         recipe_ids = seed_recipes(session, org_id, process_mode_ids)
         run_ids = seed_runs(session, org_id, recipe_ids, process_mode_ids)
-        seed_spc_series(session, org_id, recipe_ids)
+        # seed_spc_series(session, org_id, recipe_ids)  # Skip SPC for now
 
         print("\n" + "=" * 60)
         print("✓ Database seeding completed successfully!")

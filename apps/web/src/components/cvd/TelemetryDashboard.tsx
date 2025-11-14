@@ -105,9 +105,12 @@ export default function TelemetryDashboard({
     };
 
     return () => {
-      ws.close();
+      // Only close if the WebSocket is still open
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
     };
-  }, [runId, onDisconnect]);
+  }, [runId]); // Removed onDisconnect from dependencies to prevent unnecessary reconnections
 
   const handleTelemetryUpdate = useCallback((data: TelemetryData) => {
     setCurrentData(data);

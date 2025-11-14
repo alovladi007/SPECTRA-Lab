@@ -137,10 +137,13 @@ export default function SPCChart({
 
   const loadAvailableSeries = async () => {
     try {
-      const params: any = {
-        organization_id: organizationId,
-        is_active: true,
-      };
+      const params: any = {};
+
+      // Only include org_id if it's a valid UUID (not "default-org" or "undefined")
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (organizationId && uuidRegex.test(organizationId)) {
+        params.org_id = organizationId;
+      }
 
       if (recipeId) params.recipe_id = recipeId;
       if (processModId) params.process_mode_id = processModId;

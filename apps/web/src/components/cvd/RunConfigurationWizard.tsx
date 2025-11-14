@@ -111,8 +111,7 @@ export default function RunConfigurationWizard({
       setIsLoading(true);
       setError(null);
       const data = await cvdApi.getRecipes({
-        organization_id: organizationId,
-        is_active: true,
+        org_id: organizationId,
       });
       setRecipes(data);
     } catch (err: any) {
@@ -245,10 +244,10 @@ export default function RunConfigurationWizard({
       const waferIds = wafers.map((w) => w.id);
 
       const response = await cvdApi.createBatchRuns({
-        recipe_id: selectedRecipe.id,
+        cvd_recipe_id: selectedRecipe.id,
         process_mode_id: selectedRecipe.process_mode_id,
-        tool_id: selectedToolId,
-        organization_id: organizationId,
+        instrument_id: selectedToolId,
+        org_id: organizationId,
         lot_id: lotId,
         wafer_ids: waferIds,
         operator_id: operatorId || undefined,

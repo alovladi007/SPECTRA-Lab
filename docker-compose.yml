@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: spectra
       POSTGRES_DB: spectra
     ports:
-      - "5433:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +29,7 @@ services:
     image: redis:7-alpine
     container_name: spectra-redis
     ports:
-      - "6379:6379"
+      - "6381:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -43,8 +43,8 @@ services:
   # Analysis Service (FastAPI)
   analysis:
     build:
-      context: ./services/analysis
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: analysis/Dockerfile
     container_name: spectra-analysis
     environment:
       - DATABASE_URL=postgresql+psycopg://spectra:spectra@db:5432/spectra
