@@ -29,7 +29,7 @@ import { Activity, Plus, Play, Square, Thermometer, Beaker, BarChart3, Settings 
 import TelemetryDashboard from '@/components/diffusion/TelemetryDashboard'
 import { diffusionApi, type DiffusionFurnace, type DiffusionRecipe, type DiffusionRun } from '@/lib/api/diffusion'
 
-const MOCK_ORG_ID = 'org_demo_001'
+const MOCK_ORG_ID = '00000000-0000-0000-0000-000000000001' // Demo organization UUID
 
 export default function DiffusionManufacturingPage() {
   const [activeTab, setActiveTab] = useState('furnaces')
