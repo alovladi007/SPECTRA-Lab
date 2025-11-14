@@ -23,6 +23,12 @@ from app.routers.cvd import router as cvd_router
 # Import Diffusion router
 from app.routers.diffusion import router as diffusion_router
 
+# Import Oxidation router
+from app.routers.oxidation import router as oxidation_router
+
+# Import SPC router (centralized Statistical Process Control)
+from app.routers.spc import router as spc_router
+
 # Import database initialization
 from sqlalchemy import create_engine
 import os
@@ -53,6 +59,7 @@ async def init_database():
         from db import models  # Import all models
         from app.models import cvd  # Import CVD models
         from app.models import diffusion  # Import Diffusion models
+        from app.models import oxidation  # Import Oxidation models
 
         # Use environment variable or default for Docker access
         database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
@@ -88,6 +95,12 @@ app.include_router(cvd_router)
 # Register Diffusion router (already has /api/v1/diffusion prefix)
 app.include_router(diffusion_router)
 
+# Register Oxidation router (already has /api/v1/oxidation prefix)
+app.include_router(oxidation_router)
+
+# Register SPC router (already has /api/v1/spc prefix)
+app.include_router(spc_router)
+
 @app.get("/")
 async def root():
     return {
@@ -105,7 +118,11 @@ async def root():
             "cvd": "/api/v1/cvd",
             "cvd_docs": "/api/v1/cvd/docs (See /docs for full API)",
             "diffusion": "/api/v1/diffusion",
-            "diffusion_docs": "/api/v1/diffusion/docs (See /docs for full API)"
+            "diffusion_docs": "/api/v1/diffusion/docs (See /docs for full API)",
+            "oxidation": "/api/v1/oxidation",
+            "oxidation_docs": "/api/v1/oxidation/docs (See /docs for full API)",
+            "spc": "/api/v1/spc",
+            "spc_docs": "/api/v1/spc/docs (See /docs for full API)"
         }
     }
 
