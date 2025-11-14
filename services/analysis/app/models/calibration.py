@@ -27,12 +27,12 @@ class CalibrationStatus(str, Enum):
     EXPIRED = "expired"  # Past next calibration date
 
 
-class Calibration(Base):
+class EquipmentCalibration(Base):
     """
     Equipment Calibration Record
     Tracks calibration history and compliance for laboratory equipment
     """
-    __tablename__ = "calibrations"
+    __tablename__ = "equipment_calibrations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     org_id = Column(UUID(as_uuid=True), nullable=False, index=True)
@@ -70,9 +70,9 @@ class Calibration(Base):
 
     # Indexes for common queries
     __table_args__ = (
-        Index('ix_calibrations_org_equipment', 'org_id', 'equipment_id'),
-        Index('ix_calibrations_org_status', 'org_id', 'status'),
-        Index('ix_calibrations_next_date', 'next_calibration_date'),
+        Index('ix_equipment_calibrations_org_equipment', 'org_id', 'equipment_id'),
+        Index('ix_equipment_calibrations_org_status', 'org_id', 'status'),
+        Index('ix_equipment_calibrations_next_date', 'next_calibration_date'),
     )
 
     @hybrid_property

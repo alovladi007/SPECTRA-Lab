@@ -5,8 +5,10 @@
 Enterprise-grade semiconductor characterization platform with comprehensive electrical, optical, structural, and chemical characterization capabilities, LIMS/ELN system, SPC, advanced machine learning, and production-grade PostgreSQL backend with JWT authentication.
 
 **Latest Updates:**
-- ✅ **MES Frontend Integration Complete** - All 6 manufacturing backends now have complete frontend MES components! Added CVDMES and DiffusionMES with real-time monitoring, process control, dashboard analytics, and API integration. 100% frontend coverage achieved. 🆕
-- ✅ **Predictive Maintenance & Calibration** - Complete backend APIs added for AI-powered equipment health monitoring and calibration tracking. Full CRUD operations with dashboard statistics and failure predictions. 🆕
+- ✅ **CVD Platform Fully Operational** - Fixed SQLAlchemy table conflicts, resolved database connection issues, corrected organization ID mismatches, and removed non-existent dashboard endpoint calls. All 4 CVD process modes (LPCVD, PECVD, MOCVD, AACVD) now display correctly on frontend. API service running on port 3012 with complete CRUD operations for process modes, recipes, runs, and SPC. 🆕
+- ✅ **Calibration Models Resolved** - Separated two distinct calibration systems: **Shared Calibration** (simple certificate tracking in `services/shared/db/models.py`) and **Equipment Calibration** (full compliance lifecycle management in `services/analysis/app/models/calibration.py`). Renamed analysis model to `EquipmentCalibration` with table `equipment_calibrations` to eliminate SQLAlchemy MetaData conflicts that were blocking API startup. Both systems now coexist independently. 🆕
+- ✅ **MES Frontend Integration Complete** - All 6 manufacturing backends now have complete frontend MES components! Added CVDMES and DiffusionMES with real-time monitoring, process control, dashboard analytics, and API integration. 100% frontend coverage achieved.
+- ✅ **Predictive Maintenance & Calibration** - Complete backend APIs added for AI-powered equipment health monitoring and calibration tracking. Full CRUD operations with dashboard statistics and failure predictions.
 - ✅ **Diffusion Manufacturing Platform** - Complete manufacturing-grade diffusion module added! 7 database tables, 40+ REST endpoints, WebSocket telemetry streaming, SPC integration, batch run creation, equipment tracking, recipe approval workflow. Matches CVD/Ion/RTP architecture (~2,320 lines).
 - ✅ **CVD Platform Fixes** - Fixed parameter naming (org_id), WebSocket reconnection cycles, UUID validation in frontend components. All CVD endpoints operational.
 - ✅ **Background Job Execution Fixed** - Resolved controller parameter mismatches in Ion and RTP tasks. Fixed: JobStatus enum shadowing, DoseIntegrator parameters, ScanUniformityController/R2RController/BeamDriftDetector signatures, PIDController/MPCController dataclass instantiation, and VM model equipment_id removal. Added None checks for job cancellation queries. Jobs now execute successfully through full lifecycle.
@@ -79,12 +81,17 @@ npm run dev
 
 ### Access
 
-- **Web UI**: http://localhost:3012 (Modern React/Next.js Dashboard)
+- **Web UI**: http://localhost:3000 (Modern React/Next.js Dashboard)
 - **API Docs**: http://localhost:8000/docs
-- **Analysis Service**: http://localhost:8001/docs (Characterization methods, SPC, ML)
+- **Analysis Service**: http://localhost:3012/docs (Characterization methods, SPC, ML, CVD, Calibration) 🆕
 - **LIMS Service**: http://localhost:8002/docs (Sample management, ELN, reports)
-- **Process Control Service**: http://localhost:8003/docs (Ion Implant, RTP, Safety) 🆕
+- **Process Control Service**: http://localhost:8003/docs (Ion Implant, RTP, Safety)
 - **Grafana**: http://localhost:3001 (admin/admin)
+
+**Important Configuration:**
+- **Frontend Environment**: Set `NEXT_PUBLIC_ANALYSIS_API_URL=http://localhost:3012/api/v1` in `apps/web/.env.local`
+- **Database**: PostgreSQL on port 5435 (requires Docker) - Start with `docker start spectra-db`
+- **CVD Organization ID**: Frontend uses `173cf517-1566-4906-a2db-0ce023d7b378` for demo data
 
 ## Repository Structure
 
@@ -175,6 +182,53 @@ make test            # Run tests
 make lint            # Run linters
 make format          # Format code
 ```
+
+## Troubleshooting
+
+### Database Connection Errors
+
+If you see "connection failed: Connection refused" errors:
+```bash
+# 1. Check if Docker is running
+docker info
+
+# 2. Start Docker Desktop if needed
+open -a Docker  # macOS
+
+# 3. Start the database container
+docker start spectra-db
+
+# 4. Verify database is ready
+docker exec spectra-db pg_isready -U spectra
+```
+
+### Frontend API Connection Issues
+
+If the frontend shows 500 errors or "Not Found":
+1. **Check environment variables** in `apps/web/.env.local`:
+   ```bash
+   NEXT_PUBLIC_API_URL=http://localhost:8002/api/v1
+   NEXT_PUBLIC_ANALYSIS_API_URL=http://localhost:3012/api/v1
+   ```
+2. **Verify API service is running** on port 3012:
+   ```bash
+   curl http://localhost:3012/api/v1/cvd/process-modes
+   ```
+3. **Check organization ID** matches database records (use `173cf517-1566-4906-a2db-0ce023d7b378` for demo)
+
+### SQLAlchemy Table Conflicts
+
+If you encounter "Table 'X' is already defined for this MetaData instance":
+- This typically indicates duplicate model definitions with the same `__tablename__`
+- Solution: Rename one of the conflicting models or table names
+- Example: The Calibration/EquipmentCalibration separation resolved such a conflict
+
+### CVD Platform Issues
+
+Common CVD-specific issues and fixes:
+- **Empty process modes**: Check `org_id` parameter matches database records
+- **Field not found errors**: Verify model field names (e.g., `status` vs `is_active`)
+- **Dashboard errors**: Some dashboard endpoints may not be implemented yet (gracefully handle 404s)
 
 ## Documentation
 
@@ -275,10 +329,11 @@ All 6 manufacturing backends now have complete frontend MES components with real
 - ✅ **Run Lifecycle** - QUEUED → RUNNING → COMPLETED/FAILED with real-time status
 - ✅ **WebSocket Telemetry** - Real-time streaming of temperature, pressure, flow, power data
 - ✅ **SPC Integration** - Statistical process control with violation detection
-- ✅ **Process Modes** - LPCVD, APCVD, PECVD, UHVCVD, MOCVD configurations
+- ✅ **Process Modes** - **All 4 variants operational**: LPCVD (Silicon Nitride), PECVD (Silicon Dioxide), MOCVD (Gallium Nitride), AACVD (Zinc Oxide)
 - ✅ **Dashboard Analytics** - Recipe performance, completion rates, equipment utilization
 - ✅ **40+ REST Endpoints** - Complete CRUD operations for reactors, recipes, runs, telemetry, results
 - ✅ **Database Schema** - 7 interconnected tables with UUID primary keys and JSONB fields
+- ✅ **Recent Fixes** - Resolved `is_active` field mapping to `status='approved'`, corrected organization ID, fixed SPC parameter references, database connection established
 
 #### 3. Diffusion MES (DiffusionMES.tsx) 🆕
 - ✅ **Frontend Component** - Complete React UI with 5 tabs (Recipes, Runs, Furnaces, Live Monitor, Results)
@@ -307,6 +362,35 @@ All 6 manufacturing backends now have complete frontend MES components with real
 - ✅ **Schedule Management** - Calibration scheduling and tracking
 - ✅ **Compliance Dashboard** - ISO 17025 compliance tracking
 - ✅ **Certificate Repository** - Calibration certificate management
+
+**Note on Calibration Architecture:** The platform uses two distinct calibration models that serve different purposes:
+
+**1. Shared Calibration Model** (`services/shared/db/models.py`)
+- **Purpose**: Lightweight calibration certificate tracking
+- **Table**: `calibrations`
+- **Fields**: `organization_id`, `instrument_id`, `certificate_id`, `issued_at`, `expires_at`, `provider`
+- **Use Case**: Simple record keeping for instrument calibration certificates
+- **Scope**: Shared across all services for basic certificate validation
+
+**2. Equipment Calibration Model** (`services/analysis/app/models/calibration.py`)
+- **Purpose**: Full calibration lifecycle and compliance management
+- **Table**: `equipment_calibrations`
+- **Class Name**: `EquipmentCalibration`
+- **Fields**:
+  - Equipment details: `equipment_id`, `equipment_name`, `equipment_type`
+  - Calibration tracking: `calibration_date`, `next_calibration_date`, `interval_days`
+  - Compliance: `calibration_standard`, `performed_by`, `certificate_number`
+  - Auto-calculated status: `VALID`, `DUE_SOON`, `EXPIRED` (based on next calibration date)
+  - Additional metadata: `notes`, `metadata_json`
+- **Business Logic**:
+  - Automatically calculates calibration status based on current date
+  - Tracks days until calibration is due with `days_until_due` property
+  - Provides compliance dashboard with statistics and breakdown
+  - Supports equipment-specific calibration histories
+- **Use Case**: Manufacturing execution and compliance teams managing equipment calibration lifecycle
+- **Scope**: Analysis service for advanced calibration management and reporting
+
+Both models coexist independently without conflicts, serving different organizational needs.
 
 #### 6. Predictive Maintenance MES (PredictiveMaintenanceMES.tsx) 🆕
 - ✅ **Frontend Component** - AI-powered equipment health monitoring with 4 tabs

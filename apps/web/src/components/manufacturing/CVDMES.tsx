@@ -21,7 +21,7 @@ import {
   type CVDDashboard
 } from '@/lib/api/cvd'
 
-const MOCK_ORG_ID = '00000000-0000-0000-0000-000000000001' // Demo organization UUID
+const MOCK_ORG_ID = '173cf517-1566-4906-a2db-0ce023d7b378' // Demo organization UUID
 
 export const CVDMES: React.FC = () => {
   const [processModes, setProcessModes] = useState<CVDProcessMode[]>([])
@@ -37,16 +37,15 @@ export const CVDMES: React.FC = () => {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [modesData, recipesData, runsData, dashboardData] = await Promise.all([
-        cvdApi.getProcessModes({ org_id: MOCK_ORG_ID, is_active: true }),
+      const [modesData, recipesData, runsData] = await Promise.all([
+        cvdApi.getProcessModes({ org_id: MOCK_ORG_ID }),
         cvdApi.getRecipes({ org_id: MOCK_ORG_ID, limit: 50 }),
         cvdApi.getRuns({ org_id: MOCK_ORG_ID, limit: 50 }),
-        cvdApi.getDashboard({ org_id: MOCK_ORG_ID }),
       ])
       setProcessModes(modesData)
       setRecipes(recipesData)
       setRuns(runsData)
-      setDashboard(dashboardData)
+      setDashboard(null)
     } catch (error) {
       console.error('Error loading CVD data:', error)
     } finally {

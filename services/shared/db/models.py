@@ -201,7 +201,8 @@ class Instrument(Base, UUIDMixin, TimestampMixin):
 class Calibration(Base, UUIDMixin, TimestampMixin):
     """Instrument calibration certificate."""
     __tablename__ = "calibrations"
-    
+    __table_args__ = {'extend_existing': True}
+
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     instrument_id = Column(UUID(as_uuid=True), ForeignKey("instruments.id", ondelete="CASCADE"), nullable=False, index=True)
     certificate_id = Column(String(255), nullable=True)

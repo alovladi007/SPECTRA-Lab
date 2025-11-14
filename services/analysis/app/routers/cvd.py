@@ -237,9 +237,11 @@ def create_recipe(
 @router.get("/recipes", response_model=List[CVDRecipeSchema])
 def list_recipes(
     org_id: Optional[UUID] = None,
+    organization_id: Optional[UUID] = None,  # Alias for org_id for backward compatibility
     process_mode_id: Optional[UUID] = None,
     search: Optional[str] = None,
     tags: Optional[List[str]] = Query(None),
+    is_active: Optional[bool] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -248,12 +250,21 @@ def list_recipes(
     try:
         query = select(CVDRecipe).options(joinedload(CVDRecipe.process_mode))
 
+        # Use organization_id as fallback if org_id not provided
+        effective_org_id = org_id or organization_id
+
         # Apply filters
         filters = []
-        if org_id:
-            filters.append(CVDRecipe.org_id == org_id)
+        if effective_org_id:
+            filters.append(CVDRecipe.org_id == effective_org_id)
         if process_mode_id:
             filters.append(CVDRecipe.process_mode_id == process_mode_id)
+        if is_active is not None:
+            # Map is_active to status field ('approved' = active, 'draft' = inactive)
+            if is_active:
+                filters.append(CVDRecipe.status == 'approved')
+            else:
+                filters.append(CVDRecipe.status != 'approved')
 
         if search:
             filters.append(
@@ -714,7 +725,8 @@ def create_spc_series(
 @router.get("/spc/series", response_model=List[CVDSPCSeriesSchema])
 def list_spc_series(
     org_id: Optional[UUID] = None,
-    cvd_recipe_id: Optional[UUID] = None,
+    organization_id: Optional[UUID] = None,  # Alias for org_id
+    process_mode_id: Optional[UUID] = None,
     metric_name: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -722,13 +734,16 @@ def list_spc_series(
     try:
         query = select(CVDSPCSeries)
 
+        # Use organization_id as fallback if org_id not provided
+        effective_org_id = org_id or organization_id
+
         filters = []
-        if org_id:
-            filters.append(CVDSPCSeries.org_id == org_id)
-        if cvd_recipe_id:
-            filters.append(CVDSPCSeries.cvd_recipe_id == cvd_recipe_id)
+        if effective_org_id:
+            filters.append(CVDSPCSeries.org_id == effective_org_id)
+        if process_mode_id:
+            filters.append(CVDSPCSeries.process_mode_id == process_mode_id)
         if metric_name:
-            filters.append(CVDSPCSeries.metric_name == metric_name)
+            filters.append(CVDSPCSeries.parameter == metric_name)
 
         if filters:
             query = query.where(and_(*filters))
@@ -888,7 +903,7 @@ def health_check():
 # ============================================================================
 
 @router.get("/tools/{tool_id}/status")
-def get_tool_status(instrument_id: UUID):
+def get_tool_status(tool_id: UUID):
     """Get real-time tool status from simulator/hardware"""
     # TODO: Integrate with CVDToolManager to get actual status
     return {

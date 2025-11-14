@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "shared"))
 
 from db.deps import get_db
-from ..models.calibration import Calibration, CalibrationStatus
+from ..models.calibration import EquipmentCalibration, CalibrationStatus
 from ..schemas.calibration import (
     CalibrationCreate,
     CalibrationUpdate,
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/api/v1/calibration", tags=["Calibration"])
 # Helper Functions
 # ============================================================================
 
-def update_calibration_status(calibration: Calibration):
+def update_calibration_status(calibration: EquipmentCalibration):
     """Update calibration status based on next_calibration_date"""
     calibration.update_status()
 
@@ -55,7 +55,7 @@ def create_calibration(
     """Create a new calibration record"""
     try:
         # Create calibration record
-        db_calibration = Calibration(**calibration.model_dump())
+        db_calibration = EquipmentCalibration(**calibration.model_dump())
 
         # Calculate and set initial status
         update_calibration_status(db_calibration)
@@ -97,24 +97,24 @@ def list_calibrations(
     - Equipment type
     """
     try:
-        query = select(Calibration)
+        query = select(EquipmentCalibration)
 
         # Apply filters
         filters = []
         if org_id:
-            filters.append(Calibration.org_id == org_id)
+            filters.append(EquipmentCalibration.org_id == org_id)
         if status_filter:
-            filters.append(Calibration.status == status_filter)
+            filters.append(EquipmentCalibration.status == status_filter)
         if equipment_id:
-            filters.append(Calibration.equipment_id == equipment_id)
+            filters.append(EquipmentCalibration.equipment_id == equipment_id)
         if equipment_type:
-            filters.append(Calibration.equipment_type == equipment_type)
+            filters.append(EquipmentCalibration.equipment_type == equipment_type)
 
         if filters:
             query = query.where(and_(*filters))
 
         # Sorting
-        sort_column = getattr(Calibration, sort_by, Calibration.next_calibration_date)
+        sort_column = getattr(EquipmentCalibration, sort_by, EquipmentCalibration.next_calibration_date)
         query = query.order_by(sort_column.desc() if sort_desc else sort_column.asc())
 
         # Pagination
@@ -143,7 +143,7 @@ def get_calibration(
 ):
     """Get a specific calibration record by ID"""
     try:
-        query = select(Calibration).where(Calibration.id == calibration_id)
+        query = select(EquipmentCalibration).where(EquipmentCalibration.id == calibration_id)
         result = db.execute(query)
         calibration = result.scalar_one_or_none()
 
@@ -171,7 +171,7 @@ def update_calibration(
 ):
     """Update a calibration record"""
     try:
-        query = select(Calibration).where(Calibration.id == calibration_id)
+        query = select(EquipmentCalibration).where(EquipmentCalibration.id == calibration_id)
         result = db.execute(query)
         calibration = result.scalar_one_or_none()
 
@@ -218,9 +218,9 @@ def get_equipment_calibration_status(
     try:
         # Get most recent calibration for this equipment
         query = (
-            select(Calibration)
-            .where(Calibration.equipment_id == equipment_id)
-            .order_by(Calibration.calibration_date.desc())
+            select(EquipmentCalibration)
+            .where(EquipmentCalibration.equipment_id == equipment_id)
+            .order_by(EquipmentCalibration.calibration_date.desc())
             .limit(1)
         )
         result = db.execute(query)
@@ -281,9 +281,9 @@ def get_calibration_dashboard(
     """
     try:
         # Base query
-        base_query = select(Calibration)
+        base_query = select(EquipmentCalibration)
         if org_id:
-            base_query = base_query.where(Calibration.org_id == org_id)
+            base_query = base_query.where(EquipmentCalibration.org_id == org_id)
 
         # Get all calibrations
         result = db.execute(base_query)
