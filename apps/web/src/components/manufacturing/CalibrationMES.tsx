@@ -5,39 +5,70 @@
 
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { Wrench, Calendar, FileCheck, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { Wrench, Calendar, FileCheck, AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { RoleDisplay } from '@/components/shared/RBACActionButtons'
+import { calibrationApi, type Calibration, type CalibrationDashboard } from '@/lib/api/calibration'
+
+const MOCK_ORG_ID = '00000000-0000-0000-0000-000000000001' // Demo organization UUID
 
 export const CalibrationMES: React.FC = () => {
-  const [equipment] = useState([
-    { id: 'RTP-001', name: 'RTP Chamber 1', type: 'RTP', status: 'VALID', nextCal: '2025-01-15', daysLeft: 33 },
-    { id: 'OX-FURN-001', name: 'Oxidation Furnace 1', type: 'FURNACE', status: 'EXPIRED', nextCal: '2024-12-10', daysLeft: -3 },
-    { id: 'DIFF-001', name: 'Diffusion Furnace', type: 'FURNACE', status: 'DUE_SOON', nextCal: '2024-12-20', daysLeft: 7 },
-    { id: 'ION-IMP-001', name: 'Ion Implanter', type: 'ION', status: 'VALID', nextCal: '2025-02-01', daysLeft: 50 }
-  ])
+  const [calibrations, setCalibrations] = useState<Calibration[]>([])
+  const [dashboard, setDashboard] = useState<CalibrationDashboard | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [calibrationsData, dashboardData] = await Promise.all([
+        calibrationApi.getCalibrations({ org_id: MOCK_ORG_ID, limit: 100 }),
+        calibrationApi.getDashboard({ org_id: MOCK_ORG_ID }),
+      ])
+      setCalibrations(calibrationsData)
+      setDashboard(dashboardData)
+    } catch (error) {
+      console.error('Error loading calibration data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getDaysUntilDue = (nextCalDate: string): number => {
+    const next = new Date(nextCalDate)
+    const now = new Date()
+    const diff = next.getTime() - now.getTime()
+    return Math.floor(diff / (1000 * 60 * 60 * 24))
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'VALID': return 'default'
-      case 'DUE_SOON': return 'secondary'
-      case 'EXPIRED': return 'destructive'
+      case 'valid': return 'default'
+      case 'due_soon': return 'secondary'
+      case 'expired': return 'destructive'
       default: return 'outline'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'VALID': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'DUE_SOON': return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'EXPIRED': return <AlertCircle className="w-4 h-4 text-red-500" />
+      case 'valid': return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'due_soon': return <Clock className="w-4 h-4 text-yellow-500" />
+      case 'expired': return <AlertCircle className="w-4 h-4 text-red-500" />
       default: return null
     }
+  }
+
+  const getStatusLabel = (status: string) => {
+    return status === 'due_soon' ? 'DUE SOON' : status.toUpperCase()
   }
 
   return (
@@ -51,67 +82,83 @@ export const CalibrationMES: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <RoleDisplay showPermissions={false} />
-          <Badge variant="outline" className="text-xs">48 Equipment Total</Badge>
+          <div className="flex items-center gap-2">
+            <RoleDisplay showPermissions={false} />
+            <Button onClick={loadData} variant="outline" size="sm" disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          {dashboard && (
+            <Badge variant="outline" className="text-xs">{dashboard.total} Equipment Total</Badge>
+          )}
         </div>
       </div>
 
       <Separator />
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              Valid
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">42</div>
-            <p className="text-xs text-muted-foreground">87.5% compliant</p>
-          </CardContent>
-        </Card>
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading calibration data...</div>
+      ) : !dashboard ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No calibration data available. Add equipment calibration records to start tracking.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Valid
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboard.valid}</div>
+              <p className="text-xs text-muted-foreground">{dashboard.compliance_rate.toFixed(1)}% compliant</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-500" />
-              Due Soon
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">4</div>
-            <p className="text-xs text-muted-foreground">Within 30 days</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-500" />
+                Due Soon
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{dashboard.due_soon}</div>
+              <p className="text-xs text-muted-foreground">Within 30 days</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              Expired
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">2</div>
-            <p className="text-xs text-muted-foreground">Requires immediate action</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                Expired
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{dashboard.expired}</div>
+              <p className="text-xs text-muted-foreground">Requires immediate action</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-500" />
-              Scheduled
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">Next 30 days</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-500" />
+                Scheduled
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboard.upcoming_this_month}</div>
+              <p className="text-xs text-muted-foreground">This month</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Tabs */}
       <Tabs defaultValue="equipment" className="space-y-6">
@@ -142,34 +189,45 @@ export const CalibrationMES: React.FC = () => {
               <CardDescription>Monitor calibration status across all manufacturing equipment</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {equipment.map((eq) => (
-                  <div key={eq.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent">
-                    <div className="flex items-center gap-3 flex-1">
-                      {getStatusIcon(eq.status)}
-                      <div>
-                        <h4 className="font-medium">{eq.name}</h4>
-                        <p className="text-sm text-muted-foreground">{eq.id} • {eq.type}</p>
+              {calibrations.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No equipment calibration records found.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {calibrations.map((cal) => {
+                    const daysLeft = getDaysUntilDue(cal.next_calibration_date)
+                    return (
+                      <div key={cal.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent">
+                        <div className="flex items-center gap-3 flex-1">
+                          {getStatusIcon(cal.status)}
+                          <div>
+                            <h4 className="font-medium">{cal.equipment_name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {cal.equipment_id.substring(0, 8)} • {cal.equipment_type || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm font-medium">Next: {new Date(cal.next_calibration_date).toLocaleDateString()}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {daysLeft > 0 ? `${daysLeft} days left` : `${Math.abs(daysLeft)} days overdue`}
+                            </p>
+                          </div>
+                          <Badge variant={getStatusColor(cal.status)}>
+                            {getStatusLabel(cal.status)}
+                          </Badge>
+                          <Button size="sm" variant="outline">
+                            <Wrench className="w-4 h-4 mr-1" />
+                            Calibrate
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">Next: {eq.nextCal}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {eq.daysLeft > 0 ? `${eq.daysLeft} days left` : `${Math.abs(eq.daysLeft)} days overdue`}
-                        </p>
-                      </div>
-                      <Badge variant={getStatusColor(eq.status)}>
-                        {eq.status.replace('_', ' ')}
-                      </Badge>
-                      <Button size="sm" variant="outline">
-                        <Wrench className="w-4 h-4 mr-1" />
-                        Calibrate
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

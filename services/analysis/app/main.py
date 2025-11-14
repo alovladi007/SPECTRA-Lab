@@ -29,6 +29,12 @@ from app.routers.oxidation import router as oxidation_router
 # Import SPC router (centralized Statistical Process Control)
 from app.routers.spc import router as spc_router
 
+# Import Calibration router
+from app.routers.calibration import router as calibration_router
+
+# Import Predictive Maintenance router
+from app.routers.predictive_maintenance import router as predictive_maintenance_router
+
 # Import database initialization
 from sqlalchemy import create_engine
 import os
@@ -60,6 +66,8 @@ async def init_database():
         from app.models import cvd  # Import CVD models
         from app.models import diffusion  # Import Diffusion models
         from app.models import oxidation  # Import Oxidation models
+        from app.models import calibration  # Import Calibration models
+        from app.models import predictive_maintenance  # Import Predictive Maintenance models
 
         # Use environment variable or default for Docker access
         database_url = os.getenv("DATABASE_URL", "postgresql+psycopg://spectra:spectra@localhost:5433/spectra")
@@ -101,6 +109,12 @@ app.include_router(oxidation_router)
 # Register SPC router (already has /api/v1/spc prefix)
 app.include_router(spc_router)
 
+# Register Calibration router (already has /api/v1/calibration prefix)
+app.include_router(calibration_router)
+
+# Register Predictive Maintenance router (already has /api/v1/predictive-maintenance prefix)
+app.include_router(predictive_maintenance_router)
+
 @app.get("/")
 async def root():
     return {
@@ -122,7 +136,11 @@ async def root():
             "oxidation": "/api/v1/oxidation",
             "oxidation_docs": "/api/v1/oxidation/docs (See /docs for full API)",
             "spc": "/api/v1/spc",
-            "spc_docs": "/api/v1/spc/docs (See /docs for full API)"
+            "spc_docs": "/api/v1/spc/docs (See /docs for full API)",
+            "calibration": "/api/v1/calibration",
+            "calibration_docs": "/api/v1/calibration/docs (See /docs for full API)",
+            "predictive_maintenance": "/api/v1/predictive-maintenance",
+            "predictive_maintenance_docs": "/api/v1/predictive-maintenance/docs (See /docs for full API)"
         }
     }
 

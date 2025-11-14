@@ -5,20 +5,42 @@
 
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Activity, TrendingUp, AlertTriangle, CheckCircle2, Target } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Activity, TrendingUp, AlertTriangle, CheckCircle2, Target, RefreshCw } from 'lucide-react'
 import { RoleDisplay } from '@/components/shared/RBACActionButtons'
+import { spcApi, type UnifiedSPCSeries, type SPCDashboardResponse } from '@/lib/api/spc'
+
+const MOCK_ORG_ID = '00000000-0000-0000-0000-000000000001' // Demo organization UUID
 
 export const SPCMES: React.FC = () => {
-  const [series] = useState([
-    { id: 'SPC-001', metric: 'Sheet Resistance', process: 'Diffusion', chart: 'XBAR_R', status: 'IN_CONTROL', violations: 0 },
-    { id: 'SPC-002', metric: 'Oxide Thickness', process: 'Oxidation', chart: 'I_MR', status: 'OUT_OF_CONTROL', violations: 3 },
-    { id: 'SPC-003', metric: 'Junction Depth', process: 'Diffusion', chart: 'EWMA', status: 'IN_CONTROL', violations: 0 }
-  ])
+  const [series, setSeries] = useState<UnifiedSPCSeries[]>([])
+  const [dashboard, setDashboard] = useState<SPCDashboardResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [seriesData, dashboardData] = await Promise.all([
+        spcApi.getSeries({ org_id: MOCK_ORG_ID, limit: 50 }),
+        spcApi.getDashboard(MOCK_ORG_ID),
+      ])
+      setSeries(seriesData)
+      setDashboard(dashboardData)
+    } catch (error) {
+      console.error('Error loading SPC data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -31,67 +53,91 @@ export const SPCMES: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <RoleDisplay showPermissions={false} />
-          <Badge variant="outline" className="text-xs">36 Active Series</Badge>
+          <div className="flex items-center gap-2">
+            <RoleDisplay showPermissions={false} />
+            <Button onClick={loadData} variant="outline" size="sm" disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          {dashboard && (
+            <Badge variant="outline" className="text-xs">
+              {dashboard.total_series} Active Series
+            </Badge>
+          )}
         </div>
       </div>
 
       <Separator />
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              In Control
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">28</div>
-            <p className="text-xs text-muted-foreground">77.8% of series</p>
-          </CardContent>
-        </Card>
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading SPC dashboard...</div>
+      ) : !dashboard ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No SPC data available. Configure SPC series to start monitoring.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                In Control
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboard.in_control_count}</div>
+              <p className="text-xs text-muted-foreground">
+                {((dashboard.in_control_count / dashboard.total_series) * 100).toFixed(1)}% of series
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-500" />
-              Out of Control
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">8</div>
-            <p className="text-xs text-muted-foreground">22.2% of series</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-500" />
+                Out of Control
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{dashboard.out_of_control_count}</div>
+              <p className="text-xs text-muted-foreground">
+                {((dashboard.out_of_control_count / dashboard.total_series) * 100).toFixed(1)}% of series
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="w-4 h-4 text-blue-500" />
-              Cpk Average
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1.67</div>
-            <p className="text-xs text-muted-foreground">Process capability</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Target className="w-4 h-4 text-blue-500" />
+                Cpk Average
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {dashboard.process_capability_summary?.avg_cpk?.toFixed(2) || 'N/A'}
+              </div>
+              <p className="text-xs text-muted-foreground">Process capability</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-500" />
-              Violations (24h)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Rule violations</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-purple-500" />
+                Recent Violations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboard.recent_violations.length}</div>
+              <p className="text-xs text-muted-foreground">Rule violations</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Tabs */}
       <Tabs defaultValue="series" className="space-y-6">
