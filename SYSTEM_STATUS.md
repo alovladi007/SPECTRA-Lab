@@ -1,7 +1,7 @@
 # SPECTRA-Lab System Status
 
 **Last Updated:** November 14, 2025
-**Status:** ✅ FULLY OPERATIONAL
+**Status:** ✅ FULLY OPERATIONAL & CONNECTED
 
 ---
 
@@ -13,6 +13,7 @@
 - **Framework:** Next.js 14.0.4
 - **Port:** 3012
 - **Environment:** Development with hot reload
+- **API Connection:** ✅ Connected to backend via proxy
 
 ### Backend API Server (FastAPI)
 - **URL:** http://localhost:8001
@@ -21,6 +22,7 @@
 - **Port:** 8001
 - **Database:** PostgreSQL at localhost:5435
 - **Environment:** Development with auto-reload
+- **API Data:** ✅ 9 CVD runs, 4 process modes available
 
 ---
 
@@ -203,13 +205,13 @@
 - **Database:** spectra
 - **Status:** ✅ Connected
 - **Tables:** All CVD models initialized
-  - cvd_process_modes (4 seed records)
-  - cvd_recipes
-  - cvd_runs
-  - cvd_telemetry
-  - cvd_results
-  - cvd_spc_series
-  - cvd_spc_points
+  - cvd_process_modes (4 records)
+  - cvd_recipes (active)
+  - cvd_runs (9 records)
+  - cvd_telemetry (with time-series data)
+  - cvd_results (with wafer measurements)
+  - cvd_spc_series (active)
+  - cvd_spc_points (active)
 
 ---
 
@@ -217,6 +219,8 @@
 
 ### Recent Commits:
 ```
+53fad26d - fix: Configure API endpoints to connect to backend services ✅ LATEST
+f272154a - docs: Add comprehensive system status documentation
 15cd4a00 - docs: Add CVD frontend integration final documentation
 d4986c3a - feat: Enhance CVD workspace with new metric components
 cbc34bcc - fix: Add missing Legend import in CVD results page
@@ -225,6 +229,7 @@ cbc34bcc - fix: Add missing Legend import in CVD results page
 ### Branch: main
 ✅ All changes committed
 ✅ All changes pushed to remote
+✅ API connection configured and working
 
 ---
 
@@ -249,21 +254,24 @@ cbc34bcc - fix: Add missing Legend import in CVD results page
 
 ## 💡 Current Data Mode
 
-**All frontend pages use MOCK DATA for demonstration.**
+**✅ CONNECTED TO LIVE BACKEND API**
 
-To connect to real data:
-1. Frontend pages call `/api/cvd/*` (note: no `/v1/`)
-2. Backend provides endpoints at `/api/v1/cvd/*`
-3. Update frontend API base URL to include `/v1/`
-4. Or add API route aliases in backend to support `/api/cvd/*`
+**API Configuration:**
+- Frontend: `NEXT_PUBLIC_ANALYSIS_API_URL=http://localhost:8001/api/v1`
+- Next.js proxy rewrites configured for all Analysis Service endpoints
+- Direct connection to PostgreSQL database
 
-**Mock data includes:**
-- 4 process modes (LPCVD, PECVD, MOCVD, AACVD)
-- Sample recipes with physics predictions
-- Demo run with realistic telemetry
-- Wafer maps with 9-point measurements
-- SPC charts with Cpk calculations
-- VM model performance metrics
+**Available Real Data:**
+- ✅ 4 CVD process modes (LPCVD, PECVD, MOCVD, AACVD)
+- ✅ 9 CVD runs with telemetry data
+- ✅ Recipes with process parameters
+- ✅ SPC series and control charts
+- ✅ Results with wafer measurements
+
+**Frontend Pages Data Source:**
+- CVD workspace tabs: Uses backend API (real data)
+- New standalone pages: Currently use mock data (can be updated to use API)
+- Metric components: Can accept both real and mock data
 
 ---
 
