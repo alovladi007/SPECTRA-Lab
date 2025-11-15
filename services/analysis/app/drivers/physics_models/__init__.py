@@ -14,9 +14,11 @@ These models are used for:
 
 from .thickness import (
     ThicknessModel,
-    ReactorGeometry,
     DepositionRateCalculator,
     UniformityCalculator,
+    DepositionParameters,
+    CVDMode,
+    ArrheniusParameters,
 )
 
 from .stress import (
@@ -24,14 +26,19 @@ from .stress import (
     IntrinsicStressCalculator,
     ThermalStressCalculator,
     StressMeasurementMethod,
+    ProcessConditions,
+    MaterialProperties,
     wafer_curvature_to_stress,
     xrd_to_stress,
+    get_material_properties,
 )
 
 from .adhesion import (
     AdhesionModel,
     AdhesionTest,
     AdhesionTestResult,
+    AdhesionFactors,
+    AdhesionClass,
     simulate_tape_test,
     simulate_scratch_test,
     simulate_nanoindentation,
@@ -45,23 +52,37 @@ from .reactor_geometry import (
     BatchFurnaceReactor,
 )
 
+from .vm_features import (
+    VMFeatureExtractor,
+    TelemetryData,
+    create_training_dataset,
+    feature_importance_analysis,
+)
+
 __all__ = [
     # Thickness models
     "ThicknessModel",
-    "ReactorGeometry",
     "DepositionRateCalculator",
     "UniformityCalculator",
+    "DepositionParameters",
+    "CVDMode",
+    "ArrheniusParameters",
     # Stress models
     "StressModel",
     "IntrinsicStressCalculator",
     "ThermalStressCalculator",
     "StressMeasurementMethod",
+    "ProcessConditions",
+    "MaterialProperties",
     "wafer_curvature_to_stress",
     "xrd_to_stress",
+    "get_material_properties",
     # Adhesion models
     "AdhesionModel",
     "AdhesionTest",
     "AdhesionTestResult",
+    "AdhesionFactors",
+    "AdhesionClass",
     "simulate_tape_test",
     "simulate_scratch_test",
     "simulate_nanoindentation",
@@ -71,4 +92,9 @@ __all__ = [
     "ShowerheadReactor",
     "HorizontalFlowReactor",
     "BatchFurnaceReactor",
+    # VM Features
+    "VMFeatureExtractor",
+    "TelemetryData",
+    "create_training_dataset",
+    "feature_importance_analysis",
 ]
