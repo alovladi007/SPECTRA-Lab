@@ -1,6 +1,13 @@
 """
 SQLAlchemy models for CVD module
 Supports all CVD variants with unified data model
+
+NOTE: For CVD tool drivers and HIL simulators, see:
+    services/analysis/app/drivers/
+    - CVDTool Protocol interface
+    - Physics-based HIL simulator
+    - Vendor-agnostic driver stubs (APCVD, LPCVD, PECVD, MOCVD, etc.)
+    - Communication adapters (SCPI, OPC-UA, SECS-II)
 """
 
 from sqlalchemy import Column, String, Float, Integer, Boolean, Text, DateTime, ForeignKey, Enum as SQLEnum
@@ -78,6 +85,22 @@ class RunStatus(str, Enum):
     PAUSED = "paused"
 
 
+class AdhesionClass(str, Enum):
+    """Film adhesion classification"""
+    POOR = "POOR"
+    MARGINAL = "MARGINAL"
+    GOOD = "GOOD"
+    EXCELLENT = "EXCELLENT"
+
+
+class StressType(str, Enum):
+    """Film stress classification"""
+    TENSILE = "TENSILE"  # Positive stress
+    COMPRESSIVE = "COMPRESSIVE"  # Negative stress
+    MIXED = "MIXED"  # Both tensile and compressive regions
+    NEUTRAL = "NEUTRAL"  # Negligible stress
+
+
 class CVDProcessMode(Base):
     """
     CVD process mode definition
@@ -98,6 +121,7 @@ class CVDProcessMode(Base):
     description = Column(Text, nullable=True)
     default_recipes = Column(JSONB, nullable=True)
     capabilities = Column(JSONB, nullable=True)
+    default_targets = Column(JSONB, nullable=True, comment='Default film types and typical thickness/stress/adhesion ranges')
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -135,12 +159,18 @@ class CVDRecipe(Base):
 
     # Film targets
     film_target = Column(String(100), nullable=False)
+    film_material = Column(String(100), nullable=True, comment='Specific film material (e.g., SiO₂, Si₃N₄, TiN, GaN, DLC)', index=True)
     thickness_target_nm = Column(Float, nullable=False)
     uniformity_target_pct = Column(Float, nullable=False)
+    target_stress_mpa = Column(Float, nullable=True, comment='Target film stress in MPa (tensile>0, compressive<0)')
+    target_stress_type = Column(SQLEnum(StressType), nullable=True, comment='Expected stress type')
+    target_adhesion_class = Column(SQLEnum(AdhesionClass), nullable=True, comment='Target adhesion class')
+    target_adhesion_score = Column(Float, nullable=True, comment='Target adhesion score (0-100)')
 
     # Process parameters (JSONB for flexibility)
     temperature_profile = Column(JSONB, nullable=False)
     pressure_setpoints = Column(JSONB, nullable=False)
+    pressure_profile_torr = Column(JSONB, nullable=True, comment='Detailed pressure profile vs time')
     gas_flows = Column(JSONB, nullable=False)
 
     # Variant-specific settings
@@ -302,28 +332,79 @@ class CVDResult(Base):
     cvd_run_id = Column(UUID(as_uuid=True), ForeignKey('cvd_runs.id'), nullable=False, unique=True)
 
     # Film properties
-    film_material = Column(String(100), nullable=False)
+    film_material = Column(String(100), nullable=False, index=True)
+
+    # =========================================================================
+    # Thickness Characterization
+    # =========================================================================
     thickness_mean_nm = Column(Float, nullable=True)
     thickness_std_nm = Column(Float, nullable=True)
     thickness_uniformity_pct = Column(Float, nullable=True)
+    thickness_wiw_uniformity_pct = Column(Float, nullable=True, comment='Within-wafer uniformity %')
+    thickness_wtw_uniformity_pct = Column(Float, nullable=True, comment='Wafer-to-wafer uniformity %')
     thickness_min_nm = Column(Float, nullable=True)
     thickness_max_nm = Column(Float, nullable=True)
-    thickness_map = Column(JSONB, nullable=True)
+    thickness_map = Column(JSONB, nullable=True, comment='Thickness map data')
+    thickness_map_uri = Column(String(500), nullable=True, comment='URI to wafer map file')
+    conformality_ratio = Column(Float, nullable=True, comment='Bottom/top step coverage ratio')
 
-    # Optical
-    refractive_index = Column(Float, nullable=True)
+    # =========================================================================
+    # Stress Characterization
+    # =========================================================================
+    stress_mpa = Column(Float, nullable=True, comment='Legacy single stress value')
+    stress_mpa_mean = Column(Float, nullable=True, comment='Mean film stress in MPa')
+    stress_mpa_std = Column(Float, nullable=True, comment='Standard deviation of stress')
+    stress_mpa_min = Column(Float, nullable=True, comment='Minimum stress value')
+    stress_mpa_max = Column(Float, nullable=True, comment='Maximum stress value')
+    stress_type = Column(SQLEnum(StressType), nullable=True, comment='Stress classification', index=True)
+    stress_measurement_method = Column(String(100), nullable=True, comment='Method: wafer_curvature_Stoney, XRD, nanoindentation')
+    stress_distribution_uri = Column(String(500), nullable=True, comment='URI to stress distribution map')
+    stress_gradient_mpa_per_nm = Column(Float, nullable=True, comment='Stress gradient through film')
+
+    # =========================================================================
+    # Adhesion Characterization (NEW)
+    # =========================================================================
+    adhesion_score = Column(Float, nullable=True, comment='Adhesion score (0-100)')
+    adhesion_class = Column(SQLEnum(AdhesionClass), nullable=True, comment='Adhesion classification', index=True)
+    adhesion_test_method = Column(String(100), nullable=True, comment='Method: tape_test, scratch_test, four_point_bend, nanoindentation, stud_pull')
+    adhesion_critical_load_n = Column(Float, nullable=True, comment='Critical load at failure (N)')
+    adhesion_failure_mode = Column(String(50), nullable=True, comment='Failure mode: cohesive, adhesive, interfacial, mixed')
+    adhesion_test_date = Column(DateTime(timezone=True), nullable=True, comment='Date adhesion test performed')
+    adhesion_notes = Column(Text, nullable=True, comment='Additional adhesion test notes')
+
+    # =========================================================================
+    # Optical Properties
+    # =========================================================================
+    refractive_index = Column(Float, nullable=True, comment='Refractive index at single wavelength')
     extinction_coefficient = Column(Float, nullable=True)
+    refractive_index_spectrum = Column(JSONB, nullable=True, comment='n and k vs wavelength')
+    optical_bandgap_ev = Column(Float, nullable=True, comment='Optical bandgap in eV')
 
-    # Mechanical
-    stress_mpa = Column(Float, nullable=True)
-    stress_type = Column(String(50), nullable=True)
+    # =========================================================================
+    # Roughness Characterization
+    # =========================================================================
+    roughness_ra_nm = Column(Float, nullable=True, comment='Average roughness (Ra)')
+    roughness_rq_nm = Column(Float, nullable=True, comment='RMS roughness (Rq)')
+    roughness_rms_nm = Column(Float, nullable=True, comment='Legacy RMS roughness')
+    roughness_rz_nm = Column(Float, nullable=True, comment='Ten-point height (Rz)')
+    roughness_measurement_method = Column(String(100), nullable=True, comment='Method: AFM, profilometer, optical')
 
-    # Quality
+    # =========================================================================
+    # Quality Metrics
+    # =========================================================================
     conformality_score = Column(Float, nullable=True)
     selectivity_score = Column(Float, nullable=True)
     step_coverage_pct = Column(Float, nullable=True)
     defect_density_per_cm2 = Column(Float, nullable=True)
-    roughness_rms_nm = Column(Float, nullable=True)
+
+    # =========================================================================
+    # Additional Film Properties
+    # =========================================================================
+    density_g_cm3 = Column(Float, nullable=True, comment='Film density in g/cm³')
+    hardness_gpa = Column(Float, nullable=True, comment='Film hardness in GPa')
+    resistivity_ohm_cm = Column(Float, nullable=True, comment='Film resistivity in Ω·cm')
+    crystallinity_pct = Column(Float, nullable=True, comment='Degree of crystallinity %')
+    grain_size_nm = Column(Float, nullable=True, comment='Average grain size in nm')
 
     # Composition (for MOCVD/alloys)
     composition = Column(JSONB, nullable=True)

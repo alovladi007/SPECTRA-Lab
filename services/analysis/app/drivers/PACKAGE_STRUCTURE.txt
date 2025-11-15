@@ -1,0 +1,138 @@
+CVD Tool Drivers Package Structure
+=====================================
+
+services/analysis/app/drivers/
+│
+├── __init__.py                      (1.7 KB)  - Package initialization & exports
+│   └── Exports all drivers, simulators, and adapters
+│
+├── cvd_tool.py                      (8.8 KB)  - Core Protocol Interface
+│   ├── CVDTool (Protocol)           - Standard interface for all tools
+│   ├── ToolState (Enum)             - OFFLINE, IDLE, RUNNING, ERROR, etc.
+│   ├── ToolStatus (dataclass)       - Current tool status
+│   ├── ToolCapabilities (dataclass) - Tool specifications
+│   ├── CVDTelemetry (dataclass)     - Real-time process data
+│   ├── TelemetryType (Enum)         - TEMPERATURE, PRESSURE, THICKNESS, etc.
+│   └── ToolError (Exception)        - Standard error handling
+│
+├── hil_simulator.py                 (23 KB)   - Physics-Based Simulator
+│   ├── HILCVDSimulator              - Main simulator class
+│   ├── PhysicsConfig                - Physics model parameters
+│   ├── FaultInjectionConfig         - Fault injection settings
+│   └── Physics Models:
+│       ├── Arrhenius deposition kinetics
+│       ├── Film stress calculation (intrinsic + thermal + gradient)
+│       ├── Adhesion prediction (score 0-100)
+│       ├── Thickness distribution (radial, WIW/WTW)
+│       ├── Conformality modeling
+│       └── Material properties (density, hardness, optical)
+│
+├── thermal_cvd.py                   (20 KB)   - Thermal CVD Drivers
+│   ├── ThermalCVDDriverBase         - Base class for thermal CVD
+│   ├── APCVDDriver                  - Atmospheric Pressure CVD
+│   │   └── SCPI communication
+│   ├── LPCVDDriver                  - Low Pressure CVD
+│   │   └── OPC-UA communication
+│   └── UHVCVDDriver                 - Ultra-High Vacuum CVD
+│       └── SECS-II communication
+│
+├── plasma_cvd.py                    (26 KB)   - Plasma CVD Drivers
+│   ├── PlasmaCVDDriverBase          - Base class for plasma CVD
+│   ├── PECVDDriver                  - Plasma-Enhanced CVD (13.56 MHz RF)
+│   │   └── SCPI communication
+│   ├── HDPCVDDriver                 - High-Density Plasma CVD (ICP)
+│   │   └── SECS-II communication
+│   ├── MPCVDDriver                  - Microwave Plasma CVD (2.45 GHz)
+│   │   └── OPC-UA communication
+│   └── RPCVDDriver                  - Remote Plasma CVD
+│       └── SCPI communication
+│
+├── specialty_cvd.py                 (23 KB)   - Specialty CVD Drivers
+│   ├── MOCVDDriver                  - Metal-Organic CVD
+│   │   ├── III-V compounds (GaN, GaAs, InP)
+│   │   ├── V/III ratio control
+│   │   └── OPC-UA communication
+│   └── AACVDDriver                  - Aerosol-Assisted CVD
+│       ├── Nanomaterials, complex oxides
+│       ├── Ultrasonic aerosol generation
+│       └── SCPI communication
+│
+├── comm_adapters.py                 (19 KB)   - Communication Protocols
+│   ├── SCPIAdapter                  - SCPI/VISA protocol
+│   │   ├── Text-based commands
+│   │   ├── Query/response pattern
+│   │   └── TCP/IP transport
+│   ├── OPCUAAdapter                 - OPC-UA protocol
+│   │   ├── Hierarchical nodes
+│   │   ├── Read/write values
+│   │   ├── Method calls
+│   │   └── Event subscriptions
+│   ├── SECS2Adapter                 - SECS-II/GEM protocol
+│   │   ├── Stream/function messages (S1F1, S2F41, S6F11)
+│   │   ├── Event reports
+│   │   ├── Alarms
+│   │   └── HSMS transport
+│   └── CommAdapterFactory           - Protocol adapter factory
+│
+├── examples.py                      (11 KB)   - Usage Examples
+│   ├── example_hil_lpcvd_simulation()
+│   ├── example_hil_with_faults()
+│   ├── example_pecvd_driver()
+│   ├── example_lpcvd_batch()
+│   └── example_mocvd_epitaxy()
+│
+├── README.md                        (13 KB)   - Comprehensive Documentation
+│   ├── Quick Start
+│   ├── Architecture Overview
+│   ├── CVDTool Protocol Reference
+│   ├── Driver Family Details
+│   ├── HIL Simulator Physics Models
+│   ├── Communication Adapters Guide
+│   ├── Advanced Features
+│   ├── Extending Drivers
+│   ├── Testing Strategies
+│   └── Troubleshooting
+│
+└── IMPLEMENTATION_SUMMARY.md        (12 KB)   - Implementation Report
+    ├── Deliverables Checklist
+    ├── Architecture Diagram
+    ├── Technical Specifications
+    ├── Code Statistics
+    ├── Integration Points
+    └── Future Enhancements
+
+=====================================
+TOTAL: 10 files, ~145 KB, 4,394 lines
+=====================================
+
+Supported CVD Technologies (9 variants):
+    ✓ APCVD   (Atmospheric Pressure)
+    ✓ LPCVD   (Low Pressure)
+    ✓ UHVCVD  (Ultra-High Vacuum)
+    ✓ PECVD   (Plasma-Enhanced)
+    ✓ HDP-CVD (High-Density Plasma)
+    ✓ MPCVD   (Microwave Plasma)
+    ✓ RPCVD   (Remote Plasma)
+    ✓ MOCVD   (Metal-Organic)
+    ✓ AACVD   (Aerosol-Assisted)
+
+Communication Protocols (3):
+    ✓ SCPI/VISA  (Standard Commands for Programmable Instruments)
+    ✓ OPC-UA     (OPC Unified Architecture)
+    ✓ SECS-II    (SEMI Equipment Communications Standard)
+
+Physics Models:
+    ✓ Arrhenius deposition kinetics
+    ✓ Film stress (intrinsic + thermal + gradient)
+    ✓ Adhesion prediction (0-100 score)
+    ✓ Thickness distribution (WIW/WTW uniformity)
+    ✓ Conformality (step coverage)
+    ✓ Optical properties (n, k, bandgap)
+    ✓ Material properties (density, hardness, resistivity)
+    ✓ Fault injection (temp spikes, leaks, upsets)
+
+Integration:
+    → Database: services/shared/db/models.py (Calibration)
+    → CVD Models: services/analysis/app/models/cvd.py
+    → CVD API: services/analysis/app/routers/cvd.py
+    → Frontend: apps/web/src/components/manufacturing/CVDMES.tsx
