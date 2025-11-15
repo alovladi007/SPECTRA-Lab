@@ -28,6 +28,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
+  Legend,
   ResponsiveContainer,
   ScatterChart,
   Scatter,
