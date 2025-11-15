@@ -287,13 +287,11 @@ export default function CVDWorkspacePage() {
                 <div className="text-2xl font-bold">
                   {
                     runs?.filter(
-                      (r: CVDRun) =>
-                        r.status === "COMPLETED" &&
-                        new Date(r.created_at).toDateString() === new Date().toDateString()
+                      (r: CVDRun) => r.status === "COMPLETED"
                     ).length || 0
                   }
                 </div>
-                <p className="text-xs text-muted-foreground">Successful runs</p>
+                <p className="text-xs text-muted-foreground">Completed runs</p>
               </CardContent>
             </Card>
           </div>
@@ -397,7 +395,7 @@ export default function CVDWorkspacePage() {
                       />
                     </div>
                     <div className="text-xs text-muted-foreground text-center">
-                      Last tested: {new Date().toLocaleDateString()}
+                      Last tested: 11/14/2025
                     </div>
                   </CardContent>
                 </Card>
@@ -415,10 +413,14 @@ export default function CVDWorkspacePage() {
             </CardHeader>
             <CardContent className="flex justify-center">
               <WaferMap
-                points={generateWaferPoints.ninePoint(150).map((p, i) => ({
-                  ...p,
-                  value: 100 + (Math.random() - 0.5) * 4, // Mock thickness variation
-                }))}
+                points={generateWaferPoints.ninePoint(150).map((p, i) => {
+                  // Use deterministic values to avoid hydration errors
+                  const variations = [99.8, 98.7, 101.5, 100.9, 98.2, 100.1, 100.2, 101.3, 98.2];
+                  return {
+                    ...p,
+                    value: variations[i] || 100,
+                  };
+                })}
                 parameter="Thickness"
                 unit="nm"
                 colorScale="viridis"
@@ -442,7 +444,7 @@ export default function CVDWorkspacePage() {
                     severity: "warning",
                     title: "Elevated Stress Detected",
                     message: "Run CVD_20251114_103045 showed higher than expected compressive stress",
-                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    timestamp: "2025-11-14T09:30:00Z",
                     source: "stress",
                   },
                   {
@@ -450,7 +452,7 @@ export default function CVDWorkspacePage() {
                     severity: "info",
                     title: "Process Completed",
                     message: "Run CVD_20251114_093022 completed successfully with excellent uniformity",
-                    timestamp: new Date(Date.now() - 7200000).toISOString(),
+                    timestamp: "2025-11-14T08:30:00Z",
                     source: "system",
                   },
                 ]}
