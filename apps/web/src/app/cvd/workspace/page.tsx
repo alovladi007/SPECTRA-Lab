@@ -57,6 +57,14 @@ import RecipeEditor from "@/components/cvd/RecipeEditor";
 import RunConfigurationWizard from "@/components/cvd/RunConfigurationWizard";
 import SPCDashboard from "@/components/cvd/SPCDashboard";
 
+// New Metric Components
+import { ThicknessGauge } from "@/components/cvd/metrics/ThicknessGauge";
+import { StressBar } from "@/components/cvd/metrics/StressBar";
+import { AdhesionChip, AdhesionBadge } from "@/components/cvd/metrics/AdhesionChip";
+import { WaferMap, generateWaferPoints } from "@/components/cvd/metrics/WaferMap";
+import { AlertBanner, AlertList } from "@/components/cvd/metrics/AlertBanner";
+import { RealTimeMonitor, RealTimeIndicator } from "@/components/cvd/RealTimeMonitor";
+
 // Types
 interface CVDProcessMode {
   id: string;
@@ -343,6 +351,111 @@ export default function CVDWorkspacePage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Process Metrics (Demo with Mock Data) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Process Quality Metrics</CardTitle>
+              <CardDescription>
+                Real-time metrics from latest completed run (Demo)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Thickness Gauge */}
+                <ThicknessGauge
+                  actual={98.5}
+                  target={100}
+                  uniformity={1.8}
+                  tolerance={5}
+                />
+
+                {/* Stress Bar */}
+                <StressBar
+                  stress={-185}
+                  safeZoneMin={-400}
+                  safeZoneMax={300}
+                />
+
+                {/* Adhesion Metrics */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Adhesion Quality</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-center">
+                      <AdhesionChip
+                        score={88}
+                        testMethod={{
+                          name: "Tape Test",
+                          description: "ASTM D3359 cross-hatch adhesion test",
+                          standard: "ASTM D3359"
+                        }}
+                        size="lg"
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center">
+                      Last tested: {new Date().toLocaleDateString()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Wafer Thickness Map (Demo) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Wafer Thickness Distribution</CardTitle>
+              <CardDescription>
+                9-point measurement from latest run (Demo)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <WaferMap
+                points={generateWaferPoints.ninePoint(150).map((p, i) => ({
+                  ...p,
+                  value: 100 + (Math.random() - 0.5) * 4, // Mock thickness variation
+                }))}
+                parameter="Thickness"
+                unit="nm"
+                colorScale="viridis"
+                showLegend={true}
+                size="lg"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Recent Alerts */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Alerts</CardTitle>
+              <CardDescription>Process warnings and notifications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AlertList
+                alerts={[
+                  {
+                    id: "1",
+                    severity: "warning",
+                    title: "Elevated Stress Detected",
+                    message: "Run CVD_20251114_103045 showed higher than expected compressive stress",
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    source: "stress",
+                  },
+                  {
+                    id: "2",
+                    severity: "info",
+                    title: "Process Completed",
+                    message: "Run CVD_20251114_093022 completed successfully with excellent uniformity",
+                    timestamp: new Date(Date.now() - 7200000).toISOString(),
+                    source: "system",
+                  },
+                ]}
+                maxVisible={5}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -651,7 +764,17 @@ export default function CVDWorkspacePage() {
         {/* Real-Time Monitoring Tab */}
         <TabsContent value="monitoring" className="space-y-4">
           {selectedRun ? (
-            <TelemetryDashboard runId={selectedRun} />
+            <>
+              {/* Real-Time WebSocket Monitor */}
+              <RealTimeMonitor
+                runId={selectedRun}
+                onProgressUpdate={(progress) => console.log("Progress:", progress)}
+                onThicknessUpdate={(thickness) => console.log("Thickness:", thickness)}
+                onStressUpdate={(stress) => console.log("Stress:", stress)}
+              />
+              {/* Existing Telemetry Dashboard */}
+              <TelemetryDashboard runId={selectedRun} />
+            </>
           ) : activeRuns.length > 0 ? (
             <>
               <Alert>
