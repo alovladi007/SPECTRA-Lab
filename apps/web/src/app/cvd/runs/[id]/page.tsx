@@ -23,6 +23,7 @@ import { ThicknessGauge } from "@/components/cvd/metrics/ThicknessGauge";
 import { StressBar } from "@/components/cvd/metrics/StressBar";
 import { AdhesionChip, AdhesionDetail } from "@/components/cvd/metrics/AdhesionChip";
 import { AlertList } from "@/components/cvd/metrics/AlertBanner";
+import { RealTimeMonitor } from "@/components/cvd/RealTimeMonitor";
 import {
   LineChart,
   Line,
@@ -311,6 +312,23 @@ export default function RunDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Real-Time Monitor (if running) */}
+      {mockRun.status === "running" && (
+        <RealTimeMonitor
+          runId={mockRun.run_id}
+          onProgressUpdate={(progress) => {
+            // Could update local state here
+            console.log("Progress update:", progress);
+          }}
+          onThicknessUpdate={(thickness) => {
+            console.log("Thickness update:", thickness);
+          }}
+          onStressUpdate={(stress) => {
+            console.log("Stress update:", stress);
+          }}
+        />
+      )}
 
       {/* Main Content - Tabs */}
       <Card>
