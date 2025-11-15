@@ -5,7 +5,7 @@
  * Main workspace for CVD operations - integrated with all CVD components
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -111,6 +111,7 @@ interface CVDRun {
 }
 
 export default function CVDWorkspacePage() {
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedProcessMode, setSelectedProcessMode] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<CVDRecipe | null>(null);
@@ -118,6 +119,11 @@ export default function CVDWorkspacePage() {
   const [isCreateRecipeOpen, setIsCreateRecipeOpen] = useState(false);
   const [isLaunchRunOpen, setIsLaunchRunOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<CVDRecipe | null>(null);
+
+  // Prevent hydration errors by only rendering on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Organization ID (should come from auth context in production)
   const organizationId = "default-org";
@@ -184,6 +190,11 @@ export default function CVDWorkspacePage() {
     setIsCreateRecipeOpen(false);
     setEditingRecipe(null);
   };
+
+  // Prevent hydration mismatch - only render on client
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
